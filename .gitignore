@@ -177,3 +177,7 @@ dkms.conf
 
 # Ignore virtual environments
 venv
+
+# Ignore sensitive files
+database.ini
+server.ini
