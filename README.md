@@ -3,7 +3,7 @@
     Computing Library" height="90px">    
 </h1>
 
-<h3 align="center">Distributed computing library implemented over PyCOMPSs programming model for HPC.</h3>
+<h3 align="center">Experiments with the distributed computing library implemented over PyCOMPSs programming model for HPC.</h3>
 
 <p align="center">
   <a href="https://dislib.bsc.es/en/latest/?badge=latest">
