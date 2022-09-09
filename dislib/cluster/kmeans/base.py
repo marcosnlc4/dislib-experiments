@@ -24,9 +24,9 @@ from dislib.data.util import encoder_helper, decoder_helper, sync_obj
 import dislib.data.util.model as utilmodel
 
 # location of the csv log file
+log_file_path = os.path.dirname(os.path.abspath(__file__))
+log_file_path = log_file_path.replace("/dislib/cluster/kmeans", "/experiments/logs/log_time.csv")
 
-log_file_path = 'log_time.csv'
-    
 
 class KMeans(BaseEstimator):
     """ Perform K-means clustering.
@@ -54,8 +54,8 @@ class KMeans(BaseEstimator):
         for centroid initialization.
     verbose: boolean, optional (default=False)
         Whether to print progress information.
-    function_partial_sum_device: int (default=0)
-        Flag to define the function partial sum implementation according to resource (CPU: 0 or GPU: 1)
+    id_device: int (default=1)
+        Flag to define the device function implementation according to resource (CPU: 1, GPU: 2, GPU intra: 3)
     dict_time
         Dictionary used to store logs about execution time as follows:    
             communication_time:
@@ -92,7 +92,7 @@ class KMeans(BaseEstimator):
 
     def __init__(self, n_clusters=8, init='random', max_iter=10, tol=1e-4,
                  arity=50, random_state=None, verbose=False,
-                 function_partial_sum_device=0,
+                 id_device=1,
                  dict_time={"communication_time":0,
                             "intra_task_execution_time":0,
                             "inter_task_execution_time":0}):
@@ -102,7 +102,7 @@ class KMeans(BaseEstimator):
         self.random_state = random_state
         self.arity = arity
         self.verbose = verbose
-        self.function_partial_sum_device = function_partial_sum_device
+        self.id_device = id_device
         self.dict_time = dict_time
         self.init = init
 
@@ -120,13 +120,6 @@ class KMeans(BaseEstimator):
         -------
         self : KMeans
         """
-        # defining the structure of the log file
-        header = ['communication_time', 'intra_task_execution_device_func', 'intra_task_execution_full_func']
-        # open the log file in the write mode
-        f = open(log_file_path, "w", encoding='UTF8', newline='')
-        writer = csv.writer(f)
-        writer.writerow(header)
-        f.close()
 
         self.random_state = check_random_state(self.random_state)
         self._init_centers(x.shape[1], x._sparse)
@@ -135,10 +128,26 @@ class KMeans(BaseEstimator):
         iteration = 0
         self.dict_time["inter_task_execution_time"] = 0
 
-        if self.function_partial_sum_device == 1:
+        if self.id_device == 2:
             partial_sum_func = _partial_sum_gpu
+        elif self.id_device == 3:
+            partial_sum_func = _partial_sum_gpu_time_intra_device
+            # defining the structure of the log file
+            header = ['communication_time', 'intra_task_execution_device_func', 'intra_task_execution_full_func']
+            # open the log file in the write mode
+            f = open(log_file_path, "w", encoding='UTF8', newline='')
+            writer = csv.writer(f)
+            writer.writerow(header)
+            f.close()
         else:
             partial_sum_func = _partial_sum
+            # defining the structure of the log file
+            header = ['communication_time', 'intra_task_execution_device_func', 'intra_task_execution_full_func']
+            # open the log file in the write mode
+            f = open(log_file_path, "w", encoding='UTF8', newline='')
+            writer = csv.writer(f)
+            writer.writerow(header)
+            f.close()
 
         while not self._converged(old_centers, iteration):
             old_centers = self.centers.copy()
@@ -150,7 +159,8 @@ class KMeans(BaseEstimator):
                 # compss_barrier()
                 end_inter = time.perf_counter()
                 inter_task_execution_time = end_inter - start_inter
-                self.dict_time["inter_task_execution_time"] += inter_task_execution_time
+                if partial_sum_func != 3:
+                    self.dict_time["inter_task_execution_time"] += inter_task_execution_time
                 partials.append(partial)
 
             self._recompute_centers(partials)
@@ -474,8 +484,6 @@ def _partial_sum_gpu_time_intra_device(blocks, centers):
 @constraint(computing_units="${ComputingUnitsCPU}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _partial_sum(blocks, centers):
-    # defining the structure of the log file
-    # header = ['communication_time', 'intra_task_execution_device_func', 'intra_task_execution_full_func']
     # open the log file in the append mode
     f = open(log_file_path, "a", encoding='UTF8', newline='')
 
