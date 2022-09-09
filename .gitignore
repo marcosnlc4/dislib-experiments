@@ -180,5 +180,4 @@ venv
 
 # Ignore sensitive files
 database.ini
-server.ini
 compss_commands
