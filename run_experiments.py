@@ -50,9 +50,6 @@ def main():
     # df_experiments.reset_index(drop=True, inplace=True)
     # array to store temporary results
     data = []
-
-    print("\n\n df_experiments: \n")
-    print(df_experiments)
     
     # Iterate over each row of the parameter table CSV file
     for index, row in df_parameters.iterrows():
@@ -121,7 +118,7 @@ def main():
 
                 # execution to compile gpu device code and to extract GPU execution times using CUDA events (id_device=3))
                 # generate and load initial data into a ds-array and kmeans for the first time (compiling/warming up device code)
-                x, y = make_blobs(n_samples=vl_dataset_row_size, n_features=vl_dataset_column_size, random_state=nr_random_state)
+                x, y = make_blobs(n_samples=vl_dataset_row_size, n_features=vl_dataset_column_size, random_state=nr_random_state)                
                 dis_x = ds.array(x, block_size=(vl_block_row_size, vl_block_column_size))
                 kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=id_device)
                 y_pred = kmeans.fit_predict(dis_x).collect()
@@ -133,7 +130,7 @@ def main():
                 
                 if ds_device == "GPU":
                                         
-                    # Run experiment separetely to extract GPU execution times using CUDA events (id_device=3))
+                    # Run experiment separately to extract GPU execution times using CUDA events (id_device=3))
                     # generate and load data into a ds-array
                     x, y = make_blobs(n_samples=vl_dataset_row_size, n_features=vl_dataset_column_size, random_state=nr_random_state)
                     dis_x = ds.array(x, block_size=(vl_block_row_size, vl_block_column_size))

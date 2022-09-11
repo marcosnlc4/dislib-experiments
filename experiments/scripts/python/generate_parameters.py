@@ -1,8 +1,7 @@
 import psycopg2
 import pandas as pd
 from pathlib import Path
-# Import the 'config' function from the config.py file
-from config import config, open_connection, close_connection
+from config import open_connection, close_connection
 
 def main():
 
