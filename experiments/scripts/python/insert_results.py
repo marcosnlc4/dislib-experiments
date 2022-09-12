@@ -14,8 +14,6 @@ def main():
 
     tuples = [tuple(x) for x in df_experiments.to_numpy()]
     
-    print(tuples)
-
     cols = ','.join(list(df_experiments.columns))
 
     # Open connection to the database
