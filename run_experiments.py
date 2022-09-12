@@ -50,9 +50,14 @@ def main():
     # df_experiments.reset_index(drop=True, inplace=True)
     # array to store temporary results
     data = []
+
+    # Variable to store the current execution to measure the progress of the experiment
+    current_execution = 0
     
     # Iterate over each row of the parameter table CSV file
     for index, row in df_parameters.iterrows():
+
+        current_execution = current_execution + 1
 
         # Setting parameters variables
         id_parameter = row["id_parameter"]
@@ -89,13 +94,16 @@ def main():
         vl_dataset_size = row["vl_dataset_size"]
         vl_dataset_row_size = row["vl_dataset_row_size"]
         vl_dataset_column_size = row["vl_dataset_column_size"]
+        vl_block_memory_size = row["vl_block_memory_size"]
+        vl_block_memory_size_percent_cpu = row["vl_block_memory_size_percent_cpu"]
+        vl_block_memory_size_percent_gpu = row["vl_block_memory_size_percent_gpu"]
         nr_random_state = row["nr_random_state"]
-        n_clusters = 100
+        n_clusters = 10
 
         # Execute the experiment for N (nr_iterations) times with the same parameter set
         for i in range(nr_iterations):
 
-            execution_progress = round(((index+1)/df_parameters.shape[0])*100,2)
+            execution_progress = round((current_execution/df_parameters.shape[0])*100,2)
             iteration_experiment_time_start = datetime.datetime.now()
 
             print("\nEXPERIMENT ", id_parameter,"-------------- ITERATION ", i+1, " STARTED AT "+str(iteration_experiment_time_start)+"------------------\n")
@@ -109,23 +117,26 @@ def main():
             print("ds_status_parallelism: ",str(ds_status_parallelism),"\n")
             print("ds_tp_parameter: ",str(ds_tp_parameter),"\n")
             print("vl_dataset_memory_size: ",str(vl_dataset_memory_size),"\n")
-            print("vl_block_size_percent_dataset: ",str(vl_block_size_percent_dataset),"\n")
+            print("vl_block_size_percent_dataset: ",str(vl_block_size_percent_dataset*100),"%\n")
             print("DATASET: vl_dataset_row_size x vl_dataset_column_size: ",str(vl_dataset_row_size)," x ",str(vl_dataset_column_size),"\n")
             print("GRID: vl_grid_row_size x vl_grid_column_size: ",str(vl_grid_row_size)," x ",str(vl_grid_column_size),"\n")
             print("BLOCK: vl_block_row_size x vl_block_column_size: ",str(vl_block_row_size)," x ",str(vl_block_column_size),"\n")
-            
+            print("vl_block_memory_size: ",str(vl_block_memory_size),"\n")
+            print("vl_block_memory_size_percent_cpu: ",str(vl_block_memory_size_percent_cpu*100),"%\n")
+            print("vl_block_memory_size_percent_gpu: ",str(vl_block_memory_size_percent_gpu*100),"%\n")
+
             if ds_algorithm == "KMEANS":
 
                 # execution to compile gpu device code and to extract GPU execution times using CUDA events (id_device=3))
                 # generate and load initial data into a ds-array and kmeans for the first time (compiling/warming up device code)
                 x, y = make_blobs(n_samples=vl_dataset_row_size, n_features=vl_dataset_column_size, random_state=nr_random_state)                
                 dis_x = ds.array(x, block_size=(vl_block_row_size, vl_block_column_size))
-                kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=id_device)
+                kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=id_device, max_iter=5, tol=0, arity=48)
                 y_pred = kmeans.fit_predict(dis_x).collect()
 
                 x, y = make_blobs(n_samples=vl_dataset_row_size, n_features=vl_dataset_column_size, random_state=nr_random_state)
                 dis_x = ds.array(x, block_size=(vl_block_row_size, vl_block_column_size))
-                kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=3)
+                kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=3, max_iter=5, tol=0, arity=48)
                 y_pred = kmeans.fit_predict(dis_x).collect()
                 
                 if ds_device == "GPU":
@@ -135,7 +146,7 @@ def main():
                     x, y = make_blobs(n_samples=vl_dataset_row_size, n_features=vl_dataset_column_size, random_state=nr_random_state)
                     dis_x = ds.array(x, block_size=(vl_block_row_size, vl_block_column_size))
                     # Run KMeans using dislib
-                    kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=3)
+                    kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=3, max_iter=5, tol=0, arity=48)
                     y_pred = kmeans.fit_predict(dis_x).collect()
 
 
@@ -145,7 +156,7 @@ def main():
                 dis_x = ds.array(x, block_size=(vl_block_row_size, vl_block_column_size))
                 # Run KMeans using dislib
                 start = time.perf_counter()
-                kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=id_device)
+                kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=id_device, max_iter=5, tol=0, arity=48)
                 y_pred = kmeans.fit_predict(dis_x).collect()
                 end = time.perf_counter()
 
