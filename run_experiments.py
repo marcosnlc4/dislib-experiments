@@ -44,6 +44,8 @@ def main():
 
     # Filtering and sorting parameters (TEST)
     # df_parameters = df_parameters[(df_parameters["id_parameter"] == 1) | (df_parameters["id_parameter"] == 2)].sort_values(by=["id_parameter"])
+    # df_parameters = df_parameters[(df_parameters["id_parameter"] == 1)]
+    # df_parameters = df_parameters[(df_parameters["id_parameter"] == 2)]
 
     # DataFrame to store final table
     df_experiments = pd.DataFrame(columns=["id_parameter", "vl_total_execution_time", "vl_inter_task_execution_time", "vl_intra_task_execution_time_device_func", "vl_intra_task_execution_time_full_func", "vl_communication_time"])
@@ -126,35 +128,28 @@ def main():
             print("vl_block_memory_size_percent_gpu: ",str(vl_block_memory_size_percent_gpu*100),"%\n")
 
             if ds_algorithm == "KMEANS":
+                
 
-                # execution to compile gpu device code and to extract GPU execution times using CUDA events (id_device=3))
-                # generate and load initial data into a ds-array and kmeans for the first time (compiling/warming up device code)
+                # generate and load data into a ds-array
                 x, y = make_blobs(n_samples=vl_dataset_row_size, n_features=vl_dataset_column_size, random_state=nr_random_state)                
                 dis_x = ds.array(x, block_size=(vl_block_row_size, vl_block_column_size))
-                kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=id_device, max_iter=5, tol=0, arity=48)
-                y_pred = kmeans.fit_predict(dis_x).collect()
 
-                x, y = make_blobs(n_samples=vl_dataset_row_size, n_features=vl_dataset_column_size, random_state=nr_random_state)
-                dis_x = ds.array(x, block_size=(vl_block_row_size, vl_block_column_size))
-                kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=3, max_iter=5, tol=0, arity=48)
+                kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=id_device, max_iter=5, tol=0, arity=48)
                 y_pred = kmeans.fit_predict(dis_x).collect()
                 
                 if ds_device == "GPU":
+
+                    # generate and load initial data into a ds-array and kmeans for the first time (compiling/warming up device code)
+                    kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=3, max_iter=5, tol=0, arity=48)
+                    y_pred = kmeans.fit_predict(dis_x).collect()
                                         
                     # Run experiment separately to extract GPU execution times using CUDA events (id_device=3))
                     # generate and load data into a ds-array
-                    x, y = make_blobs(n_samples=vl_dataset_row_size, n_features=vl_dataset_column_size, random_state=nr_random_state)
-                    dis_x = ds.array(x, block_size=(vl_block_row_size, vl_block_column_size))
-                    # Run KMeans using dislib
                     kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=3, max_iter=5, tol=0, arity=48)
                     y_pred = kmeans.fit_predict(dis_x).collect()
 
 
                 # execution to extract all execution times for CPU (id_device = 1) and the remaining execution times (total_execution_time and inter_task_execution_time) for GPU (id_device = 2)
-                # generate and load data into a ds-array
-                x, y = make_blobs(n_samples=vl_dataset_row_size, n_features=vl_dataset_column_size, random_state=nr_random_state)
-                dis_x = ds.array(x, block_size=(vl_block_row_size, vl_block_column_size))
-                # Run KMeans using dislib
                 start = time.perf_counter()
                 kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=id_device, max_iter=5, tol=0, arity=48)
                 y_pred = kmeans.fit_predict(dis_x).collect()
@@ -168,7 +163,6 @@ def main():
             communication_time = df_log_time["communication_time"].mean()
             intra_task_execution_device_func = df_log_time["intra_task_execution_device_func"].mean()
             intra_task_execution_full_func = df_log_time["intra_task_execution_full_func"].mean()
-
 
             iteration_experiment_time_end = datetime.datetime.now()
             iteration_experiment_time = (iteration_experiment_time_end - iteration_experiment_time_start).total_seconds()
