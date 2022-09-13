@@ -156,7 +156,7 @@ class KMeans(BaseEstimator):
             for row in x._iterator(axis=0):
                 start_inter = time.perf_counter()
                 partial = partial_sum_func(row._blocks, old_centers)
-                # compss_barrier()
+                compss_barrier()
                 end_inter = time.perf_counter()
                 inter_task_execution_time = end_inter - start_inter
                 if partial_sum_func != 3:
@@ -399,6 +399,7 @@ def _partial_sum_gpu(blocks, centers):
     arr_gpu, centers_gpu = cp.asarray(arr), cp.asarray(centers).astype(cp.float32)
 
     close_centers_gpu = cp.argmin(distance_gpu(arr_gpu, centers_gpu), axis=1)
+    compss_barrier()
     arr_gpu, centers_gpu = None, None
 
     close_centers = cp.asnumpy(close_centers_gpu)
@@ -499,6 +500,7 @@ def _partial_sum(blocks, centers):
     # start measuring intra_task_execution_device_func
     start_intra_device = time.perf_counter()
     close_centers = pairwise_distances(arr, centers).argmin(axis=1)
+    compss_barrier()
     end_intra_device = time.perf_counter()
     intra_task_execution_device_func = end_intra_device - start_intra_device
     # start measuring communication_time
