@@ -444,7 +444,6 @@ def _partial_sum_gpu_intra_time(blocks, centers):
     start_gpu_intra_device = cp.cuda.Event()
     end_gpu_intra_device = cp.cuda.Event()
 
-    arr_t = Array._merge_blocks(blocks).astype(np.float32)
 
     # Measure additional time 1
     start_additional_time_1 = time.perf_counter()
@@ -464,8 +463,8 @@ def _partial_sum_gpu_intra_time(blocks, centers):
     close_centers_gpu = cp.argmin(distance_gpu(arr_gpu, centers_gpu), axis=1)
     end_gpu_intra_device.record()
     end_gpu_intra_device.synchronize()
-    intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)
-    
+    intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+
     # Measure communication time 2
     start_comm_2 = time.perf_counter()
     close_centers = cp.asnumpy(close_centers_gpu)
@@ -532,10 +531,8 @@ def _partial_sum_intra_time(blocks, centers):
     arr = Array._merge_blocks(blocks)
 
     # start measuring intra_task_execution_device_func
-    compss_barrier()
     start_intra_device = time.perf_counter()
     close_centers = pairwise_distances(arr, centers).argmin(axis=1)
-    compss_barrier()
     end_intra_device = time.perf_counter()
     intra_task_execution_device_func = end_intra_device - start_intra_device
 
