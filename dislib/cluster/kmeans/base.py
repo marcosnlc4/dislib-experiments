@@ -120,6 +120,7 @@ class KMeans(BaseEstimator):
         -------
         self : KMeans
         """
+        inter_task_execution_time_list = np.array([])
 
         self.random_state = check_random_state(self.random_state)
         self._init_centers(x.shape[1], x._sparse)
@@ -128,10 +129,21 @@ class KMeans(BaseEstimator):
         iteration = 0
         self.dict_time["inter_task_execution_time"] = 0
 
-        if self.id_device == 2:
+        if self.id_device == 1 or self.id_device == 5:
+            partial_sum_func = _partial_sum
+        elif self.id_device == 2 or self.id_device == 6:
             partial_sum_func = _partial_sum_gpu
         elif self.id_device == 3:
-            partial_sum_func = _partial_sum_gpu_time_intra_device
+            partial_sum_func = _partial_sum_intra_time
+            # defining the structure of the log file
+            header = ['communication_time', 'intra_task_execution_device_func', 'intra_task_execution_full_func']
+            # open the log file in the write mode
+            f = open(log_file_path, "w", encoding='UTF8', newline='')
+            writer = csv.writer(f)
+            writer.writerow(header)
+            f.close()
+        elif self.id_device == 4:
+            partial_sum_func = _partial_sum_gpu_intra_time
             # defining the structure of the log file
             header = ['communication_time', 'intra_task_execution_device_func', 'intra_task_execution_full_func']
             # open the log file in the write mode
@@ -140,31 +152,36 @@ class KMeans(BaseEstimator):
             writer.writerow(header)
             f.close()
         else:
-            partial_sum_func = _partial_sum
-            # defining the structure of the log file
-            header = ['communication_time', 'intra_task_execution_device_func', 'intra_task_execution_full_func']
-            # open the log file in the write mode
-            f = open(log_file_path, "w", encoding='UTF8', newline='')
-            writer = csv.writer(f)
-            writer.writerow(header)
-            f.close()
+            raise ValueError("Invalid id_device")
 
         while not self._converged(old_centers, iteration):
             old_centers = self.centers.copy()
             partials = []
-
-            for row in x._iterator(axis=0):
-                start_inter = time.perf_counter()
-                partial = partial_sum_func(row._blocks, old_centers)
+            
+            if self.id_device == 5 or self.id_device == 6:
                 compss_barrier()
-                end_inter = time.perf_counter()
-                inter_task_execution_time = end_inter - start_inter
-                if partial_sum_func != 3:
-                    self.dict_time["inter_task_execution_time"] += inter_task_execution_time
-                partials.append(partial)
+                start_inter_cpu = time.perf_counter()
 
+                for row in x._iterator(axis=0):
+                    partial = partial_sum_func(row._blocks, old_centers)
+                    partials.append(partial)
+
+                compss_barrier()
+                end_inter_cpu = time.perf_counter()
+
+                inter_task_execution_time = end_inter_cpu - start_inter_cpu
+                inter_task_execution_time_list = np.append(inter_task_execution_time_list,inter_task_execution_time)
+
+            else:
+                for row in x._iterator(axis=0):
+                    partial = partial_sum_func(row._blocks, old_centers)
+                    partials.append(partial)
+    
             self._recompute_centers(partials)
             iteration += 1
+
+        if self.id_device == 5 or self.id_device == 6:
+            self.dict_time["inter_task_execution_time"] = np.mean(inter_task_execution_time_list)
 
         self.n_iter = iteration
 
@@ -399,7 +416,6 @@ def _partial_sum_gpu(blocks, centers):
     arr_gpu, centers_gpu = cp.asarray(arr), cp.asarray(centers).astype(cp.float32)
 
     close_centers_gpu = cp.argmin(distance_gpu(arr_gpu, centers_gpu), axis=1)
-    compss_barrier()
     arr_gpu, centers_gpu = None, None
 
     close_centers = cp.asnumpy(close_centers_gpu)
@@ -417,7 +433,7 @@ def _partial_sum_gpu(blocks, centers):
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ])
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
-def _partial_sum_gpu_time_intra_device(blocks, centers):
+def _partial_sum_gpu_intra_time(blocks, centers):
     # open the log file in the append mode
     f = open(log_file_path, "a", encoding='UTF8', newline='')
 
@@ -427,6 +443,8 @@ def _partial_sum_gpu_time_intra_device(blocks, centers):
     # creating CUDA events for intra device time measurement
     start_gpu_intra_device = cp.cuda.Event()
     end_gpu_intra_device = cp.cuda.Event()
+
+    arr_t = Array._merge_blocks(blocks).astype(np.float32)
 
     # Measure additional time 1
     start_additional_time_1 = time.perf_counter()
@@ -485,6 +503,22 @@ def _partial_sum_gpu_time_intra_device(blocks, centers):
 @constraint(computing_units="${ComputingUnitsCPU}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
 def _partial_sum(blocks, centers):
+
+    partials = np.zeros((centers.shape[0], 2), dtype=object)
+    arr = Array._merge_blocks(blocks)
+
+    close_centers = pairwise_distances(arr, centers).argmin(axis=1)
+
+    for center_idx in range(len(centers)):
+        indices = np.argwhere(close_centers == center_idx).flatten()
+        partials[center_idx][0] = np.sum(arr[indices], axis=0)
+        partials[center_idx][1] = indices.shape[0]
+
+    return partials
+
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+def _partial_sum_intra_time(blocks, centers):
     # open the log file in the append mode
     f = open(log_file_path, "a", encoding='UTF8', newline='')
 
@@ -498,11 +532,13 @@ def _partial_sum(blocks, centers):
     arr = Array._merge_blocks(blocks)
 
     # start measuring intra_task_execution_device_func
+    compss_barrier()
     start_intra_device = time.perf_counter()
     close_centers = pairwise_distances(arr, centers).argmin(axis=1)
     compss_barrier()
     end_intra_device = time.perf_counter()
     intra_task_execution_device_func = end_intra_device - start_intra_device
+
     # start measuring communication_time
     communication_time = 0
 

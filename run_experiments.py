@@ -49,13 +49,13 @@ def main():
 
     # DataFrame to store final table
     df_experiments = pd.DataFrame(columns=["id_parameter", "vl_total_execution_time", "vl_inter_task_execution_time", "vl_intra_task_execution_time_device_func", "vl_intra_task_execution_time_full_func", "vl_communication_time"])
-    # df_experiments.reset_index(drop=True, inplace=True)
+    
     # array to store temporary results
     data = []
 
     # Variable to store the current execution to measure the progress of the experiment
     current_execution = 0
-    
+
     # Iterate over each row of the parameter table CSV file
     for index, row in df_parameters.iterrows():
 
@@ -103,86 +103,100 @@ def main():
         n_clusters = 10
 
         # Execute the experiment for N (nr_iterations) times with the same parameter set
-        for i in range(nr_iterations):
-
+        for i in range(nr_iterations + 1):
+            
             execution_progress = round((current_execution/df_parameters.shape[0])*100,2)
             iteration_experiment_time_start = datetime.datetime.now()
 
-            print("\nEXPERIMENT ", id_parameter,"-------------- ITERATION ", i+1, " STARTED AT "+str(iteration_experiment_time_start)+"------------------\n")
-            print("\n@@@@@@ EXECUTION PROGRESS:",str(execution_progress),"%\n")
-            print("nodes: ",str(nr_nodes),"\n")
-            print("computing_units_cpu: ",str(nr_computing_units_cpu),"\n")
-            print("mem_computing_units_cpu: ",str(vl_memory_per_cpu_computing_unit),"\n")
-            print("computing_units_gpu: ",str(nr_computing_units_gpu),"\n")
-            print("mem_computing_units_gpu: ",str(vl_memory_per_gpu_computing_unit),"\n")
-            print("ds_device: ",str(ds_device),"\n")
-            print("ds_status_parallelism: ",str(ds_status_parallelism),"\n")
-            print("ds_tp_parameter: ",str(ds_tp_parameter),"\n")
-            print("vl_dataset_memory_size: ",str(vl_dataset_memory_size),"\n")
-            print("vl_block_size_percent_dataset: ",str(vl_block_size_percent_dataset*100),"%\n")
-            print("DATASET: vl_dataset_row_size x vl_dataset_column_size: ",str(vl_dataset_row_size)," x ",str(vl_dataset_column_size),"\n")
-            print("GRID: vl_grid_row_size x vl_grid_column_size: ",str(vl_grid_row_size)," x ",str(vl_grid_column_size),"\n")
-            print("BLOCK: vl_block_row_size x vl_block_column_size: ",str(vl_block_row_size)," x ",str(vl_block_column_size),"\n")
-            print("vl_block_memory_size: ",str(vl_block_memory_size),"\n")
-            print("vl_block_memory_size_percent_cpu: ",str(vl_block_memory_size_percent_cpu*100),"%\n")
-            print("vl_block_memory_size_percent_gpu: ",str(vl_block_memory_size_percent_gpu*100),"%\n")
+            # Without log for the first execution (compiling/warming up device code)
+            if i != 0:
+                print("\nEXPERIMENT ", id_parameter,"-------------- ITERATION ", i, " STARTED AT "+str(iteration_experiment_time_start)+"------------------\n")
+                print("\n@@@@@@ EXECUTION PROGRESS:",str(execution_progress),"%\n")
+                print("nodes: ",str(nr_nodes),"\n")
+                print("computing_units_cpu: ",str(nr_computing_units_cpu),"\n")
+                print("mem_computing_units_cpu: ",str(vl_memory_per_cpu_computing_unit),"\n")
+                print("computing_units_gpu: ",str(nr_computing_units_gpu),"\n")
+                print("mem_computing_units_gpu: ",str(vl_memory_per_gpu_computing_unit),"\n")
+                print("ds_device: ",str(ds_device),"\n")
+                print("ds_status_parallelism: ",str(ds_status_parallelism),"\n")
+                print("ds_tp_parameter: ",str(ds_tp_parameter),"\n")
+                print("vl_dataset_memory_size: ",str(vl_dataset_memory_size),"\n")
+                print("vl_block_size_percent_dataset: ",str(vl_block_size_percent_dataset*100),"%\n")
+                print("DATASET: vl_dataset_row_size x vl_dataset_column_size: ",str(vl_dataset_row_size)," x ",str(vl_dataset_column_size),"\n")
+                print("GRID: vl_grid_row_size x vl_grid_column_size: ",str(vl_grid_row_size)," x ",str(vl_grid_column_size),"\n")
+                print("BLOCK: vl_block_row_size x vl_block_column_size: ",str(vl_block_row_size)," x ",str(vl_block_column_size),"\n")
+                print("vl_block_memory_size: ",str(vl_block_memory_size),"\n")
+                print("vl_block_memory_size_percent_cpu: ",str(vl_block_memory_size_percent_cpu*100),"%\n")
+                print("vl_block_memory_size_percent_gpu: ",str(vl_block_memory_size_percent_gpu*100),"%\n")
 
             if ds_algorithm == "KMEANS":
-                
 
                 # generate and load data into a ds-array
-                x, y = make_blobs(n_samples=vl_dataset_row_size, n_features=vl_dataset_column_size, random_state=nr_random_state)                
+                x, y = make_blobs(n_samples=vl_dataset_row_size, n_features=vl_dataset_column_size, random_state=nr_random_state)
                 dis_x = ds.array(x, block_size=(vl_block_row_size, vl_block_column_size))
 
-                kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=id_device, max_iter=5, tol=0, arity=48)
-                y_pred = kmeans.fit_predict(dis_x).collect()
-                
                 if ds_device == "GPU":
 
-                    # generate and load initial data into a ds-array and kmeans for the first time (compiling/warming up device code)
-                    kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=3, max_iter=5, tol=0, arity=48)
+                    # execution 1 - extract intra execution times with CUDA events
+                    kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=4, max_iter=5, tol=0, arity=48)
                     y_pred = kmeans.fit_predict(dis_x).collect()
-                                        
-                    # Run experiment separately to extract GPU execution times using CUDA events (id_device=3))
-                    # generate and load data into a ds-array
+
+                    # execution 2 - extract total and inter execution times with synchornized function calls
+                    kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=6, max_iter=5, tol=0, arity=48)
+                    y_pred = kmeans.fit_predict(dis_x).collect()
+
+                else:
+
+                    # execution 1 - extract intra execution times with synchornized function calls
                     kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=3, max_iter=5, tol=0, arity=48)
                     y_pred = kmeans.fit_predict(dis_x).collect()
 
 
-                # execution to extract all execution times for CPU (id_device = 1) and the remaining execution times (total_execution_time and inter_task_execution_time) for GPU (id_device = 2)
+                    # execution 2 - extract total and inter execution times with synchornized function calls
+                    kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=5, max_iter=5, tol=0, arity=48)
+                    y_pred = kmeans.fit_predict(dis_x).collect()
+
+
+                # log inter and intra execution times and communication time
+                dict_time = kmeans.log_time()
+                inter_task_execution_time = dict_time["inter_task_execution_time"]
+                df_log_time = pd.read_csv(log_file_path)
+                communication_time = df_log_time["communication_time"].mean()
+                intra_task_execution_device_func = df_log_time["intra_task_execution_device_func"].mean()
+                intra_task_execution_full_func = df_log_time["intra_task_execution_full_func"].mean()
+
+                # execution 3 - extract total execution time for CPU (id_device = 1) and GPU (id_device = 2)
+                compss_barrier()
                 start = time.perf_counter()
                 kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=id_device, max_iter=5, tol=0, arity=48)
                 y_pred = kmeans.fit_predict(dis_x).collect()
+                compss_barrier()
                 end = time.perf_counter()
 
-            # log execution and communication times
-            dict_time = kmeans.log_time()
-            total_execution_time = end - start
-            inter_task_execution_time = dict_time["inter_task_execution_time"]
-            df_log_time = pd.read_csv(log_file_path)
-            communication_time = df_log_time["communication_time"].mean()
-            intra_task_execution_device_func = df_log_time["intra_task_execution_device_func"].mean()
-            intra_task_execution_full_func = df_log_time["intra_task_execution_full_func"].mean()
+                # log total execution time
+                total_execution_time = end - start
 
-            iteration_experiment_time_end = datetime.datetime.now()
-            iteration_experiment_time = (iteration_experiment_time_end - iteration_experiment_time_start).total_seconds()
-            print("\nEXPERIMENT ", index+1,"-------------- ITERATION ", i+1, " FINISHED AT "+str(iteration_experiment_time_end)+" (TOTAL TIME: "+str(iteration_experiment_time)+") ------------------\n")
-
-            print("-----------------------------------------")
-            print("-------------- RESULTS ------------------")
-            print("-----------------------------------------")
-            print("Communication time: %f" % (communication_time))
-            print("Intra task execution time (device func): %f" % (intra_task_execution_device_func))
-            print("Intra task execution time (full func): %f" % (intra_task_execution_full_func))
-            print("Inter task execution time: %f" % (inter_task_execution_time))
-            print("Total execution time: %f" % (total_execution_time))
-            print("-----------------------------------------")
-
-            # Update the array with the values obtained in the current execution
-            data.append([id_parameter, total_execution_time, inter_task_execution_time, intra_task_execution_full_func, intra_task_execution_device_func, communication_time])
+            # Update result values obtained in the current execution, without the first execution (compiling/warming up device code)
+            if i != 0:
             
+                iteration_experiment_time_end = datetime.datetime.now()
+                iteration_experiment_time = (iteration_experiment_time_end - iteration_experiment_time_start).total_seconds()
+                print("\nEXPERIMENT ", index+1,"-------------- ITERATION ", i, " FINISHED AT "+str(iteration_experiment_time_end)+" (TOTAL TIME: "+str(iteration_experiment_time)+") ------------------\n")
+
+                print("-----------------------------------------")
+                print("-------------- RESULTS ------------------")
+                print("-----------------------------------------")
+                print("Communication time: %f" % (communication_time))
+                print("Intra task execution time (device func): %f" % (intra_task_execution_device_func))
+                print("Intra task execution time (full func): %f" % (intra_task_execution_full_func))
+                print("Inter task execution time: %f" % (inter_task_execution_time))
+                print("Total execution time: %f" % (total_execution_time))
+                print("-----------------------------------------")
+
+                data.append([id_parameter, total_execution_time, inter_task_execution_time, intra_task_execution_full_func, intra_task_execution_device_func, communication_time])
+
     # Saving experiments results
-    df0 = pd.DataFrame(data, columns=["id_parameter", "vl_total_execution_time", "vl_inter_task_execution_time", "vl_intra_task_execution_time_device_func", "vl_intra_task_execution_time_full_func", "vl_communication_time"])    
+    df0 = pd.DataFrame(data, columns=["id_parameter", "vl_total_execution_time", "vl_inter_task_execution_time", "vl_intra_task_execution_time_device_func", "vl_intra_task_execution_time_full_func", "vl_communication_time"])
     df_experiments = df0.groupby(["id_parameter"], as_index=False).mean()
     df_experiments["dt_processing"] = date.today()
     df_experiments.to_csv(dst_path_experiments, index=False)
