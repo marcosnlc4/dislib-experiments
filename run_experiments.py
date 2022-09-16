@@ -31,9 +31,9 @@ def main():
                                     & (df_parameters["ds_parameter_type"] == "VAR_BLOCK_CAPACITY_SIZE") # 1.1, 1.2, 1.3, 1.4
                                     # & (df_parameters["ds_parameter_type"] == "VAR_PARALLELISM_LEVEL") # 2.1, 2.2
                                     & (df_parameters["ds_parameter_attribute"] == "0.25") # 1.1
-                                    # & (df_parameters["ds_parameter_attribute"] == "0.5") # 1.2
+                                    # & (df_parameters["ds_parameter_attribute"] == "0.50") # 1.2
                                     # & (df_parameters["ds_parameter_attribute"] == "0.75") # 1.3
-                                    # & (df_parameters["ds_parameter_attribute"] == "1") # 1.4
+                                    # & (df_parameters["ds_parameter_attribute"] == "1.00") # 1.4
                                     # & (df_parameters["ds_parameter_attribute"] == "MIN_INTER_MAX_INTRA") # 2.1
                                     # & (df_parameters["ds_parameter_attribute"] == "MAX_INTER_MIN_INTRA") # 2.2
                                 ].sort_values(by=["id_parameter"])
