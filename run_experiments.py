@@ -2,10 +2,7 @@ import sys
 import os
 import time
 import datetime
-from datetime import date
 import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
 from sklearn.datasets import make_blobs
 
 import dislib as ds
@@ -31,14 +28,14 @@ def main():
                                     (df_parameters["ds_algorithm"] == "KMEANS") # FIXED VALUE
                                     & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
                                     & (df_parameters["ds_resource"] == "MINOTAURO_1") # FIXED VALUE
-                                    & (df_parameters["ds_tp_parameter"] == "VAR_BLOCK_CAPACITY_SIZE") # 1.1, 1.2, 1.3, 1.4
-                                    # & (df_parameters["ds_tp_parameter"] == "VAR_PARALLELISM_LEVEL") # 2.1, 2.2
-                                    & (df_parameters["vl_block_size_percent_dataset"] == 0.25) # 1.1
-                                    # & (df_parameters["vl_block_size_percent_dataset"] == 0.5) # 1.2
-                                    # & (df_parameters["vl_block_size_percent_dataset"] == 0.75) # 1.3
-                                    # & (df_parameters["vl_block_size_percent_dataset"] == 1) # 1.4
-                                    # & (df_parameters["ds_status_parallelism"] == "MIN_INTER_MAX_INTRA") # 2.1
-                                    # & (df_parameters["ds_status_parallelism"] == "MAX_INTER_MIN_INTRA") # 2.2
+                                    & (df_parameters["ds_parameter_type"] == "VAR_BLOCK_CAPACITY_SIZE") # 1.1, 1.2, 1.3, 1.4
+                                    # & (df_parameters["ds_parameter_type"] == "VAR_PARALLELISM_LEVEL") # 2.1, 2.2
+                                    & (df_parameters["ds_parameter_attribute"] == "0.25") # 1.1
+                                    # & (df_parameters["ds_parameter_attribute"] == "0.5") # 1.2
+                                    # & (df_parameters["ds_parameter_attribute"] == "0.75") # 1.3
+                                    # & (df_parameters["ds_parameter_attribute"] == "1") # 1.4
+                                    # & (df_parameters["ds_parameter_attribute"] == "MIN_INTER_MAX_INTRA") # 2.1
+                                    # & (df_parameters["ds_parameter_attribute"] == "MAX_INTER_MIN_INTRA") # 2.2
                                 ].sort_values(by=["id_parameter"])
 
 
@@ -65,40 +62,38 @@ def main():
         id_parameter = row["id_parameter"]
         cd_parameter = row["cd_parameter"]
         cd_configuration = row["cd_configuration"]
-        cd_algorithm = row["cd_algorithm"]
+        id_algorithm = row["id_algorithm"]
         ds_algorithm = row["ds_algorithm"]
-        cd_function = row["cd_function"]
+        id_function = row["id_function"]
         ds_function = row["ds_function"]
         id_device = row["id_device"]
         ds_device = row["ds_device"]
-        cd_dataset = row["cd_dataset"]
-        cd_resource = row["cd_resource"]
+        id_dataset = row["id_dataset"]
+        id_resource = row["id_resource"]
+        id_parameter_type = row["id_parameter_type"]
+        ds_parameter_type = row["ds_parameter_type"]
+        ds_parameter_attribute = row["ds_parameter_attribute"] #vl_block_size_percent_dataset = row["vl_block_size_percent_dataset"]
         nr_iterations = row["nr_iterations"]
-        ds_tp_parameter = row["ds_tp_parameter"]
-        vl_dataset_row_size = row["vl_dataset_row_size"]
-        vl_dataset_column_size = row["vl_dataset_column_size"]
-        vl_grid_row_size = row["vl_grid_row_size"]
-        vl_grid_column_size = row["vl_grid_column_size"]
-        vl_block_row_size = row["vl_block_row_size"]
-        vl_block_column_size = row["vl_block_column_size"]
-        ds_status_parallelism = row["ds_status_parallelism"]
-        vl_block_size_percent_dataset = row["vl_block_size_percent_dataset"]
+        vl_grid_row_dimension = row["vl_grid_row_dimension"]
+        vl_grid_column_dimension = row["vl_grid_column_dimension"]
+        vl_block_row_dimension = row["vl_block_row_dimension"]
+        vl_block_column_dimension = row["vl_block_column_dimension"]
+        vl_block_memory_size = row["vl_block_memory_size"]
+        vl_block_memory_size_percent_cpu = row["vl_block_memory_size_percent_cpu"]
+        vl_block_memory_size_percent_gpu = row["vl_block_memory_size_percent_gpu"]
         ds_resource = row["ds_resource"]
         nr_nodes = row["nr_nodes"]
         nr_computing_units_cpu = row["nr_computing_units_cpu"]
         nr_computing_units_gpu = row["nr_computing_units_gpu"]
-        vl_memory_per_cpu_computing_unit = row["vl_memory_per_cpu_computing_unit"]
-        vl_memory_per_gpu_computing_unit = row["vl_memory_per_gpu_computing_unit"]
+        vl_memory_size_per_cpu_computing_unit = row["vl_memory_size_per_cpu_computing_unit"]
+        vl_memory_size_per_gpu_computing_unit = row["vl_memory_size_per_gpu_computing_unit"]
         ds_dataset = row["ds_dataset"]
         vl_dataset_memory_size = row["vl_dataset_memory_size"]
         ds_data_type = row["ds_data_type"]
         vl_data_type_memory_size = row["vl_data_type_memory_size"]
-        vl_dataset_size = row["vl_dataset_size"]
-        vl_dataset_row_size = row["vl_dataset_row_size"]
-        vl_dataset_column_size = row["vl_dataset_column_size"]
-        vl_block_memory_size = row["vl_block_memory_size"]
-        vl_block_memory_size_percent_cpu = row["vl_block_memory_size_percent_cpu"]
-        vl_block_memory_size_percent_gpu = row["vl_block_memory_size_percent_gpu"]
+        vl_dataset_dimension = row["vl_dataset_dimension"]
+        vl_dataset_row_dimension = row["vl_dataset_row_dimension"]
+        vl_dataset_column_dimension = row["vl_dataset_column_dimension"]
         nr_random_state = row["nr_random_state"]
         n_clusters = 10
 
@@ -114,17 +109,16 @@ def main():
                 print("\n@@@@@@ EXECUTION PROGRESS:",str(execution_progress),"%\n")
                 print("nodes: ",str(nr_nodes),"\n")
                 print("computing_units_cpu: ",str(nr_computing_units_cpu),"\n")
-                print("mem_computing_units_cpu: ",str(vl_memory_per_cpu_computing_unit),"\n")
+                print("vl_memory_size_per_cpu_computing_unit: ",str(vl_memory_size_per_cpu_computing_unit),"\n")
                 print("computing_units_gpu: ",str(nr_computing_units_gpu),"\n")
-                print("mem_computing_units_gpu: ",str(vl_memory_per_gpu_computing_unit),"\n")
+                print("vl_memory_size_per_gpu_computing_unit: ",str(vl_memory_size_per_gpu_computing_unit),"\n")
                 print("ds_device: ",str(ds_device),"\n")
-                print("ds_status_parallelism: ",str(ds_status_parallelism),"\n")
-                print("ds_tp_parameter: ",str(ds_tp_parameter),"\n")
+                print("ds_parameter_type: ",str(ds_parameter_type),"\n")
+                print("ds_parameter_type: ",str(ds_parameter_type),"\n")
                 print("vl_dataset_memory_size: ",str(vl_dataset_memory_size),"\n")
-                print("vl_block_size_percent_dataset: ",str(vl_block_size_percent_dataset*100),"%\n")
-                print("DATASET: vl_dataset_row_size x vl_dataset_column_size: ",str(vl_dataset_row_size)," x ",str(vl_dataset_column_size),"\n")
-                print("GRID: vl_grid_row_size x vl_grid_column_size: ",str(vl_grid_row_size)," x ",str(vl_grid_column_size),"\n")
-                print("BLOCK: vl_block_row_size x vl_block_column_size: ",str(vl_block_row_size)," x ",str(vl_block_column_size),"\n")
+                print("DATASET: vl_dataset_row_size x vl_dataset_column_size: ",str(vl_dataset_row_dimension)," x ",str(vl_dataset_column_dimension),"\n")
+                print("GRID: vl_grid_row_size x vl_grid_column_size: ",str(vl_grid_row_dimension)," x ",str(vl_grid_column_dimension),"\n")
+                print("BLOCK: vl_block_row_size x vl_block_column_size: ",str(vl_block_row_dimension)," x ",str(vl_block_column_dimension),"\n")
                 print("vl_block_memory_size: ",str(vl_block_memory_size),"\n")
                 print("vl_block_memory_size_percent_cpu: ",str(vl_block_memory_size_percent_cpu*100),"%\n")
                 print("vl_block_memory_size_percent_gpu: ",str(vl_block_memory_size_percent_gpu*100),"%\n")
@@ -132,8 +126,8 @@ def main():
             if ds_algorithm == "KMEANS":
 
                 # generate and load data into a ds-array
-                x, y = make_blobs(n_samples=vl_dataset_row_size, n_features=vl_dataset_column_size, random_state=nr_random_state)
-                dis_x = ds.array(x, block_size=(vl_block_row_size, vl_block_column_size))
+                x, y = make_blobs(n_samples=vl_dataset_row_dimension, n_features=vl_dataset_column_dimension, random_state=nr_random_state)
+                dis_x = ds.array(x, block_size=(vl_block_row_dimension, vl_block_column_dimension))
 
                 if ds_device == "GPU":
 
@@ -198,7 +192,7 @@ def main():
     # Saving experiments results
     df0 = pd.DataFrame(data, columns=["id_parameter", "vl_total_execution_time", "vl_inter_task_execution_time", "vl_intra_task_execution_time_full_func", "vl_intra_task_execution_time_device_func", "vl_communication_time"])
     df_experiments = df0.groupby(["id_parameter"], as_index=False).mean()
-    df_experiments["dt_processing"] = date.today()
+    df_experiments["dt_processing"] = datetime.datetime.now()
     df_experiments.to_csv(dst_path_experiments, index=False)
 
 if __name__ == "__main__":
