@@ -196,7 +196,7 @@ def main():
                 data.append([id_parameter, total_execution_time, inter_task_execution_time, intra_task_execution_full_func, intra_task_execution_device_func, communication_time])
 
     # Saving experiments results
-    df0 = pd.DataFrame(data, columns=["id_parameter", "vl_total_execution_time", "vl_inter_task_execution_time", "vl_intra_task_execution_time_device_func", "vl_intra_task_execution_time_full_func", "vl_communication_time"])
+    df0 = pd.DataFrame(data, columns=["id_parameter", "vl_total_execution_time", "vl_inter_task_execution_time", "vl_intra_task_execution_time_full_func", "vl_intra_task_execution_time_device_func", "vl_communication_time"])
     df_experiments = df0.groupby(["id_parameter"], as_index=False).mean()
     df_experiments["dt_processing"] = date.today()
     df_experiments.to_csv(dst_path_experiments, index=False)
