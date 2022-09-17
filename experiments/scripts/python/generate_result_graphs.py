@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 from config import open_connection, close_connection
 
-def main():
+def main(ds_algorithm, ds_resource, nr_iterations, mode):
 
     dst_path_figs = '../../results/figures/'
 
@@ -68,39 +68,97 @@ def main():
     # Close connection to the database
     close_connection(cur, conn)
 
-    # Generate graph (mode 1)
-    generate_graph(df, dst_path_figs, mode=1)
+    # Generate graph (mode 2)
+    generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, mode)
 
 # Function that takes in a PostgreSQL query and outputs a pandas dataframe 
 def get_df_from_query(sql_query, conn):
     df = pd.read_sql_query(sql_query, conn)
     return df
 
-# Function that generates a graph according to the mode specified
-def generate_graph(df, dst_path_figs, mode):
+# Function that generates a graph according to the mode
+def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, mode):
     
-    # Varying dataset size 
+
+    # Filtering and sorting parameters
+    df_filtered = df[
+                    (df["ds_algorithm"] == ds_algorithm.upper()) # FIXED VALUE
+                    & (df["nr_iterations"] == int(nr_iterations)) # FIXED VALUE
+                    & (df["ds_resource"] == ds_resource.upper()) # FIXED VALUE
+                    # & (df["ds_parameter_type"] == "VAR_BLOCK_CAPACITY_SIZE") # 1.1, 1.2, 1.3, 1.4
+                    # & (df["ds_parameter_type"] == "VAR_PARALLELISM_LEVEL") # 2.1, 2.2
+                    # & (df["ds_parameter_attribute"] == "0.25") # 1.1
+                    # & (df["ds_parameter_attribute"] == "0.50") # 1.2
+                    # & (df["ds_parameter_attribute"] == "0.75") # 1.3
+                    # & (df["ds_parameter_attribute"] == "1.00") # 1.4
+                    # & (df["ds_parameter_attribute"] == "MIN_INTER_MAX_INTRA") # 2.1
+                    # & (df["ds_parameter_attribute"] == "MAX_INTER_MIN_INTRA") # 2.2
+                    ].sort_values(by=["id_parameter"])
+
+    
+
     if mode == 1:
-        # Filtering and sorting parameters
-        df_filtered = df[
-                        (df["ds_algorithm"] == "KMEANS") # FIXED VALUE
-                        & (df["nr_iterations"] == 5) # FIXED VALUE
-                        & (df["ds_resource"] == "MINOTAURO_1") # FIXED VALUE
-                        & (df["ds_parameter_type"] == "VAR_BLOCK_CAPACITY_SIZE") # 1.1, 1.2, 1.3, 1.4
-                        # & (df["ds_parameter_type"] == "VAR_PARALLELISM_LEVEL") # 2.1, 2.2
-                        # & (df["ds_parameter_attribute"] == "0.25") # 1.1
-                        # & (df["ds_parameter_attribute"] == "0.50") # 1.2
-                        # & (df["ds_parameter_attribute"] == "0.75") # 1.3
-                        # & (df["ds_parameter_attribute"] == "1.00") # 1.4
-                        # & (df["ds_parameter_attribute"] == "MIN_INTER_MAX_INTRA") # 2.1
-                        # & (df["ds_parameter_attribute"] == "MAX_INTER_MIN_INTRA") # 2.2
-                        ].sort_values(by=["id_parameter"])
-        
+
+        print("\nMode ",mode,": Ploting an overview of all execution times, without parameter filters")
+
+        df_filtered_mean = df_filtered.groupby(['ds_device'], as_index=False).mean()
+
+        df_filtered_mean = df_filtered_mean[["ds_device","vl_total_execution_time","vl_inter_task_execution_time","vl_intra_task_execution_time_full_func","vl_intra_task_execution_time_device_func"]]
+
+        # OVERVIEW OF ALL EXECUTION TIMES
+        plt.figure(1)
+        ax = plt.gca()
+        df_filtered_mean.set_index('ds_device').plot(kind = 'bar')
+        plt.xlabel('Device')
+        plt.ylabel('Average Execution Times (s)')
+        plt.title('Average Execution Times per Device',fontstyle='italic',fontweight="bold")
+        plt.savefig(dst_path_figs+'_mode_'+str(mode)+'overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+        # VL_TOTAL_EXECUTION_TIME
+        plt.figure(2)
+        ax = plt.gca()
+        df_filtered_mean.set_index('ds_device').plot(y = 'vl_total_execution_time', color='C0', kind = 'bar')
+        plt.xlabel('Device')
+        plt.ylabel('Average Total Execution Time (s)')
+        plt.title('Average Total Execution Time per Device',fontstyle='italic',fontweight="bold")
+        plt.savefig(dst_path_figs+'_mode_'+str(mode)+'overview_avg_total_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+        # VL_INTER_TASK_EXECUTION_TIME
+        plt.figure(3)
+        ax = plt.gca()
+        df_filtered_mean.set_index('ds_device').plot(y = 'vl_inter_task_execution_time', color='C1', kind = 'bar')
+        plt.xlabel('Device')
+        plt.ylabel('Average Intra-Task (full func) Time (s)')
+        plt.title('Average Intra-Task (full func) Time per Device',fontstyle='italic',fontweight="bold")
+        plt.savefig(dst_path_figs+'_mode_'+str(mode)+'overview_avg_inter_task_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+        # VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC
+        plt.figure(4)
+        ax = plt.gca()
+        df_filtered_mean.set_index('ds_device').plot(y = 'vl_intra_task_execution_time_full_func', color='C2', kind = 'bar')
+        plt.xlabel('Device')
+        plt.ylabel('Average Intra-Task (full func) Time (s)')
+        plt.title('Average Intra-Task (full func)Time per Device',fontstyle='italic',fontweight="bold")
+        plt.savefig(dst_path_figs+'_mode_'+str(mode)+'overview_avg_intra_task_execution_time_full_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+        # VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
+        plt.figure(5)
+        ax = plt.gca()
+        df_filtered_mean.set_index('ds_device').plot(y = 'vl_intra_task_execution_time_device_func', color='C3', kind = 'bar')
+        plt.xlabel('Device')
+        plt.ylabel('Average Intra-Task (device func) Time (s)')
+        plt.title('Average Intra-Task (device func) Time per Device',fontstyle='italic',fontweight="bold")
+        plt.savefig(dst_path_figs+'_mode_'+str(mode)+'overview_avg_intra_task_execution_time_device_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+
+    elif mode == 2:
+
+        print("\nMode ",mode,": Ploting all execution times x data set memory size, without parameter filters")
+
         df_filtered_mean = df_filtered.groupby(['ds_device', 'vl_dataset_memory_size'], as_index=False).mean()
 
         df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU")]
         df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU")]
-
 
         # VL_TOTAL_EXECUTION_TIME
         plt.figure(1)
@@ -110,8 +168,8 @@ def generate_graph(df, dst_path_figs, mode):
         plt.xlabel('Data Set Size (B)')
         plt.ylabel('Average Total Execution Time (s)')
         plt.title('Average Total Execution Time x Data Set Size',fontstyle='italic',fontweight="bold")
-        plt.savefig(dst_path_figs+'mode_1_vl_total_execution_time.png',bbox_inches='tight',dpi=100)
-
+        plt.savefig(dst_path_figs+'_mode_'+str(mode)+'avg_total_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+        # plt.savefig(dst_path_figs+'avg_total_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+int(nr_iterations)+'_'+ds_parameter_type+'_'+ds_parameter_attribute+'_mode_'+str(mode)+'.png',bbox_inches='tight',dpi=100)
         
         # VL_INTER_TASK_EXECUTION_TIME
         plt.figure(2)
@@ -121,8 +179,7 @@ def generate_graph(df, dst_path_figs, mode):
         plt.xlabel('Data Set Size (B)')
         plt.ylabel('Average Inter-Task Time (s)')
         plt.title('Average Inter-Task Time x Data Set Size',fontstyle='italic',fontweight="bold")
-        plt.savefig(dst_path_figs+'mode_1_vl_inter_task_execution_time.png',bbox_inches='tight',dpi=100)
-
+        plt.savefig(dst_path_figs+'_mode_'+str(mode)+'avg_inter_task_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
         # VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC
         plt.figure(3)
@@ -132,8 +189,7 @@ def generate_graph(df, dst_path_figs, mode):
         plt.xlabel('Data Set Size (B)')
         plt.ylabel('Average Intra-Task (full func) Time (s)')
         plt.title('Average Intra-Task (full func) Time x Data Set Size',fontstyle='italic',fontweight="bold")
-        plt.savefig(dst_path_figs+'mode_1_vl_intra_task_execution_time_full_func.png',bbox_inches='tight',dpi=100)
-
+        plt.savefig(dst_path_figs+'_mode_'+str(mode)+'avg_intra_task_execution_time_full_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
         # VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
         plt.figure(4)
@@ -143,8 +199,7 @@ def generate_graph(df, dst_path_figs, mode):
         plt.xlabel('Data Set Size (B)')
         plt.ylabel('Average Intra-Task (device func) Time (s)')
         plt.title('Average Intra-Task (device func) Time x Data Set Size',fontstyle='italic',fontweight="bold")
-        plt.savefig(dst_path_figs+'mode_1_vl_intra_task_execution_time_device_func.png',bbox_inches='tight',dpi=100)
-
+        plt.savefig(dst_path_figs+'_mode_'+str(mode)+'avg_intra_task_execution_time_device_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
         # VL_COMMUNICATION_TIME
         plt.figure(5)
@@ -154,9 +209,33 @@ def generate_graph(df, dst_path_figs, mode):
         plt.xlabel('Data Set Size (B)')
         plt.ylabel('Average Communication Time (s)')
         plt.title('Average Communication Time x Data Set Size',fontstyle='italic',fontweight="bold")
-        plt.savefig(dst_path_figs+'mode_1_vl_communication_time.png',bbox_inches='tight',dpi=100)
+        plt.savefig(dst_path_figs+'_mode_'+str(mode)+'avg_communication_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
+    else:
+
+        print("\nInvalid mode.")
+
+
+
+def parse_args():
+    import argparse
+    description = 'Generating graphs for the experiments'
+    parser = argparse.ArgumentParser(description=description)
+    parser.add_argument('-a', '--ds_algorithm', type=str, default="KMEANS",
+                        help='Algorithm description'
+                        )
+    parser.add_argument('-r', '--ds_resource', type=str, default="MINOTAURO_1",
+                        help='Resource description'
+                        )
+    parser.add_argument('-i', '--nr_iterations', type=int, default=5,
+                        help='Number of iterations'
+                        )
+    parser.add_argument('-m', '--mode', type=int, default=1,
+                        help='Graph mode'
+                        )
+    return parser.parse_args()
 
 
 if __name__ == "__main__":
-    main()
+    opts = parse_args()
+    main(**vars(opts))
