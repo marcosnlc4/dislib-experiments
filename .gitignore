@@ -181,3 +181,6 @@ venv
 # Ignore sensitive files
 database.ini
 compss_commands
+*.png
+*.csv
+launch_minotauro.sh
