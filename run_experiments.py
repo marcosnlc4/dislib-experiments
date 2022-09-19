@@ -36,6 +36,9 @@ def main():
                                     # & (df_parameters["ds_parameter_attribute"] == "1.00") # 1.4
                                     # & (df_parameters["ds_parameter_attribute"] == "MIN_INTER_MAX_INTRA") # 2.1
                                     # & (df_parameters["ds_parameter_attribute"] == "MAX_INTER_MIN_INTRA") # 2.2
+                                    # & (df_parameters["vl_dataset_memory_size"] == 400) # 2.2.1
+                                    # & (df_parameters["vl_dataset_memory_size"] == 400000) # 2.2.2
+                                    # & (df_parameters["vl_dataset_memory_size"] == 400000000) # 2.2.3
                                 ].sort_values(by=["id_parameter"])
 
 
