@@ -19,9 +19,10 @@ def main():
     # Open connection to the database
     cur, conn = open_connection()
 
-    # Set sql query
-    sql_query = "INSERT INTO EXPERIMENT(%s) VALUES %%s" % (cols)
-
+    # Set sql query - on conflict with the database values, do nothing
+    # sql_query = "INSERT INTO EXPERIMENT(%s) VALUES %%s" % (cols)
+    sql_query = "INSERT INTO EXPERIMENT(%s) VALUES %%s ON CONFLICT (%s) DO NOTHING" % (cols,cols)
+    
     # Get dataframe from query
     insert_experiment_result(sql_query, cur, conn, tuples)
 
