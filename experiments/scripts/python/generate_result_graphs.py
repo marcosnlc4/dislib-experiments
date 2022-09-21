@@ -485,78 +485,142 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         
         print("\nMode ",mode,": Ploting an overview of all execution times grouped by data set description")
         
-        vl_dataset_memory_size = 400
+        vl_dataset_memory_size_list = [400, 400000, 400000000]
 
-        if vl_dataset_memory_size == 400:
-            vl_dataset_memory_size_title = str(int(vl_dataset_memory_size)) + " B"
-        elif vl_dataset_memory_size == 400000:
-            vl_dataset_memory_size_title = str(int(vl_dataset_memory_size*1e-3)) + " KB"
-        elif vl_dataset_memory_size == 400000000:
-            vl_dataset_memory_size_title = str(int(vl_dataset_memory_size*1e-6)) + " MB"
+        for vl_dataset_memory_size in vl_dataset_memory_size_list:
 
-        df_filtered = df_filtered[df_filtered.vl_dataset_memory_size==vl_dataset_memory_size]
+            if vl_dataset_memory_size == 400:
+                vl_dataset_memory_size_title = str(int(vl_dataset_memory_size)) + " B"
+            elif vl_dataset_memory_size == 400000:
+                vl_dataset_memory_size_title = str(int(vl_dataset_memory_size*1e-3)) + " KB"
+            elif vl_dataset_memory_size == 400000000:
+                vl_dataset_memory_size_title = str(int(vl_dataset_memory_size*1e-6)) + " MB"
 
-        df_filtered_mean = df_filtered.groupby(["ds_device","ds_dataset"], as_index=False).mean().sort_values(by=["vl_total_execution_time"], ascending=False)
+            df_filtered_loop = df_filtered[df_filtered.vl_dataset_memory_size==vl_dataset_memory_size]
+            df_filtered_mean = df_filtered_loop.groupby(["ds_device","ds_dataset"], as_index=False).mean()
+            df_filtered_mean = df_filtered_mean[["ds_device","ds_dataset","vl_total_execution_time","vl_inter_task_execution_time","vl_intra_task_execution_time_full_func","vl_intra_task_execution_time_device_func"]].sort_values(by=["ds_dataset"], ascending=True)
+            
+            # VL_TOTAL_EXECUTION_TIME
+            plt.figure()
+            X_axis = np.arange(len(df_filtered_mean["ds_dataset"].drop_duplicates()))
+            plt.bar(X_axis - 0.2, df_filtered_mean[(df_filtered_mean.ds_device=="CPU")]["vl_total_execution_time"], 0.3, label = "CPU", color='C0', hatch='.', zorder=3)
+            plt.bar(X_axis + 0.2, df_filtered_mean[(df_filtered_mean.ds_device=="GPU")]["vl_total_execution_time"], 0.3, label = "GPU", color='C0', hatch='x', zorder=3)
+            plt.xticks(X_axis, df_filtered_mean["ds_dataset"].drop_duplicates(), rotation=0)
+            plt.xlabel('Data Set Description')
+            plt.ylabel('Average Total Execution Time (s)')
+            plt.title('Average Total Execution Time per Data Set Description ' + vl_dataset_memory_size_title,fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=len(df_filtered_mean["ds_dataset"].drop_duplicates()))
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+str(vl_dataset_memory_size)+'_avg_total_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
-        df_filtered_mean = df_filtered_mean[["ds_device","ds_dataset","vl_total_execution_time","vl_inter_task_execution_time","vl_intra_task_execution_time_full_func","vl_intra_task_execution_time_device_func"]]
+            # VL_INTER_TASK_EXECUTION_TIME
+            plt.figure()
+            X_axis = np.arange(len(df_filtered_mean["ds_dataset"].drop_duplicates()))
+            plt.bar(X_axis - 0.2, df_filtered_mean[(df_filtered_mean.ds_device=="CPU")]["vl_inter_task_execution_time"], 0.3, label = "CPU", color='C1', hatch='.', zorder=3)
+            plt.bar(X_axis + 0.2, df_filtered_mean[(df_filtered_mean.ds_device=="GPU")]["vl_inter_task_execution_time"], 0.3, label = "GPU", color='C1', hatch='x', zorder=3)
+            plt.xticks(X_axis, df_filtered_mean["ds_dataset"].drop_duplicates(), rotation=0)
+            plt.xlabel('Data Set Description')
+            plt.ylabel('Average Inter Task Execution Time (s)')
+            plt.title('Average Inter Task Execution Time per Data Set Description ' + vl_dataset_memory_size_title,fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=len(df_filtered_mean["ds_dataset"].drop_duplicates()))
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+str(vl_dataset_memory_size)+'_avg_inter_task_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
-        df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU")]
-        df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU")]
+            # VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC
+            plt.figure()
+            X_axis = np.arange(len(df_filtered_mean["ds_dataset"].drop_duplicates()))
+            plt.bar(X_axis - 0.2, df_filtered_mean[(df_filtered_mean.ds_device=="CPU")]["vl_intra_task_execution_time_full_func"], 0.3, label = "CPU", color='C2', hatch='.', zorder=3)
+            plt.bar(X_axis + 0.2, df_filtered_mean[(df_filtered_mean.ds_device=="GPU")]["vl_intra_task_execution_time_full_func"], 0.3, label = "GPU", color='C2', hatch='x', zorder=3)
+            plt.xticks(X_axis, df_filtered_mean["ds_dataset"].drop_duplicates(), rotation=0)
+            plt.xlabel('Data Set Description')
+            plt.ylabel('Average Intra-Task (full func) Time (s)')
+            plt.title('Average Intra-Task (full func) Time per Data Set Description ' + vl_dataset_memory_size_title,fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=len(df_filtered_mean["ds_dataset"].drop_duplicates()))
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+str(vl_dataset_memory_size)+'_avg_intra_task_execution_time_full_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+            # VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
+            plt.figure()
+            X_axis = np.arange(len(df_filtered_mean["ds_dataset"].drop_duplicates()))
+            plt.bar(X_axis - 0.2, df_filtered_mean[(df_filtered_mean.ds_device=="CPU")]["vl_intra_task_execution_time_device_func"], 0.3, label = "CPU", color='C3', hatch='.', zorder=3)
+            plt.bar(X_axis + 0.2, df_filtered_mean[(df_filtered_mean.ds_device=="GPU")]["vl_intra_task_execution_time_device_func"], 0.3, label = "GPU", color='C3', hatch='x', zorder=3)
+            plt.xticks(X_axis, df_filtered_mean["ds_dataset"].drop_duplicates(), rotation=0)
+            plt.xlabel('Data Set Description')
+            plt.ylabel('Average Intra-Task (device func) Time (s)')
+            plt.title('Average Intra-Task (device func) Time per Data Set Description ' + vl_dataset_memory_size_title,fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=len(df_filtered_mean["ds_dataset"].drop_duplicates()))
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+str(vl_dataset_memory_size)+'_avg_intra_task_execution_time_device_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+
+    elif mode == 7:
         
-        # VL_TOTAL_EXECUTION_TIME
-        plt.figure(1)
-        X_axis = np.arange(len(df_filtered_mean_cpu["ds_dataset"]))
-        plt.bar(X_axis - 0.2, df_filtered_mean_cpu["vl_total_execution_time"], 0.3, label = "CPU", color='C0', hatch='.')
-        plt.bar(X_axis + 0.2, df_filtered_mean_gpu["vl_total_execution_time"], 0.3, label = "GPU", color='C0', hatch='x')
-        plt.xticks(X_axis, df_filtered_mean_cpu["ds_dataset"], rotation=90)
-        plt.xlabel('Data Set Description')
-        plt.ylabel('Average Total Execution Time (s)')
-        plt.title('Average Total Execution Time per Data Set Description ' + vl_dataset_memory_size_title,fontstyle='italic',fontweight="bold")
-        plt.legend()
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+str(vl_dataset_memory_size)+'_avg_total_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+        print("\nMode ",mode,": Ploting an overview of all execution times filtered by data set description and grouped by parameter attribute")
+        
+        ds_dataset_list = ["S_A_1","S_A_2","S_A_3","S_A_4","S_B_1","S_B_2","S_B_3","S_B_4","S_C_1","S_C_2","S_C_3","S_C_4"]
 
-        # VL_INTER_TASK_EXECUTION_TIME
-        plt.figure(2)
-        X_axis = np.arange(len(df_filtered_mean_cpu["ds_dataset"]))
-        plt.bar(X_axis - 0.2, df_filtered_mean_cpu["vl_inter_task_execution_time"], 0.3, label = "CPU", color='C1', hatch='.')
-        plt.bar(X_axis + 0.2, df_filtered_mean_gpu["vl_inter_task_execution_time"], 0.3, label = "GPU", color='C1', hatch='x')
-        plt.xticks(X_axis, df_filtered_mean_cpu["ds_dataset"], rotation=90)
-        plt.xlabel('Data Set Description')
-        plt.ylabel('Average Inter Task Execution Time (s)')
-        plt.title('Average Inter Task Execution Time per Data Set Description ' + vl_dataset_memory_size_title,fontstyle='italic',fontweight="bold")
-        plt.legend()
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+str(vl_dataset_memory_size)+'_avg_inter_task_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+        for ds_dataset in ds_dataset_list:
 
-        # VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC
-        plt.figure(3)
-        X_axis = np.arange(len(df_filtered_mean_cpu["ds_dataset"]))
-        plt.bar(X_axis - 0.2, df_filtered_mean_cpu["vl_intra_task_execution_time_full_func"], 0.3, label = "CPU", color='C2', hatch='.')
-        plt.bar(X_axis + 0.2, df_filtered_mean_gpu["vl_intra_task_execution_time_full_func"], 0.3, label = "GPU", color='C2', hatch='x')
-        plt.xticks(X_axis, df_filtered_mean_cpu["ds_dataset"], rotation=90)
-        plt.xlabel('Data Set Description')
-        plt.ylabel('Average Intra-Task (full func) Time (s)')
-        plt.title('Average Intra-Task (full func) Time per Data Set Description ' + vl_dataset_memory_size_title,fontstyle='italic',fontweight="bold")
-        plt.legend()
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+str(vl_dataset_memory_size)+'_avg_intra_task_execution_time_full_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            df_filtered_loop = df_filtered[(df_filtered.ds_dataset==ds_dataset)]
+            df_filtered_mean = df_filtered_loop.groupby(["ds_device","ds_dataset","ds_parameter_attribute"], as_index=False).mean()
 
-        # VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
-        plt.figure(4)
-        X_axis = np.arange(len(df_filtered_mean_cpu["ds_dataset"]))
-        plt.bar(X_axis - 0.2, df_filtered_mean_cpu["vl_intra_task_execution_time_device_func"], 0.3, label = "CPU", color='C3', hatch='.')
-        plt.bar(X_axis + 0.2, df_filtered_mean_gpu["vl_intra_task_execution_time_device_func"], 0.3, label = "GPU", color='C3', hatch='x')
-        plt.xticks(X_axis, df_filtered_mean_cpu["ds_dataset"], rotation=90)
-        plt.xlabel('Data Set Description')
-        plt.ylabel('Average Intra-Task (device func) Time (s)')
-        plt.title('Average Intra-Task (device func) Time per Data Set Description ' + vl_dataset_memory_size_title,fontstyle='italic',fontweight="bold")
-        plt.legend()
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+str(vl_dataset_memory_size)+'_avg_intra_task_execution_time_device_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            df_filtered_mean = df_filtered_mean[["ds_device","ds_dataset","ds_parameter_attribute","vl_total_execution_time","vl_inter_task_execution_time","vl_intra_task_execution_time_full_func","vl_intra_task_execution_time_device_func"]].sort_values(by=["ds_parameter_attribute"], ascending=True)
+            
+            # VL_TOTAL_EXECUTION_TIME
+            plt.figure()
+            X_axis = np.arange(len(df_filtered_mean["ds_parameter_attribute"].drop_duplicates()))
+            plt.bar(X_axis - 0.2, df_filtered_mean[(df_filtered_mean.ds_device=="CPU")]["vl_total_execution_time"], 0.3, label = "CPU", color='C0', hatch='.', zorder=3)
+            plt.bar(X_axis + 0.2, df_filtered_mean[(df_filtered_mean.ds_device=="GPU")]["vl_total_execution_time"], 0.3, label = "GPU", color='C0', hatch='x', zorder=3)
+            plt.xticks(X_axis, df_filtered_mean["ds_parameter_attribute"].drop_duplicates(), rotation=0)
+            plt.xlabel('Block Dimension')
+            plt.ylabel('Average Total Execution Time (s)')
+            plt.title('Average Total Execution Time per Block Dimension (' + ds_dataset + ')',fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=len(df_filtered_mean["ds_parameter_attribute"].drop_duplicates()))
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_dataset+'_avg_total_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
+            # VL_INTER_TASK_EXECUTION_TIME
+            plt.figure()
+            X_axis = np.arange(len(df_filtered_mean["ds_parameter_attribute"].drop_duplicates()))
+            plt.bar(X_axis - 0.2, df_filtered_mean[(df_filtered_mean.ds_device=="CPU")]["vl_inter_task_execution_time"], 0.3, label = "CPU", color='C1', hatch='.', zorder=3)
+            plt.bar(X_axis + 0.2, df_filtered_mean[(df_filtered_mean.ds_device=="GPU")]["vl_inter_task_execution_time"], 0.3, label = "GPU", color='C1', hatch='x', zorder=3)
+            plt.xticks(X_axis, df_filtered_mean["ds_parameter_attribute"].drop_duplicates(), rotation=0)
+            plt.xlabel('Block Dimension')
+            plt.ylabel('Average Inter-Task Execution Time (s)')
+            plt.title('Average Inter-Task Execution Time per Block Dimension (' + ds_dataset + ')',fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=len(df_filtered_mean["ds_parameter_attribute"].drop_duplicates()))
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_dataset+'_avg_inter_task_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
+            # VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC
+            plt.figure()
+            X_axis = np.arange(len(df_filtered_mean["ds_parameter_attribute"].drop_duplicates()))
+            plt.bar(X_axis - 0.2, df_filtered_mean[(df_filtered_mean.ds_device=="CPU")]["vl_intra_task_execution_time_full_func"], 0.3, label = "CPU", color='C2', hatch='.', zorder=3)
+            plt.bar(X_axis + 0.2, df_filtered_mean[(df_filtered_mean.ds_device=="GPU")]["vl_intra_task_execution_time_full_func"], 0.3, label = "GPU", color='C2', hatch='x', zorder=3)
+            plt.xticks(X_axis, df_filtered_mean["ds_parameter_attribute"].drop_duplicates(), rotation=0)
+            plt.xlabel('Block Dimension')
+            plt.ylabel('Average Intra-Task (full func) Time (s)')
+            plt.title('Average Intra-Task (full func) Time per Block Dimension (' + ds_dataset + ')',fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=len(df_filtered_mean["ds_parameter_attribute"].drop_duplicates()))
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_dataset+'_avg_intra_task_execution_time_full_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+            # VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
+            plt.figure()
+            X_axis = np.arange(len(df_filtered_mean["ds_parameter_attribute"].drop_duplicates()))
+            plt.bar(X_axis - 0.2, df_filtered_mean[(df_filtered_mean.ds_device=="CPU")]["vl_intra_task_execution_time_device_func"], 0.3, label = "CPU", color='C3', hatch='.', zorder=3)
+            plt.bar(X_axis + 0.2, df_filtered_mean[(df_filtered_mean.ds_device=="GPU")]["vl_intra_task_execution_time_device_func"], 0.3, label = "GPU", color='C3', hatch='x', zorder=3)
+            plt.xticks(X_axis, df_filtered_mean["ds_parameter_attribute"].drop_duplicates(), rotation=0)
+            plt.xlabel('Block Dimension')
+            plt.ylabel('Average Intra-Task (device func) Time (s)')
+            plt.title('Average Intra-Task (device func) Time per Block Dimension (' + ds_dataset + ')',fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=len(df_filtered_mean["ds_parameter_attribute"].drop_duplicates()))
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_dataset+'_avg_intra_task_execution_time_device_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
     else:
 
         print("\nInvalid mode.")
-
 
 
 def parse_args():
