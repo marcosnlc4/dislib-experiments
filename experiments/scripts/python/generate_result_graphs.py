@@ -12,56 +12,519 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
     # Open connection to the database
     cur, conn = open_connection()
 
-    # Set sql query
-    sql_query = """SELECT
-                        A.ID_EXPERIMENT,
-                        A.VL_TOTAL_EXECUTION_TIME,
-                        A.VL_INTER_TASK_EXECUTION_TIME,
-                        A.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
-                        A.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
-                        A.VL_COMMUNICATION_TIME,
-                        A.DT_PROCESSING,
-                        B.ID_PARAMETER,
-                        B.CD_PARAMETER,
-                        B.CD_CONFIGURATION,
-                        B.ID_ALGORITHM,
-                        (SELECT DISTINCT X.DS_ALGORITHM FROM ALGORITHM X WHERE X.ID_ALGORITHM = B.ID_ALGORITHM) AS DS_ALGORITHM,
-                        B.ID_FUNCTION,
-                        (SELECT DISTINCT X.DS_FUNCTION FROM FUNCTION X WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_FUNCTION,
-                        (SELECT DISTINCT Y.ID_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS ID_DEVICE,
-                        (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_DEVICE,
-                        B.ID_DATASET,
-                        B.ID_RESOURCE,
-                        B.ID_PARAMETER_TYPE,
-                        (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_TYPE,
-                        (SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_ATTRIBUTE,
-                        B.NR_ITERATIONS,
-                        B.VL_GRID_ROW_DIMENSION,
-                        B.VL_GRID_COLUMN_DIMENSION,
-                        B.VL_BLOCK_ROW_DIMENSION,
-                        B.VL_BLOCK_COLUMN_DIMENSION,
-                        B.VL_BLOCK_MEMORY_SIZE,
-                        B.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
-                        B.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
-                        C.DS_RESOURCE,
-                        C.NR_NODES,
-                        C.NR_COMPUTING_UNITS_CPU,
-                        C.NR_COMPUTING_UNITS_GPU,
-                        C.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
-                        C.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
-                        D.DS_DATASET,
-                        D.VL_DATASET_MEMORY_SIZE,
-                        D.DS_DATA_TYPE,
-                        D.VL_DATA_TYPE_MEMORY_SIZE,
-                        D.VL_DATASET_DIMENSION,
-                        D.VL_DATASET_ROW_DIMENSION,
-                        D.VL_DATASET_COLUMN_DIMENSION,
-                        D.NR_RANDOM_STATE
-                    FROM EXPERIMENT A
-                    INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER)
-                    INNER JOIN RESOURCE C ON (B.ID_RESOURCE = C.ID_RESOURCE)
-                    INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
-                    ORDER BY A.ID_PARAMETER;"""
+    # Set sql query according to mode
+    if mode == 8:
+        sql_query = """
+                        WITH T_CPU AS (
+                                        SELECT
+                                        A.ID_EXPERIMENT,
+                                        A.VL_TOTAL_EXECUTION_TIME,
+                                        A.VL_INTER_TASK_EXECUTION_TIME,
+                                        A.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
+                                        A.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+                                        A.VL_COMMUNICATION_TIME,
+                                        A.DT_PROCESSING,
+                                        B.ID_PARAMETER,
+                                        B.CD_PARAMETER,
+                                        B.CD_CONFIGURATION,
+                                        B.ID_ALGORITHM,
+                                        (SELECT DISTINCT X.DS_ALGORITHM FROM ALGORITHM X WHERE X.ID_ALGORITHM = B.ID_ALGORITHM) AS DS_ALGORITHM,
+                                        B.ID_FUNCTION,
+                                        (SELECT DISTINCT X.DS_FUNCTION FROM FUNCTION X WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_FUNCTION,
+                                        (SELECT DISTINCT Y.ID_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS ID_DEVICE,
+                                        (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_DEVICE,
+                                        B.ID_DATASET,
+                                        B.ID_RESOURCE,
+                                        B.ID_PARAMETER_TYPE,
+                                        (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_TYPE,
+                                        (SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_ATTRIBUTE,
+                                        B.NR_ITERATIONS,
+                                        B.VL_GRID_ROW_DIMENSION,
+                                        B.VL_GRID_COLUMN_DIMENSION,
+                                        B.VL_BLOCK_ROW_DIMENSION,
+                                        B.VL_BLOCK_COLUMN_DIMENSION,
+                                        B.VL_BLOCK_MEMORY_SIZE,
+                                        B.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                                        B.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                                        C.DS_RESOURCE,
+                                        C.NR_NODES,
+                                        C.NR_COMPUTING_UNITS_CPU,
+                                        C.NR_COMPUTING_UNITS_GPU,
+                                        C.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                                        C.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                                        D.DS_DATASET,
+                                        D.VL_DATASET_MEMORY_SIZE,
+                                        D.DS_DATA_TYPE,
+                                        D.VL_DATA_TYPE_MEMORY_SIZE,
+                                        D.VL_DATASET_DIMENSION,
+                                        D.VL_DATASET_ROW_DIMENSION,
+                                        D.VL_DATASET_COLUMN_DIMENSION,
+                                        D.NR_RANDOM_STATE
+                                    FROM EXPERIMENT A
+                                    INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER)
+                                    INNER JOIN RESOURCE C ON (B.ID_RESOURCE = C.ID_RESOURCE)
+                                    INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
+                                    WHERE
+                                    (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) = 'CPU'
+                                ),
+                        T_GPU AS (
+                                        SELECT
+                                        A.ID_EXPERIMENT,
+                                        A.VL_TOTAL_EXECUTION_TIME,
+                                        A.VL_INTER_TASK_EXECUTION_TIME,
+                                        A.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
+                                        A.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+                                        A.VL_COMMUNICATION_TIME,
+                                        A.DT_PROCESSING,
+                                        B.ID_PARAMETER,
+                                        B.CD_PARAMETER,
+                                        B.CD_CONFIGURATION,
+                                        B.ID_ALGORITHM,
+                                        (SELECT DISTINCT X.DS_ALGORITHM FROM ALGORITHM X WHERE X.ID_ALGORITHM = B.ID_ALGORITHM) AS DS_ALGORITHM,
+                                        B.ID_FUNCTION,
+                                        (SELECT DISTINCT X.DS_FUNCTION FROM FUNCTION X WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_FUNCTION,
+                                        (SELECT DISTINCT Y.ID_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS ID_DEVICE,
+                                        (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_DEVICE,
+                                        B.ID_DATASET,
+                                        B.ID_RESOURCE,
+                                        B.ID_PARAMETER_TYPE,
+                                        (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_TYPE,
+                                        (SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_ATTRIBUTE,
+                                        B.NR_ITERATIONS,
+                                        B.VL_GRID_ROW_DIMENSION,
+                                        B.VL_GRID_COLUMN_DIMENSION,
+                                        B.VL_BLOCK_ROW_DIMENSION,
+                                        B.VL_BLOCK_COLUMN_DIMENSION,
+                                        B.VL_BLOCK_MEMORY_SIZE,
+                                        B.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                                        B.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                                        C.DS_RESOURCE,
+                                        C.NR_NODES,
+                                        C.NR_COMPUTING_UNITS_CPU,
+                                        C.NR_COMPUTING_UNITS_GPU,
+                                        C.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                                        C.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                                        D.DS_DATASET,
+                                        D.VL_DATASET_MEMORY_SIZE,
+                                        D.DS_DATA_TYPE,
+                                        D.VL_DATA_TYPE_MEMORY_SIZE,
+                                        D.VL_DATASET_DIMENSION,
+                                        D.VL_DATASET_ROW_DIMENSION,
+                                        D.VL_DATASET_COLUMN_DIMENSION,
+                                        D.NR_RANDOM_STATE
+                                    FROM EXPERIMENT A
+                                    INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER)
+                                    INNER JOIN RESOURCE C ON (B.ID_RESOURCE = C.ID_RESOURCE)
+                                    INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
+                                    WHERE
+                                    (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) = 'GPU'
+                                )
+                        SELECT 
+                        T_CPU.CD_PARAMETER,
+                        T_CPU.DS_ALGORITHM,
+                        T_CPU.NR_ITERATIONS,
+                        T_CPU.DS_RESOURCE,
+                        T_CPU.DS_PARAMETER_TYPE,
+                        T_CPU.DS_PARAMETER_ATTRIBUTE,
+                        T_CPU.DS_DATASET,
+                        T_CPU.VL_DATASET_MEMORY_SIZE,
+                        T_CPU.VL_DATASET_DIMENSION,
+                        T_CPU.VL_DATASET_ROW_DIMENSION,
+                        T_CPU.VL_DATASET_COLUMN_DIMENSION,
+                        T_CPU.VL_GRID_ROW_DIMENSION,
+                        T_CPU.VL_GRID_COLUMN_DIMENSION,
+                        T_CPU.VL_BLOCK_ROW_DIMENSION,
+                        T_CPU.VL_BLOCK_COLUMN_DIMENSION,
+                        T_GPU.VL_TOTAL_EXECUTION_TIME/T_CPU.VL_TOTAL_EXECUTION_TIME AS SPEEDUP_CPU_TOTAL_EXECUTION_TIME,
+                        T_GPU.VL_INTER_TASK_EXECUTION_TIME/T_CPU.VL_INTER_TASK_EXECUTION_TIME AS SPEEDUP_CPU_INTER_TASK_EXECUTION_TIME,
+                        T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC/T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC AS SPEEDUP_CPU_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+                        T_GPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC/T_CPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC AS SPEEDUP_CPU_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
+                        FROM T_CPU INNER JOIN T_GPU ON (T_CPU.CD_PARAMETER = T_GPU.CD_PARAMETER)
+                        WHERE
+                        T_CPU.VL_TOTAL_EXECUTION_TIME < T_GPU.VL_TOTAL_EXECUTION_TIME;"""
+    elif mode == 9:
+        sql_query = """
+                        WITH T_CPU AS (
+                                        SELECT
+                                        A.ID_EXPERIMENT,
+                                        A.VL_TOTAL_EXECUTION_TIME,
+                                        A.VL_INTER_TASK_EXECUTION_TIME,
+                                        A.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
+                                        A.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+                                        A.VL_COMMUNICATION_TIME,
+                                        A.DT_PROCESSING,
+                                        B.ID_PARAMETER,
+                                        B.CD_PARAMETER,
+                                        B.CD_CONFIGURATION,
+                                        B.ID_ALGORITHM,
+                                        (SELECT DISTINCT X.DS_ALGORITHM FROM ALGORITHM X WHERE X.ID_ALGORITHM = B.ID_ALGORITHM) AS DS_ALGORITHM,
+                                        B.ID_FUNCTION,
+                                        (SELECT DISTINCT X.DS_FUNCTION FROM FUNCTION X WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_FUNCTION,
+                                        (SELECT DISTINCT Y.ID_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS ID_DEVICE,
+                                        (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_DEVICE,
+                                        B.ID_DATASET,
+                                        B.ID_RESOURCE,
+                                        B.ID_PARAMETER_TYPE,
+                                        (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_TYPE,
+                                        (SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_ATTRIBUTE,
+                                        B.NR_ITERATIONS,
+                                        B.VL_GRID_ROW_DIMENSION,
+                                        B.VL_GRID_COLUMN_DIMENSION,
+                                        B.VL_BLOCK_ROW_DIMENSION,
+                                        B.VL_BLOCK_COLUMN_DIMENSION,
+                                        B.VL_BLOCK_MEMORY_SIZE,
+                                        B.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                                        B.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                                        C.DS_RESOURCE,
+                                        C.NR_NODES,
+                                        C.NR_COMPUTING_UNITS_CPU,
+                                        C.NR_COMPUTING_UNITS_GPU,
+                                        C.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                                        C.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                                        D.DS_DATASET,
+                                        D.VL_DATASET_MEMORY_SIZE,
+                                        D.DS_DATA_TYPE,
+                                        D.VL_DATA_TYPE_MEMORY_SIZE,
+                                        D.VL_DATASET_DIMENSION,
+                                        D.VL_DATASET_ROW_DIMENSION,
+                                        D.VL_DATASET_COLUMN_DIMENSION,
+                                        D.NR_RANDOM_STATE
+                                    FROM EXPERIMENT A
+                                    INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER)
+                                    INNER JOIN RESOURCE C ON (B.ID_RESOURCE = C.ID_RESOURCE)
+                                    INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
+                                    WHERE
+                                    (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) = 'CPU'
+                                ),
+                        T_GPU AS (
+                                        SELECT
+                                        A.ID_EXPERIMENT,
+                                        A.VL_TOTAL_EXECUTION_TIME,
+                                        A.VL_INTER_TASK_EXECUTION_TIME,
+                                        A.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
+                                        A.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+                                        A.VL_COMMUNICATION_TIME,
+                                        A.DT_PROCESSING,
+                                        B.ID_PARAMETER,
+                                        B.CD_PARAMETER,
+                                        B.CD_CONFIGURATION,
+                                        B.ID_ALGORITHM,
+                                        (SELECT DISTINCT X.DS_ALGORITHM FROM ALGORITHM X WHERE X.ID_ALGORITHM = B.ID_ALGORITHM) AS DS_ALGORITHM,
+                                        B.ID_FUNCTION,
+                                        (SELECT DISTINCT X.DS_FUNCTION FROM FUNCTION X WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_FUNCTION,
+                                        (SELECT DISTINCT Y.ID_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS ID_DEVICE,
+                                        (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_DEVICE,
+                                        B.ID_DATASET,
+                                        B.ID_RESOURCE,
+                                        B.ID_PARAMETER_TYPE,
+                                        (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_TYPE,
+                                        (SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_ATTRIBUTE,
+                                        B.NR_ITERATIONS,
+                                        B.VL_GRID_ROW_DIMENSION,
+                                        B.VL_GRID_COLUMN_DIMENSION,
+                                        B.VL_BLOCK_ROW_DIMENSION,
+                                        B.VL_BLOCK_COLUMN_DIMENSION,
+                                        B.VL_BLOCK_MEMORY_SIZE,
+                                        B.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                                        B.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                                        C.DS_RESOURCE,
+                                        C.NR_NODES,
+                                        C.NR_COMPUTING_UNITS_CPU,
+                                        C.NR_COMPUTING_UNITS_GPU,
+                                        C.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                                        C.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                                        D.DS_DATASET,
+                                        D.VL_DATASET_MEMORY_SIZE,
+                                        D.DS_DATA_TYPE,
+                                        D.VL_DATA_TYPE_MEMORY_SIZE,
+                                        D.VL_DATASET_DIMENSION,
+                                        D.VL_DATASET_ROW_DIMENSION,
+                                        D.VL_DATASET_COLUMN_DIMENSION,
+                                        D.NR_RANDOM_STATE
+                                    FROM EXPERIMENT A
+                                    INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER)
+                                    INNER JOIN RESOURCE C ON (B.ID_RESOURCE = C.ID_RESOURCE)
+                                    INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
+                                    WHERE
+                                    (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) = 'GPU'
+                                )
+                        SELECT 
+                        T_GPU.CD_PARAMETER,
+                        T_GPU.DS_ALGORITHM,
+                        T_GPU.NR_ITERATIONS,
+                        T_GPU.DS_RESOURCE,
+                        T_GPU.DS_PARAMETER_TYPE,
+                        T_GPU.DS_PARAMETER_ATTRIBUTE,
+                        T_GPU.DS_DATASET,
+                        T_GPU.VL_DATASET_MEMORY_SIZE,
+                        T_GPU.VL_DATASET_DIMENSION,
+                        T_GPU.VL_DATASET_ROW_DIMENSION,
+                        T_GPU.VL_DATASET_COLUMN_DIMENSION,
+                        T_GPU.VL_GRID_ROW_DIMENSION,
+                        T_GPU.VL_GRID_COLUMN_DIMENSION,
+                        T_GPU.VL_BLOCK_ROW_DIMENSION,
+                        T_GPU.VL_BLOCK_COLUMN_DIMENSION,
+                        T_CPU.VL_TOTAL_EXECUTION_TIME/T_GPU.VL_TOTAL_EXECUTION_TIME AS SPEEDUP_GPU_TOTAL_EXECUTION_TIME,
+                        T_CPU.VL_INTER_TASK_EXECUTION_TIME/T_GPU.VL_INTER_TASK_EXECUTION_TIME AS SPEEDUP_GPU_INTER_TASK_EXECUTION_TIME,
+                        T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC/T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC AS SPEEDUP_GPU_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+                        T_CPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC/T_GPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC AS SPEEDUP_GPU_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
+                        FROM T_CPU INNER JOIN T_GPU ON (T_CPU.CD_PARAMETER = T_GPU.CD_PARAMETER)
+                        WHERE
+                        T_GPU.VL_TOTAL_EXECUTION_TIME < T_CPU.VL_TOTAL_EXECUTION_TIME
+                        --AND T_GPU.VL_INTER_TASK_EXECUTION_TIME < T_CPU.VL_INTER_TASK_EXECUTION_TIME
+                        --AND T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC < T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC
+                        --AND T_GPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC < T_CPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
+                        --AND T_GPU.DS_PARAMETER_TYPE = 'VAR_BLOCK_CAPACITY_SIZE'
+                        --AND T_GPU.DS_PARAMETER_TYPE = 'VAR_PARALLELISM_LEVEL'
+                        ORDER BY T_CPU.VL_TOTAL_EXECUTION_TIME/T_GPU.VL_TOTAL_EXECUTION_TIME DESC;"""
+    # MODE 8.1: FIND WHERE CPUs HAVE A LOWER LATENCY THAN GPUs
+    elif mode == 10:
+        sql_query = """
+                        SELECT
+                        SBQ.ID_EXPERIMENT,
+                        SBQ.ID_PARAMETER,
+                        SBQ.CD_PARAMETER,
+                        SBQ.DS_ALGORITHM,
+                        SBQ.NR_ITERATIONS,
+                        SBQ.DS_RESOURCE,
+                        SBQ.DS_DEVICE,
+                        SBQ.DS_PARAMETER_TYPE,
+                        SBQ.DS_PARAMETER_ATTRIBUTE,
+                        SBQ.DS_DATASET,
+                        SBQ.VL_DATASET_MEMORY_SIZE,
+                        SBQ.VL_DATASET_DIMENSION,
+                        SBQ.VL_DATASET_ROW_DIMENSION,
+                        SBQ.VL_DATASET_COLUMN_DIMENSION,
+                        SBQ.VL_GRID_ROW_DIMENSION,
+                        SBQ.VL_GRID_COLUMN_DIMENSION,
+                        SBQ.VL_BLOCK_ROW_DIMENSION,
+                        SBQ.VL_BLOCK_COLUMN_DIMENSION,
+                        SBQ.VL_TOTAL_EXECUTION_TIME,
+                        SBQ.VL_INTER_TASK_EXECUTION_TIME,
+                        SBQ.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+                        SBQ.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
+                        SBQ.VL_COMMUNICATION_TIME
+                        FROM
+                        (
+                            SELECT
+                                A.ID_EXPERIMENT,
+                                A.VL_TOTAL_EXECUTION_TIME,
+                                A.VL_INTER_TASK_EXECUTION_TIME,
+                                A.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
+                                A.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+                                A.VL_COMMUNICATION_TIME,
+                                A.DT_PROCESSING,
+                                B.ID_PARAMETER,
+                                B.CD_PARAMETER,
+                                B.CD_CONFIGURATION,
+                                B.ID_ALGORITHM,
+                                (SELECT DISTINCT X.DS_ALGORITHM FROM ALGORITHM X WHERE X.ID_ALGORITHM = B.ID_ALGORITHM) AS DS_ALGORITHM,
+                                B.ID_FUNCTION,
+                                (SELECT DISTINCT X.DS_FUNCTION FROM FUNCTION X WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_FUNCTION,
+                                (SELECT DISTINCT Y.ID_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS ID_DEVICE,
+                                (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_DEVICE,
+                                B.ID_DATASET,
+                                B.ID_RESOURCE,
+                                B.ID_PARAMETER_TYPE,
+                                (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_TYPE,
+                                (SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_ATTRIBUTE,
+                                B.NR_ITERATIONS,
+                                B.VL_GRID_ROW_DIMENSION,
+                                B.VL_GRID_COLUMN_DIMENSION,
+                                B.VL_BLOCK_ROW_DIMENSION,
+                                B.VL_BLOCK_COLUMN_DIMENSION,
+                                B.VL_BLOCK_MEMORY_SIZE,
+                                B.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                                B.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                                C.DS_RESOURCE,
+                                C.NR_NODES,
+                                C.NR_COMPUTING_UNITS_CPU,
+                                C.NR_COMPUTING_UNITS_GPU,
+                                C.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                                C.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                                D.DS_DATASET,
+                                D.VL_DATASET_MEMORY_SIZE,
+                                D.DS_DATA_TYPE,
+                                D.VL_DATA_TYPE_MEMORY_SIZE,
+                                D.VL_DATASET_DIMENSION,
+                                D.VL_DATASET_ROW_DIMENSION,
+                                D.VL_DATASET_COLUMN_DIMENSION,
+                                D.NR_RANDOM_STATE
+                            FROM EXPERIMENT A
+                            INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER)
+                            INNER JOIN RESOURCE C ON (B.ID_RESOURCE = C.ID_RESOURCE)
+                            INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
+                            WHERE
+                            B.CD_PARAMETER IN
+                            (
+                                WITH T_CPU AS (
+                                                SELECT
+                                                A.ID_EXPERIMENT,
+                                                A.VL_TOTAL_EXECUTION_TIME,
+                                                A.VL_INTER_TASK_EXECUTION_TIME,
+                                                A.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
+                                                A.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+                                                A.VL_COMMUNICATION_TIME,
+                                                A.DT_PROCESSING,
+                                                B.ID_PARAMETER,
+                                                B.CD_PARAMETER,
+                                                B.CD_CONFIGURATION,
+                                                B.ID_ALGORITHM,
+                                                (SELECT DISTINCT X.DS_ALGORITHM FROM ALGORITHM X WHERE X.ID_ALGORITHM = B.ID_ALGORITHM) AS DS_ALGORITHM,
+                                                B.ID_FUNCTION,
+                                                (SELECT DISTINCT X.DS_FUNCTION FROM FUNCTION X WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_FUNCTION,
+                                                (SELECT DISTINCT Y.ID_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS ID_DEVICE,
+                                                (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_DEVICE,
+                                                B.ID_DATASET,
+                                                B.ID_RESOURCE,
+                                                B.ID_PARAMETER_TYPE,
+                                                (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_TYPE,
+                                                (SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_ATTRIBUTE,
+                                                B.NR_ITERATIONS,
+                                                B.VL_GRID_ROW_DIMENSION,
+                                                B.VL_GRID_COLUMN_DIMENSION,
+                                                B.VL_BLOCK_ROW_DIMENSION,
+                                                B.VL_BLOCK_COLUMN_DIMENSION,
+                                                B.VL_BLOCK_MEMORY_SIZE,
+                                                B.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                                                B.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                                                C.DS_RESOURCE,
+                                                C.NR_NODES,
+                                                C.NR_COMPUTING_UNITS_CPU,
+                                                C.NR_COMPUTING_UNITS_GPU,
+                                                C.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                                                C.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                                                D.DS_DATASET,
+                                                D.VL_DATASET_MEMORY_SIZE,
+                                                D.DS_DATA_TYPE,
+                                                D.VL_DATA_TYPE_MEMORY_SIZE,
+                                                D.VL_DATASET_DIMENSION,
+                                                D.VL_DATASET_ROW_DIMENSION,
+                                                D.VL_DATASET_COLUMN_DIMENSION,
+                                                D.NR_RANDOM_STATE
+                                            FROM EXPERIMENT A
+                                            INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER)
+                                            INNER JOIN RESOURCE C ON (B.ID_RESOURCE = C.ID_RESOURCE)
+                                            INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
+                                            WHERE
+                                            (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) = 'CPU'
+                                        ),
+                                T_GPU AS (
+                                                SELECT
+                                                A.ID_EXPERIMENT,
+                                                A.VL_TOTAL_EXECUTION_TIME,
+                                                A.VL_INTER_TASK_EXECUTION_TIME,
+                                                A.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
+                                                A.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+                                                A.VL_COMMUNICATION_TIME,
+                                                A.DT_PROCESSING,
+                                                B.ID_PARAMETER,
+                                                B.CD_PARAMETER,
+                                                B.CD_CONFIGURATION,
+                                                B.ID_ALGORITHM,
+                                                (SELECT DISTINCT X.DS_ALGORITHM FROM ALGORITHM X WHERE X.ID_ALGORITHM = B.ID_ALGORITHM) AS DS_ALGORITHM,
+                                                B.ID_FUNCTION,
+                                                (SELECT DISTINCT X.DS_FUNCTION FROM FUNCTION X WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_FUNCTION,
+                                                (SELECT DISTINCT Y.ID_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS ID_DEVICE,
+                                                (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_DEVICE,
+                                                B.ID_DATASET,
+                                                B.ID_RESOURCE,
+                                                B.ID_PARAMETER_TYPE,
+                                                (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_TYPE,
+                                                (SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_ATTRIBUTE,
+                                                B.NR_ITERATIONS,
+                                                B.VL_GRID_ROW_DIMENSION,
+                                                B.VL_GRID_COLUMN_DIMENSION,
+                                                B.VL_BLOCK_ROW_DIMENSION,
+                                                B.VL_BLOCK_COLUMN_DIMENSION,
+                                                B.VL_BLOCK_MEMORY_SIZE,
+                                                B.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                                                B.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                                                C.DS_RESOURCE,
+                                                C.NR_NODES,
+                                                C.NR_COMPUTING_UNITS_CPU,
+                                                C.NR_COMPUTING_UNITS_GPU,
+                                                C.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                                                C.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                                                D.DS_DATASET,
+                                                D.VL_DATASET_MEMORY_SIZE,
+                                                D.DS_DATA_TYPE,
+                                                D.VL_DATA_TYPE_MEMORY_SIZE,
+                                                D.VL_DATASET_DIMENSION,
+                                                D.VL_DATASET_ROW_DIMENSION,
+                                                D.VL_DATASET_COLUMN_DIMENSION,
+                                                D.NR_RANDOM_STATE
+                                            FROM EXPERIMENT A
+                                            INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER)
+                                            INNER JOIN RESOURCE C ON (B.ID_RESOURCE = C.ID_RESOURCE)
+                                            INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
+                                            WHERE
+                                            (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) = 'GPU'
+                                        )
+                                SELECT DISTINCT T_CPU.CD_PARAMETER
+                                FROM T_CPU INNER JOIN T_GPU ON (T_CPU.CD_PARAMETER = T_GPU.CD_PARAMETER)
+                                --WHERE
+                                --T_CPU.VL_TOTAL_EXECUTION_TIME is not null --EXPERIMENTS OK
+                                --T_CPU.VL_TOTAL_EXECUTION_TIME is null --FAILED EXPERIMENTS
+                                --AND T_CPU.VL_TOTAL_EXECUTION_TIME < T_GPU.VL_TOTAL_EXECUTION_TIME
+                                --AND T_CPU.VL_INTER_TASK_EXECUTION_TIME < T_GPU.VL_INTER_TASK_EXECUTION_TIME
+                                --AND T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC < T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC
+                                --AND T_CPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC < T_GPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
+                            )
+                        ) SBQ;"""
+
+    else:
+        sql_query = """SELECT
+                            A.ID_EXPERIMENT,
+                            A.VL_TOTAL_EXECUTION_TIME,
+                            A.VL_INTER_TASK_EXECUTION_TIME,
+                            A.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
+                            A.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+                            A.VL_COMMUNICATION_TIME,
+                            A.DT_PROCESSING,
+                            B.ID_PARAMETER,
+                            B.CD_PARAMETER,
+                            B.CD_CONFIGURATION,
+                            B.ID_ALGORITHM,
+                            (SELECT DISTINCT X.DS_ALGORITHM FROM ALGORITHM X WHERE X.ID_ALGORITHM = B.ID_ALGORITHM) AS DS_ALGORITHM,
+                            B.ID_FUNCTION,
+                            (SELECT DISTINCT X.DS_FUNCTION FROM FUNCTION X WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_FUNCTION,
+                            (SELECT DISTINCT Y.ID_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS ID_DEVICE,
+                            (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_DEVICE,
+                            B.ID_DATASET,
+                            B.ID_RESOURCE,
+                            B.ID_PARAMETER_TYPE,
+                            (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_TYPE,
+                            (SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_ATTRIBUTE,
+                            B.NR_ITERATIONS,
+                            B.VL_GRID_ROW_DIMENSION,
+                            B.VL_GRID_COLUMN_DIMENSION,
+                            B.VL_BLOCK_ROW_DIMENSION,
+                            B.VL_BLOCK_COLUMN_DIMENSION,
+                            B.VL_BLOCK_MEMORY_SIZE,
+                            B.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                            B.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                            C.DS_RESOURCE,
+                            C.NR_NODES,
+                            C.NR_COMPUTING_UNITS_CPU,
+                            C.NR_COMPUTING_UNITS_GPU,
+                            C.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                            C.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                            D.DS_DATASET,
+                            D.VL_DATASET_MEMORY_SIZE,
+                            D.DS_DATA_TYPE,
+                            D.VL_DATA_TYPE_MEMORY_SIZE,
+                            D.VL_DATASET_DIMENSION,
+                            D.VL_DATASET_ROW_DIMENSION,
+                            D.VL_DATASET_COLUMN_DIMENSION,
+                            D.NR_RANDOM_STATE
+                        FROM EXPERIMENT A
+                        INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER)
+                        INNER JOIN RESOURCE C ON (B.ID_RESOURCE = C.ID_RESOURCE)
+                        INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
+                        --WHERE
+                        --(SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) <> 'MAX_INTER_MIN_INTRA'
+                        ORDER BY A.ID_PARAMETER;"""
     
     # Get dataframe from query
     df = get_df_from_query(sql_query,conn)
@@ -80,8 +543,7 @@ def get_df_from_query(sql_query, conn):
 # Function that generates a graph according to the mode
 def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, mode):
     
-
-    # Filtering and sorting parameters
+    # General filtering and sorting parameters
     df_filtered = df[
                     (df["ds_algorithm"] == ds_algorithm.upper()) # FIXED VALUE
                     & (df["nr_iterations"] == int(nr_iterations)) # FIXED VALUE
@@ -97,8 +559,19 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                     # & (df_parameters["vl_dataset_memory_size"] == 400) # 2.2.1
                     # & (df_parameters["vl_dataset_memory_size"] == 400000) # 2.2.2
                     # & (df_parameters["vl_dataset_memory_size"] == 400000000) # 2.2.3
-                    # & (df["ds_dataset"] == "SYNTHETIC_A_400B_1")
-                    ].sort_values(by=["id_parameter"])
+                    # & (df["ds_dataset"] == "S_A_1")
+                    # & (df["ds_dataset"] == "S_A_2")
+                    # & (df["ds_dataset"] == "S_A_3")
+                    # & (df["ds_dataset"] == "S_A_4")
+                    # & (df["ds_dataset"] == "S_B_1")
+                    # & (df["ds_dataset"] == "S_B_2")
+                    # & (df["ds_dataset"] == "S_B_3")
+                    # & (df["ds_dataset"] == "S_B_4")
+                    # & (df["ds_dataset"] == "S_C_1")
+                    # & (df["ds_dataset"] == "S_C_2")
+                    # & (df["ds_dataset"] == "S_C_3")
+                    # & (df["ds_dataset"] == "S_C_4")
+                    ]
 
     
 
@@ -116,22 +589,24 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         # OVERVIEW OF ALL EXECUTION TIMES
         plt.figure(1)
         ax = plt.gca()
-        df_filtered_mean.set_index('ds_device').plot(kind = 'bar')
-        plt.legend(['Total Execution Time', 'Inter Task Execution Time', 'Intra Task Execution Time (Full Function)', 'Intra Task Execution Time (Device Function)'])
+        df_filtered_mean.set_index('ds_device').plot(kind = 'bar',zorder=3)
+        plt.legend(['Total', 'Inter', 'Intra (Full Function)', 'Intra (Device Function)'])
         plt.xlabel('Device')
         plt.ylabel('Average Execution Times (s)')
-        plt.title('Average Execution Times per Device',fontstyle='italic',fontweight="bold")
+        plt.title('Average Execution Times x Device',fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
         # VL_TOTAL_EXECUTION_TIME
         plt.figure(2)
         fig, ax = plt.subplots()
-        ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_total_execution_time'], color='C0', hatch='.')
-        ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_total_execution_time'], color='C0', hatch='|')
-        plt.legend(['Total Execution Time CPU','Total Execution Time GPU'])
+        ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_total_execution_time'], color='C0', hatch='.',zorder=3)
+        ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_total_execution_time'], color='C0', hatch='|',zorder=3)
+        plt.legend(['CPU','GPU'])
         plt.xlabel('Device')
         plt.ylabel('Average Total Execution Time (s)')
-        plt.title('Average Total Execution Time per Device',fontstyle='italic',fontweight="bold")
+        plt.title('Average Total Execution Time x Device',fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_avg_total_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
         # VL_INTER_TASK_EXECUTION_TIME
@@ -139,12 +614,13 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU")].sort_values("vl_inter_task_execution_time")
         plt.figure(3)
         fig, ax = plt.subplots()
-        ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_inter_task_execution_time'], color='C1', hatch='.')
-        ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_inter_task_execution_time'], color='C1', hatch='x')
-        plt.legend(['Inter Task Execution Time CPU','Inter Task Execution Time GPU'])
+        ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_inter_task_execution_time'], color='C1', hatch='.', zorder=3)
+        ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_inter_task_execution_time'], color='C1', hatch='x', zorder=3)
+        plt.legend(['CPU','GPU'])
         plt.xlabel('Device')
         plt.ylabel('Average Inter-Task Time (s)')
-        plt.title('Average Inter-Task Time per Device',fontstyle='italic',fontweight="bold")
+        plt.title('Average Inter-Task Time x Device',fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_avg_inter_task_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
         # VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC
@@ -152,12 +628,13 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU")].sort_values("vl_intra_task_execution_time_full_func")
         plt.figure(4)
         fig, ax = plt.subplots()
-        ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_intra_task_execution_time_full_func'], color='C2', hatch='.')
-        ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_intra_task_execution_time_full_func'], color='C2', hatch='x')
-        plt.legend(['Intra Task Execution Time (Full Function) CPU','Intra Task Execution Time (Full Function) GPU'])
+        ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_intra_task_execution_time_full_func'], color='C2', hatch='.', zorder=3)
+        ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_intra_task_execution_time_full_func'], color='C2', hatch='x', zorder=3)
+        plt.legend(['CPU','GPU'])
         plt.xlabel('Device')
         plt.ylabel('Average Intra-Task (full func) Time (s)')
-        plt.title('Average Intra-Task (full func)Time per Device',fontstyle='italic',fontweight="bold")
+        plt.title('Average Intra-Task (full func) Time x Device',fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_avg_intra_task_execution_time_full_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
         # VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
@@ -165,12 +642,13 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU")].sort_values("vl_intra_task_execution_time_device_func")
         plt.figure(5)
         fig, ax = plt.subplots()
-        ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_intra_task_execution_time_device_func'], color='C3', hatch='.')
-        ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_intra_task_execution_time_device_func'], color='C3', hatch='x')
-        plt.legend(['Intra Task Execution Time (Device Function) CPU','Intra Task Execution Time (Device Function) GPU'])
+        ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_intra_task_execution_time_device_func'], color='C3', hatch='.', zorder=3)
+        ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_intra_task_execution_time_device_func'], color='C3', hatch='x', zorder=3)
+        plt.legend(['CPU','GPU'])
         plt.xlabel('Device')
         plt.ylabel('Average Intra-Task (device func) Time (s)')
-        plt.title('Average Intra-Task (device func) Time per Device',fontstyle='italic',fontweight="bold")
+        plt.title('Average Intra-Task (device func) Time x Device',fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_avg_intra_task_execution_time_device_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
 
@@ -186,52 +664,57 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         # VL_TOTAL_EXECUTION_TIME
         plt.figure(1)
         ax = plt.gca()
-        df_filtered_mean_cpu.plot(x = 'vl_dataset_memory_size', y = 'vl_total_execution_time', kind = 'line', color='C0', linestyle = 'dotted', ax=ax, label='CPU')
-        df_filtered_mean_gpu.plot(x = 'vl_dataset_memory_size', y = 'vl_total_execution_time', kind = 'line', color='C0', linestyle = 'solid', ax=ax, label='GPU')
+        df_filtered_mean_cpu.plot(x = 'vl_dataset_memory_size', y = 'vl_total_execution_time', kind = 'line', color='C0', linestyle = 'dotted', ax=ax, label='CPU', zorder=3)
+        df_filtered_mean_gpu.plot(x = 'vl_dataset_memory_size', y = 'vl_total_execution_time', kind = 'line', color='C0', linestyle = 'solid', ax=ax, label='GPU', zorder=3)
         plt.xlabel('Data Set Size (B)')
         plt.ylabel('Average Total Execution Time (s)')
         plt.title('Average Total Execution Time x Data Set Size',fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_total_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
         # plt.savefig(dst_path_figs+'avg_total_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+int(nr_iterations)+'_'+ds_parameter_type+'_'+ds_parameter_attribute+'_mode_'+str(mode)+'.png',bbox_inches='tight',dpi=100)
         
         # VL_INTER_TASK_EXECUTION_TIME
         plt.figure(2)
         ax = plt.gca()
-        df_filtered_mean_cpu.plot(x = 'vl_dataset_memory_size', y = 'vl_inter_task_execution_time', kind = 'line', color='C1', linestyle = 'dotted', ax=ax, label='CPU')
-        df_filtered_mean_gpu.plot(x = 'vl_dataset_memory_size', y = 'vl_inter_task_execution_time', kind = 'line', color='C1', linestyle = 'solid', ax=ax, label='GPU')
+        df_filtered_mean_cpu.plot(x = 'vl_dataset_memory_size', y = 'vl_inter_task_execution_time', kind = 'line', color='C1', linestyle = 'dotted', ax=ax, label='CPU', zorder=3)
+        df_filtered_mean_gpu.plot(x = 'vl_dataset_memory_size', y = 'vl_inter_task_execution_time', kind = 'line', color='C1', linestyle = 'solid', ax=ax, label='GPU', zorder=3)
         plt.xlabel('Data Set Size (B)')
         plt.ylabel('Average Inter-Task Time (s)')
         plt.title('Average Inter-Task Time x Data Set Size',fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_inter_task_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
         # VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC
         plt.figure(3)
         ax = plt.gca()
-        df_filtered_mean_cpu.plot(x = 'vl_dataset_memory_size', y = 'vl_intra_task_execution_time_full_func', kind = 'line', color='C2', linestyle = 'dotted', ax=ax, label='CPU')
-        df_filtered_mean_gpu.plot(x = 'vl_dataset_memory_size', y = 'vl_intra_task_execution_time_full_func', kind = 'line', color='C2', linestyle = 'solid', ax=ax, label='GPU')
+        df_filtered_mean_cpu.plot(x = 'vl_dataset_memory_size', y = 'vl_intra_task_execution_time_full_func', kind = 'line', color='C2', linestyle = 'dotted', ax=ax, label='CPU', zorder=3)
+        df_filtered_mean_gpu.plot(x = 'vl_dataset_memory_size', y = 'vl_intra_task_execution_time_full_func', kind = 'line', color='C2', linestyle = 'solid', ax=ax, label='GPU', zorder=3)
         plt.xlabel('Data Set Size (B)')
         plt.ylabel('Average Intra-Task (full func) Time (s)')
         plt.title('Average Intra-Task (full func) Time x Data Set Size',fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_intra_task_execution_time_full_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
         # VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
         plt.figure(4)
         ax = plt.gca()
-        df_filtered_mean_cpu.plot(x = 'vl_dataset_memory_size', y = 'vl_intra_task_execution_time_device_func', kind = 'line', color='C3', linestyle = 'dotted', ax=ax, label='CPU')
-        df_filtered_mean_gpu.plot(x = 'vl_dataset_memory_size', y = 'vl_intra_task_execution_time_device_func', kind = 'line', color='C3', linestyle = 'solid', ax=ax, label='GPU')
+        df_filtered_mean_cpu.plot(x = 'vl_dataset_memory_size', y = 'vl_intra_task_execution_time_device_func', kind = 'line', color='C3', linestyle = 'dotted', ax=ax, label='CPU', zorder=3)
+        df_filtered_mean_gpu.plot(x = 'vl_dataset_memory_size', y = 'vl_intra_task_execution_time_device_func', kind = 'line', color='C3', linestyle = 'solid', ax=ax, label='GPU', zorder=3)
         plt.xlabel('Data Set Size (B)')
         plt.ylabel('Average Intra-Task (device func) Time (s)')
         plt.title('Average Intra-Task (device func) Time x Data Set Size',fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_intra_task_execution_time_device_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
         # VL_COMMUNICATION_TIME
         plt.figure(5)
         ax = plt.gca()
-        df_filtered_mean_cpu.plot(x = 'vl_dataset_memory_size', y = 'vl_communication_time', kind = 'line', color='C4', linestyle = 'dotted', ax=ax, label='CPU')
-        df_filtered_mean_gpu.plot(x = 'vl_dataset_memory_size', y = 'vl_communication_time', kind = 'line', color='C4', linestyle = 'solid', ax=ax, label='GPU')
+        df_filtered_mean_cpu.plot(x = 'vl_dataset_memory_size', y = 'vl_communication_time', kind = 'line', color='C4', linestyle = 'dotted', ax=ax, label='CPU', zorder=3)
+        df_filtered_mean_gpu.plot(x = 'vl_dataset_memory_size', y = 'vl_communication_time', kind = 'line', color='C4', linestyle = 'solid', ax=ax, label='GPU', zorder=3)
         plt.xlabel('Data Set Size (B)')
         plt.ylabel('Average Communication Time (s)')
         plt.title('Average Communication Time x Data Set Size',fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_communication_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
 
@@ -243,83 +726,90 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
         df_filtered_mean = df_filtered_mean[["ds_device","vl_dataset_memory_size","vl_total_execution_time","vl_inter_task_execution_time","vl_intra_task_execution_time_full_func","vl_intra_task_execution_time_device_func"]]
         
-        vl_dataset_memory_size = 400000000
+        vl_dataset_memory_size_list = [400, 400000, 400000000]
 
-        if vl_dataset_memory_size == 400:
-            vl_dataset_memory_size_title = "Data set " + str(vl_dataset_memory_size) + " B"
-        elif vl_dataset_memory_size == 400000:
-            vl_dataset_memory_size_title = "Data set " + str(vl_dataset_memory_size*1e-3) + " KB"
-        elif vl_dataset_memory_size == 400000000:
-            vl_dataset_memory_size_title = "Data set " + str(vl_dataset_memory_size*1e-6) + " MB"
-        elif vl_dataset_memory_size == 400000000000:
-            vl_dataset_memory_size_title = "Data set " + str(vl_dataset_memory_size*1e-9) + " GB"
-        else:
-            print("Invalid vl_dataset_memory_size")
-            return
+        for vl_dataset_memory_size in vl_dataset_memory_size_list:
 
-        df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.vl_dataset_memory_size==vl_dataset_memory_size)].sort_values("vl_total_execution_time")
-        df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.vl_dataset_memory_size==vl_dataset_memory_size)].sort_values("vl_total_execution_time")
+            if vl_dataset_memory_size == 400:
+                vl_dataset_memory_size_title = "Data set " + str(vl_dataset_memory_size) + " B"
+            elif vl_dataset_memory_size == 400000:
+                vl_dataset_memory_size_title = "Data set " + str(vl_dataset_memory_size*1e-3) + " KB"
+            elif vl_dataset_memory_size == 400000000:
+                vl_dataset_memory_size_title = "Data set " + str(vl_dataset_memory_size*1e-6) + " MB"
+            elif vl_dataset_memory_size == 400000000000:
+                vl_dataset_memory_size_title = "Data set " + str(vl_dataset_memory_size*1e-9) + " GB"
+            else:
+                print("Invalid vl_dataset_memory_size")
+                return
 
-        
-        # OVERVIEW OF ALL EXECUTION TIMES
-        plt.figure(1)
-        ax = plt.gca()
-        df_filtered_mean.set_index('ds_device').plot(kind = 'bar')
-        plt.legend(['Total Execution Time', 'Inter Task Execution Time', 'Intra Task Execution Time (Full Function)', 'Intra Task Execution Time (Device Function)'])
-        plt.xlabel('Device')
-        plt.ylabel('Average Execution Times (s)')
-        plt.title('Average Execution Times per Device - '+vl_dataset_memory_size_title, fontstyle='italic',fontweight="bold")
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+str(vl_dataset_memory_size)+'_dataset_overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.vl_dataset_memory_size==vl_dataset_memory_size)].sort_values("vl_total_execution_time")
+            df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.vl_dataset_memory_size==vl_dataset_memory_size)].sort_values("vl_total_execution_time")
 
-        # VL_TOTAL_EXECUTION_TIME
-        plt.figure(2)
-        fig, ax = plt.subplots()
-        ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_total_execution_time'], color='C0', hatch='.')
-        ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_total_execution_time'], color='C0', hatch='|')
-        plt.legend(['Total Execution Time CPU','Total Execution Time GPU'])
-        plt.xlabel('Device')
-        plt.ylabel('Average Total Execution Time (s)')
-        plt.title('Average Total Execution Time per Device - '+vl_dataset_memory_size_title, fontstyle='italic',fontweight="bold")
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+str(vl_dataset_memory_size)+'_dataset_overview_avg_total_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            
+            # OVERVIEW OF ALL EXECUTION TIMES
+            plt.figure()
+            ax = plt.gca()
+            df_filtered_mean.set_index('ds_device').plot(kind = 'bar', zorder=3)
+            plt.legend(['Total', 'Inter', 'Intra (Full Function)', 'Intra (Device Function)'])
+            plt.xlabel('Device')
+            plt.ylabel('Average Execution Times (s)')
+            plt.title('Average Execution Times per Device - '+vl_dataset_memory_size_title, fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+str(vl_dataset_memory_size)+'_dataset_overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
-        # VL_INTER_TASK_EXECUTION_TIME
-        df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.vl_dataset_memory_size==vl_dataset_memory_size)].sort_values("vl_inter_task_execution_time")
-        df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.vl_dataset_memory_size==vl_dataset_memory_size)].sort_values("vl_inter_task_execution_time")
-        plt.figure(3)
-        fig, ax = plt.subplots()
-        ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_inter_task_execution_time'], color='C1', hatch='.')
-        ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_inter_task_execution_time'], color='C1', hatch='x')
-        plt.legend(['Inter Task Execution Time CPU','Inter Task Execution Time GPU'])
-        plt.xlabel('Device')
-        plt.ylabel('Average Inter-Task Time (s)')
-        plt.title('Average Inter-Task Time per Device - '+vl_dataset_memory_size_title, fontstyle='italic',fontweight="bold")
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+str(vl_dataset_memory_size)+'_dataset_overview_avg_inter_task_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            # VL_TOTAL_EXECUTION_TIME
+            plt.figure()
+            fig, ax = plt.subplots()
+            ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_total_execution_time'], color='C0', hatch='.', zorder=3)
+            ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_total_execution_time'], color='C0', hatch='|', zorder=3)
+            plt.legend(['CPU','GPU'])
+            plt.xlabel('Device')
+            plt.ylabel('Average Total Execution Time (s)')
+            plt.title('Average Total Execution Time per Device - '+vl_dataset_memory_size_title, fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+str(vl_dataset_memory_size)+'_dataset_overview_avg_total_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
-        # VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC
-        df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.vl_dataset_memory_size==vl_dataset_memory_size)].sort_values("vl_intra_task_execution_time_full_func")
-        df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.vl_dataset_memory_size==vl_dataset_memory_size)].sort_values("vl_intra_task_execution_time_full_func")
-        plt.figure(4)
-        fig, ax = plt.subplots()
-        ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_intra_task_execution_time_full_func'], color='C2', hatch='.')
-        ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_intra_task_execution_time_full_func'], color='C2', hatch='x')
-        plt.legend(['Intra Task Execution Time (Full Function) CPU','Intra Task Execution Time (Full Function) GPU'])
-        plt.xlabel('Device')
-        plt.ylabel('Average Intra-Task (full func) Time (s)')
-        plt.title('Average Intra-Task (full func)Time per Device - '+vl_dataset_memory_size_title, fontstyle='italic',fontweight="bold")
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+str(vl_dataset_memory_size)+'_dataset_overview_avg_intra_task_execution_time_full_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            # VL_INTER_TASK_EXECUTION_TIME
+            df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.vl_dataset_memory_size==vl_dataset_memory_size)].sort_values("vl_inter_task_execution_time")
+            df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.vl_dataset_memory_size==vl_dataset_memory_size)].sort_values("vl_inter_task_execution_time")
+            plt.figure()
+            fig, ax = plt.subplots()
+            ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_inter_task_execution_time'], color='C1', hatch='.', zorder=3)
+            ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_inter_task_execution_time'], color='C1', hatch='x', zorder=3)
+            plt.legend(['CPU','GPU'])
+            plt.xlabel('Device')
+            plt.ylabel('Average Inter-Task Time (s)')
+            plt.title('Average Inter-Task Time per Device - '+vl_dataset_memory_size_title, fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+str(vl_dataset_memory_size)+'_dataset_overview_avg_inter_task_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
-        # VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
-        df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.vl_dataset_memory_size==vl_dataset_memory_size)].sort_values("vl_intra_task_execution_time_device_func")
-        df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.vl_dataset_memory_size==vl_dataset_memory_size)].sort_values("vl_intra_task_execution_time_device_func")
-        plt.figure(5)
-        fig, ax = plt.subplots()
-        ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_intra_task_execution_time_device_func'], color='C3', hatch='.')
-        ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_intra_task_execution_time_device_func'], color='C3', hatch='x')
-        plt.legend(['Intra Task Execution Time (Device Function) CPU','Intra Task Execution Time (Device Function) GPU'])
-        plt.xlabel('Device')
-        plt.ylabel('Average Intra-Task (device func) Time (s)')
-        plt.title('Average Intra-Task (device func) Time per Device - '+vl_dataset_memory_size_title, fontstyle='italic',fontweight="bold")
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+str(vl_dataset_memory_size)+'_dataset_overview_avg_intra_task_execution_time_device_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            # VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC
+            df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.vl_dataset_memory_size==vl_dataset_memory_size)].sort_values("vl_intra_task_execution_time_full_func")
+            df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.vl_dataset_memory_size==vl_dataset_memory_size)].sort_values("vl_intra_task_execution_time_full_func")
+            plt.figure()
+            fig, ax = plt.subplots()
+            ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_intra_task_execution_time_full_func'], color='C2', hatch='.', zorder=3)
+            ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_intra_task_execution_time_full_func'], color='C2', hatch='x', zorder=3)
+            plt.legend(['CPU','GPU'])
+            plt.xlabel('Device')
+            plt.ylabel('Average Intra-Task (full func) Time (s)')
+            plt.title('Average Intra-Task (full func)Time per Device - '+vl_dataset_memory_size_title, fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+str(vl_dataset_memory_size)+'_dataset_overview_avg_intra_task_execution_time_full_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+            # VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
+            df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.vl_dataset_memory_size==vl_dataset_memory_size)].sort_values("vl_intra_task_execution_time_device_func")
+            df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.vl_dataset_memory_size==vl_dataset_memory_size)].sort_values("vl_intra_task_execution_time_device_func")
+            plt.figure()
+            fig, ax = plt.subplots()
+            ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_intra_task_execution_time_device_func'], color='C3', hatch='.', zorder=3)
+            ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_intra_task_execution_time_device_func'], color='C3', hatch='x', zorder=3)
+            plt.legend(['CPU','GPU'])
+            plt.xlabel('Device')
+            plt.ylabel('Average Intra-Task (device func) Time (s)')
+            plt.title('Average Intra-Task (device func) Time per Device - '+vl_dataset_memory_size_title, fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+str(vl_dataset_memory_size)+'_dataset_overview_avg_intra_task_execution_time_device_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
 
     elif mode == 4:
@@ -330,72 +820,80 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
         df_filtered_mean = df_filtered_mean[["ds_device","ds_parameter_attribute","vl_total_execution_time","vl_inter_task_execution_time","vl_intra_task_execution_time_full_func","vl_intra_task_execution_time_device_func"]]
         
-        ds_parameter_attribute = "1.00"
-        ds_parameter_attribute_title = str(float(ds_parameter_attribute)*100) + "% of dataset"
+        ds_parameter_attribute_list = ["0.25","0.50","0.75","1.00"]
 
-        df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_total_execution_time")
-        df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_total_execution_time")
+        for ds_parameter_attribute in ds_parameter_attribute_list:
 
-        
-        # OVERVIEW OF ALL EXECUTION TIMES
-        plt.figure(1)
-        ax = plt.gca()
-        df_filtered_mean.set_index('ds_device').plot(kind = 'bar')
-        plt.legend(['Total Execution Time', 'Inter Task Execution Time', 'Intra Task Execution Time (Full Function)', 'Intra Task Execution Time (Device Function)'])
-        plt.xlabel('Device')
-        plt.ylabel('Average Execution Times (s)')
-        plt.title('Average Execution Times per Device - '+ds_parameter_attribute_title, fontstyle='italic',fontweight="bold")
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_parameter_attribute+'_dataset_overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            ds_parameter_attribute_title = str(float(ds_parameter_attribute)*100) + "% of dataset"
 
-        # VL_TOTAL_EXECUTION_TIME
-        plt.figure(2)
-        fig, ax = plt.subplots()
-        ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_total_execution_time'], color='C0', hatch='.')
-        ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_total_execution_time'], color='C0', hatch='|')
-        plt.legend(['Total Execution Time CPU','Total Execution Time GPU'])
-        plt.xlabel('Device')
-        plt.ylabel('Average Total Execution Time (s)')
-        plt.title('Average Total Execution Time per Device - '+ds_parameter_attribute_title, fontstyle='italic',fontweight="bold")
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_parameter_attribute+'_dataset_overview_avg_total_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_total_execution_time")
+            df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_total_execution_time")
 
-        # VL_INTER_TASK_EXECUTION_TIME
-        df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_inter_task_execution_time")
-        df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_inter_task_execution_time")
-        plt.figure(3)
-        fig, ax = plt.subplots()
-        ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_inter_task_execution_time'], color='C1', hatch='.')
-        ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_inter_task_execution_time'], color='C1', hatch='x')
-        plt.legend(['Inter Task Execution Time CPU','Inter Task Execution Time GPU'])
-        plt.xlabel('Device')
-        plt.ylabel('Average Inter-Task Time (s)')
-        plt.title('Average Inter-Task Time per Device - '+ds_parameter_attribute_title, fontstyle='italic',fontweight="bold")
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_parameter_attribute+'_dataset_overview_avg_inter_task_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            
+            # OVERVIEW OF ALL EXECUTION TIMES
+            plt.figure()
+            ax = plt.gca()
+            df_filtered_mean.set_index('ds_device').plot(kind = 'bar', zorder=3)
+            plt.legend(['Total Execution Time', 'Inter Task Execution Time', 'Intra Task Execution Time (Full Function)', 'Intra Task Execution Time (Device Function)'])
+            plt.xlabel('Device')
+            plt.ylabel('Average Execution Times (s)')
+            plt.title('Average Execution Times per Device - Block '+ds_parameter_attribute_title, fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_parameter_attribute+'_dataset_overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
-        # VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC
-        df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_intra_task_execution_time_full_func")
-        df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_intra_task_execution_time_full_func")
-        plt.figure(4)
-        fig, ax = plt.subplots()
-        ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_intra_task_execution_time_full_func'], color='C2', hatch='.')
-        ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_intra_task_execution_time_full_func'], color='C2', hatch='x')
-        plt.legend(['Intra Task Execution Time (Full Function) CPU','Intra Task Execution Time (Full Function) GPU'])
-        plt.xlabel('Device')
-        plt.ylabel('Average Intra-Task (full func) Time (s)')
-        plt.title('Average Intra-Task (full func)Time per Device - '+ds_parameter_attribute_title, fontstyle='italic',fontweight="bold")
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_parameter_attribute+'_dataset_overview_avg_intra_task_execution_time_full_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            # VL_TOTAL_EXECUTION_TIME
+            plt.figure()
+            fig, ax = plt.subplots()
+            ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_total_execution_time'], color='C0', hatch='.', zorder=3)
+            ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_total_execution_time'], color='C0', hatch='|', zorder=3)
+            plt.legend(['CPU','GPU'])
+            plt.xlabel('Device')
+            plt.ylabel('Average Total Execution Time (s)')
+            plt.title('Average Total Execution Time per Device - Block '+ds_parameter_attribute_title, fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_parameter_attribute+'_dataset_overview_avg_total_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
-        # VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
-        df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_intra_task_execution_time_device_func")
-        df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_intra_task_execution_time_device_func")
-        plt.figure(5)
-        fig, ax = plt.subplots()
-        ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_intra_task_execution_time_device_func'], color='C3', hatch='.')
-        ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_intra_task_execution_time_device_func'], color='C3', hatch='x')
-        plt.legend(['Intra Task Execution Time (Device Function) CPU','Intra Task Execution Time (Device Function) GPU'])
-        plt.xlabel('Device')
-        plt.ylabel('Average Intra-Task (device func) Time (s)')
-        plt.title('Average Intra-Task (device func) Time per Device - '+ds_parameter_attribute_title, fontstyle='italic',fontweight="bold")
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_parameter_attribute+'_dataset_overview_avg_intra_task_execution_time_device_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            # VL_INTER_TASK_EXECUTION_TIME
+            df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_inter_task_execution_time")
+            df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_inter_task_execution_time")
+            plt.figure()
+            fig, ax = plt.subplots()
+            ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_inter_task_execution_time'], color='C1', hatch='.', zorder=3)
+            ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_inter_task_execution_time'], color='C1', hatch='x', zorder=3)
+            plt.legend(['CPU','GPU'])
+            plt.xlabel('Device')
+            plt.ylabel('Average Inter-Task Time (s)')
+            plt.title('Average Inter-Task Time per Device - Block '+ds_parameter_attribute_title, fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_parameter_attribute+'_dataset_overview_avg_inter_task_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+            # VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC
+            df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_intra_task_execution_time_full_func")
+            df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_intra_task_execution_time_full_func")
+            plt.figure()
+            fig, ax = plt.subplots()
+            ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_intra_task_execution_time_full_func'], color='C2', hatch='.', zorder=3)
+            ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_intra_task_execution_time_full_func'], color='C2', hatch='x', zorder=3)
+            plt.legend(['CPU','GPU'])
+            plt.xlabel('Device')
+            plt.ylabel('Average Intra-Task (full func) Time (s)')
+            plt.title('Average Intra-Task (full func)Time per Device - Block '+ds_parameter_attribute_title, fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_parameter_attribute+'_dataset_overview_avg_intra_task_execution_time_full_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+            # VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
+            df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_intra_task_execution_time_device_func")
+            df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_intra_task_execution_time_device_func")
+            plt.figure()
+            fig, ax = plt.subplots()
+            ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_intra_task_execution_time_device_func'], color='C3', hatch='.', zorder=3)
+            ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_intra_task_execution_time_device_func'], color='C3', hatch='x', zorder=3)
+            plt.legend(['CPU','GPU'])
+            plt.xlabel('Device')
+            plt.ylabel('Average Intra-Task (device func) Time (s)')
+            plt.title('Average Intra-Task (device func) Time per Device - Block '+ds_parameter_attribute_title, fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_parameter_attribute+'_dataset_overview_avg_intra_task_execution_time_device_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
 
     elif mode == 5:
@@ -406,79 +904,86 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
         df_filtered_mean = df_filtered_mean[["ds_device","ds_parameter_attribute","vl_total_execution_time","vl_inter_task_execution_time","vl_intra_task_execution_time_full_func","vl_intra_task_execution_time_device_func"]]
         
-        ds_parameter_attribute = "MAX_INTER_MIN_INTRA"
+        ds_parameter_attribute_list = ["MIN_INTER_MAX_INTRA", "MAX_INTER_MIN_INTRA"]
 
-        if ds_parameter_attribute == "MIN_INTER_MAX_INTRA":
-            ds_parameter_attribute_title = "Min. Inter-parallelism"
-        elif ds_parameter_attribute == "MAX_INTER_MIN_INTRA":
-            ds_parameter_attribute_title = "Max. Inter-parallelism"
-        else:
-            print("Invalid ds_parameter_attribute")
-            return
+        for ds_parameter_attribute in ds_parameter_attribute_list:
 
-        df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_total_execution_time")
-        df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_total_execution_time")
+            if ds_parameter_attribute == "MIN_INTER_MAX_INTRA":
+                ds_parameter_attribute_title = "Min. Inter-parallelism"
+            elif ds_parameter_attribute == "MAX_INTER_MIN_INTRA":
+                ds_parameter_attribute_title = "Max. Inter-parallelism"
+            else:
+                print("Invalid ds_parameter_attribute")
+                return
 
-        
-        # OVERVIEW OF ALL EXECUTION TIMES
-        plt.figure(1)
-        ax = plt.gca()
-        df_filtered_mean.set_index('ds_device').plot(kind = 'bar')
-        plt.legend(['Total Execution Time', 'Inter Task Execution Time', 'Intra Task Execution Time (Full Function)', 'Intra Task Execution Time (Device Function)'])
-        plt.xlabel('Device')
-        plt.ylabel('Average Execution Times (s)')
-        plt.title('Average Execution Times per Device - '+ds_parameter_attribute_title, fontstyle='italic',fontweight="bold")
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_parameter_attribute+'_dataset_overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_total_execution_time")
+            df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_total_execution_time")
 
-        # VL_TOTAL_EXECUTION_TIME
-        plt.figure(2)
-        fig, ax = plt.subplots()
-        ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_total_execution_time'], color='C0', hatch='.')
-        ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_total_execution_time'], color='C0', hatch='|')
-        plt.legend(['Total Execution Time CPU','Total Execution Time GPU'])
-        plt.xlabel('Device')
-        plt.ylabel('Average Total Execution Time (s)')
-        plt.title('Average Total Execution Time per Device - '+ds_parameter_attribute_title, fontstyle='italic',fontweight="bold")
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_parameter_attribute+'_dataset_overview_avg_total_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            
+            # OVERVIEW OF ALL EXECUTION TIMES
+            plt.figure()
+            ax = plt.gca()
+            df_filtered_mean.set_index('ds_device').plot(kind = 'bar', zorder=3)
+            plt.legend(['Total Execution Time', 'Inter Task Execution Time', 'Intra Task Execution Time (Full Function)', 'Intra Task Execution Time (Device Function)'])
+            plt.xlabel('Device')
+            plt.ylabel('Average Execution Times (s)')
+            plt.title('Average Execution Times per Device - '+ds_parameter_attribute_title, fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_parameter_attribute+'_dataset_overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
-        # VL_INTER_TASK_EXECUTION_TIME
-        df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_inter_task_execution_time")
-        df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_inter_task_execution_time")
-        plt.figure(3)
-        fig, ax = plt.subplots()
-        ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_inter_task_execution_time'], color='C1', hatch='.')
-        ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_inter_task_execution_time'], color='C1', hatch='x')
-        plt.legend(['Inter Task Execution Time CPU','Inter Task Execution Time GPU'])
-        plt.xlabel('Device')
-        plt.ylabel('Average Inter-Task Time (s)')
-        plt.title('Average Inter-Task Time per Device - '+ds_parameter_attribute_title, fontstyle='italic',fontweight="bold")
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_parameter_attribute+'_dataset_overview_avg_inter_task_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            # VL_TOTAL_EXECUTION_TIME
+            plt.figure()
+            fig, ax = plt.subplots()
+            ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_total_execution_time'], color='C0', hatch='.', zorder=3)
+            ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_total_execution_time'], color='C0', hatch='|', zorder=3)
+            plt.legend(['CPU','GPU'])
+            plt.xlabel('Device')
+            plt.ylabel('Average Total Execution Time (s)')
+            plt.title('Average Total Execution Time per Device - '+ds_parameter_attribute_title, fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_parameter_attribute+'_dataset_overview_avg_total_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
-        # VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC
-        df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_intra_task_execution_time_full_func")
-        df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_intra_task_execution_time_full_func")
-        plt.figure(4)
-        fig, ax = plt.subplots()
-        ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_intra_task_execution_time_full_func'], color='C2', hatch='.')
-        ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_intra_task_execution_time_full_func'], color='C2', hatch='x')
-        plt.legend(['Intra Task Execution Time (Full Function) CPU','Intra Task Execution Time (Full Function) GPU'])
-        plt.xlabel('Device')
-        plt.ylabel('Average Intra-Task (full func) Time (s)')
-        plt.title('Average Intra-Task (full func)Time per Device - '+ds_parameter_attribute_title, fontstyle='italic',fontweight="bold")
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_parameter_attribute+'_dataset_overview_avg_intra_task_execution_time_full_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            # VL_INTER_TASK_EXECUTION_TIME
+            df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_inter_task_execution_time")
+            df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_inter_task_execution_time")
+            plt.figure()
+            fig, ax = plt.subplots()
+            ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_inter_task_execution_time'], color='C1', hatch='.', zorder=3)
+            ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_inter_task_execution_time'], color='C1', hatch='x', zorder=3)
+            plt.legend(['CPU','GPU'])
+            plt.xlabel('Device')
+            plt.ylabel('Average Inter-Task Time (s)')
+            plt.title('Average Inter-Task Time per Device - '+ds_parameter_attribute_title, fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_parameter_attribute+'_dataset_overview_avg_inter_task_execution_time_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
-        # VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
-        df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_intra_task_execution_time_device_func")
-        df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_intra_task_execution_time_device_func")
-        plt.figure(5)
-        fig, ax = plt.subplots()
-        ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_intra_task_execution_time_device_func'], color='C3', hatch='.')
-        ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_intra_task_execution_time_device_func'], color='C3', hatch='x')
-        plt.legend(['Intra Task Execution Time (Device Function) CPU','Intra Task Execution Time (Device Function) GPU'])
-        plt.xlabel('Device')
-        plt.ylabel('Average Intra-Task (device func) Time (s)')
-        plt.title('Average Intra-Task (device func) Time per Device - '+ds_parameter_attribute_title, fontstyle='italic',fontweight="bold")
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_parameter_attribute+'_dataset_overview_avg_intra_task_execution_time_device_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            # VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC
+            df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_intra_task_execution_time_full_func")
+            df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_intra_task_execution_time_full_func")
+            plt.figure()
+            fig, ax = plt.subplots()
+            ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_intra_task_execution_time_full_func'], color='C2', hatch='.', zorder=3)
+            ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_intra_task_execution_time_full_func'], color='C2', hatch='x', zorder=3)
+            plt.legend(['CPU','GPU'])
+            plt.xlabel('Device')
+            plt.ylabel('Average Intra-Task (full func) Time (s)')
+            plt.title('Average Intra-Task (full func)Time per Device - '+ds_parameter_attribute_title, fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_parameter_attribute+'_dataset_overview_avg_intra_task_execution_time_full_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+            # VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
+            df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_intra_task_execution_time_device_func")
+            df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU") & (df_filtered_mean.ds_parameter_attribute==ds_parameter_attribute)].sort_values("vl_intra_task_execution_time_device_func")
+            plt.figure()
+            fig, ax = plt.subplots()
+            ax.bar(df_filtered_mean_cpu['ds_device'], df_filtered_mean_cpu['vl_intra_task_execution_time_device_func'], color='C3', hatch='.', zorder=3)
+            ax.bar(df_filtered_mean_gpu['ds_device'], df_filtered_mean_gpu['vl_intra_task_execution_time_device_func'], color='C3', hatch='x', zorder=3)
+            plt.legend(['CPU','GPU'])
+            plt.xlabel('Device')
+            plt.ylabel('Average Intra-Task (device func) Time (s)')
+            plt.title('Average Intra-Task (device func) Time per Device - '+ds_parameter_attribute_title, fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0)
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_parameter_attribute+'_dataset_overview_avg_intra_task_execution_time_device_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
     
     elif mode == 6:
@@ -617,6 +1122,127 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
             plt.grid(zorder=0)
             plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=len(df_filtered_mean["ds_parameter_attribute"].drop_duplicates()))
             plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+ds_dataset+'_avg_intra_task_execution_time_device_func_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+
+    elif mode == 8:
+        
+        print("\nMode ",mode,": Ploting an overview of CPU speedup over GPU per vl_dataset_memory_size, ds_parameter_type, ds_parameter_attribute, ds_dataset")
+
+        # Speedup CPU Per vl_dataset_memory_size
+        df_filtered_mean = df_filtered.groupby(["vl_dataset_memory_size"], as_index=False).mean()
+        df_filtered_mean = df_filtered_mean[["vl_dataset_memory_size","speedup_cpu_total_execution_time","speedup_cpu_inter_task_execution_time","speedup_cpu_intra_task_execution_time_full_func","speedup_cpu_intra_task_execution_time_device_func"]].sort_values(by=["speedup_cpu_total_execution_time"], ascending=False)
+
+        plt.figure(1)
+        ax = plt.gca()
+        df_filtered_mean.set_index('vl_dataset_memory_size').plot(kind = 'bar', hatch='.', zorder=3)
+        plt.legend(['Total', 'Inter', 'Intra (Full Function)', 'Intra (Device Function)'])
+        plt.xlabel('Data Set Size (B)')
+        plt.ylabel('Speedup')
+        plt.title('Speedup CPU over GPU x Data Set Size',fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_speedup_cpu_per_dataset_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+    
+        # Speedup CPU Per ds_parameter_type
+        df_filtered_mean = df_filtered.groupby(["ds_parameter_type"], as_index=False).mean()
+        df_filtered_mean = df_filtered_mean[["ds_parameter_type","speedup_cpu_total_execution_time","speedup_cpu_inter_task_execution_time","speedup_cpu_intra_task_execution_time_full_func","speedup_cpu_intra_task_execution_time_device_func"]].sort_values(by=["speedup_cpu_total_execution_time"], ascending=False)
+
+        plt.figure(2)
+        ax = plt.gca()
+        df_filtered_mean.set_index('ds_parameter_type').plot(kind = 'bar', hatch='.', zorder=3)
+        plt.legend(['Total', 'Inter', 'Intra (Full Function)', 'Intra (Device Function)'])
+        plt.xlabel('Parameter Type')
+        plt.ylabel('Speedup')
+        plt.title('Speedup CPU over GPU x Parameter Type',fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_speedup_cpu_per_ds_parameter_type_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+    
+        # Speedup CPU Per ds_parameter_attribute
+        df_filtered_mean = df_filtered.groupby(["ds_parameter_attribute"], as_index=False).mean()
+        df_filtered_mean = df_filtered_mean[["ds_parameter_attribute","speedup_cpu_total_execution_time","speedup_cpu_inter_task_execution_time","speedup_cpu_intra_task_execution_time_full_func","speedup_cpu_intra_task_execution_time_device_func"]].sort_values(by=["speedup_cpu_total_execution_time"], ascending=False)
+
+        plt.figure(3)
+        ax = plt.gca()
+        df_filtered_mean.set_index('ds_parameter_attribute').plot(kind = 'bar', hatch='.', zorder=3)
+        plt.legend(['Total', 'Inter', 'Intra (Full Function)', 'Intra (Device Function)'])
+        plt.xlabel('Block Dimension')
+        plt.ylabel('Speedup')
+        plt.title('Speedup CPU over GPU x Block Dimension',fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_speedup_cpu_per_ds_parameter_attribute_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+        # Speedup CPU Per ds_dataset
+        df_filtered_mean = df_filtered.groupby(["ds_dataset"], as_index=False).mean()
+        df_filtered_mean = df_filtered_mean[["ds_dataset","speedup_cpu_total_execution_time","speedup_cpu_inter_task_execution_time","speedup_cpu_intra_task_execution_time_full_func","speedup_cpu_intra_task_execution_time_device_func"]].sort_values(by=["speedup_cpu_total_execution_time"], ascending=False)
+
+        plt.figure(4)
+        ax = plt.gca()
+        df_filtered_mean.set_index('ds_dataset').plot(kind = 'bar', hatch='.', zorder=3)
+        plt.legend(['Total', 'Inter', 'Intra (Full Function)', 'Intra (Device Function)'])
+        plt.xlabel('Data Set Type')
+        plt.ylabel('Speedup')
+        plt.title('Speedup CPU over GPU x Data Set Type',fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_speedup_cpu_per_ds_dataset_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+    elif mode == 9:
+        
+        print("\nMode ",mode,": Ploting an overview of GPU speedup over CPU per vl_dataset_memory_size, ds_parameter_type, ds_parameter_attribute, ds_dataset")
+
+        # Speedup GPU Per vl_dataset_memory_size
+        df_filtered_mean = df_filtered.groupby(["vl_dataset_memory_size"], as_index=False).mean()
+        df_filtered_mean = df_filtered_mean[["vl_dataset_memory_size","speedup_gpu_total_execution_time","speedup_gpu_inter_task_execution_time","speedup_gpu_intra_task_execution_time_full_func","speedup_gpu_intra_task_execution_time_device_func"]].sort_values(by=["speedup_gpu_total_execution_time"], ascending=False)
+
+        plt.figure(1)
+        ax = plt.gca()
+        df_filtered_mean.set_index('vl_dataset_memory_size').plot(kind = 'bar', hatch='.', zorder=3)
+        plt.legend(['Total', 'Inter', 'Intra (Full Function)', 'Intra (Device Function)'])
+        plt.xlabel('Data Set Size (B)')
+        plt.ylabel('Speedup')
+        plt.title('Speedup GPU over CPU x Data Set Size',fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_speedup_gpu_per_dataset_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+    
+        # Speedup CPU Per ds_parameter_type
+        df_filtered_mean = df_filtered.groupby(["ds_parameter_type"], as_index=False).mean()
+        df_filtered_mean = df_filtered_mean[["ds_parameter_type","speedup_gpu_total_execution_time","speedup_gpu_inter_task_execution_time","speedup_gpu_intra_task_execution_time_full_func","speedup_gpu_intra_task_execution_time_device_func"]].sort_values(by=["speedup_gpu_total_execution_time"], ascending=False)
+
+        plt.figure(2)
+        ax = plt.gca()
+        df_filtered_mean.set_index('ds_parameter_type').plot(kind = 'bar', hatch='.', zorder=3)
+        plt.legend(['Total', 'Inter', 'Intra (Full Function)', 'Intra (Device Function)'])
+        plt.xlabel('Parameter Type')
+        plt.ylabel('Speedup')
+        plt.title('Speedup GPU over CPU x Parameter Type',fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_speedup_gpu_per_ds_parameter_type_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+    
+        # Speedup CPU Per ds_parameter_attribute
+        df_filtered_mean = df_filtered.groupby(["ds_parameter_attribute"], as_index=False).mean()
+        df_filtered_mean = df_filtered_mean[["ds_parameter_attribute","speedup_gpu_total_execution_time","speedup_gpu_inter_task_execution_time","speedup_gpu_intra_task_execution_time_full_func","speedup_gpu_intra_task_execution_time_device_func"]].sort_values(by=["speedup_gpu_total_execution_time"], ascending=False)
+
+        plt.figure(3)
+        ax = plt.gca()
+        df_filtered_mean.set_index('ds_parameter_attribute').plot(kind = 'bar', hatch='.', zorder=3)
+        plt.legend(['Total', 'Inter', 'Intra (Full Function)', 'Intra (Device Function)'])
+        plt.xlabel('Block Dimension')
+        plt.ylabel('Speedup')
+        plt.title('Speedup GPU over CPU x Block Dimension',fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_speedup_gpu_per_ds_parameter_attribute_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+        # Speedup CPU Per ds_dataset
+        df_filtered_mean = df_filtered.groupby(["ds_dataset"], as_index=False).mean()
+        df_filtered_mean = df_filtered_mean[["ds_dataset","speedup_gpu_total_execution_time","speedup_gpu_inter_task_execution_time","speedup_gpu_intra_task_execution_time_full_func","speedup_gpu_intra_task_execution_time_device_func"]].sort_values(by=["speedup_gpu_total_execution_time"], ascending=False)
+
+        plt.figure(4)
+        ax = plt.gca()
+        df_filtered_mean.set_index('ds_dataset').plot(kind = 'bar', hatch='.', zorder=3)
+        plt.legend(['Total', 'Inter', 'Intra (Full Function)', 'Intra (Device Function)'])
+        plt.xlabel('Data Set Type')
+        plt.ylabel('Speedup')
+        plt.title('Speedup GPU over CPU x Data Set Type',fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_speedup_gpu_per_ds_dataset_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
     else:
 
