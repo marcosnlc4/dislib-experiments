@@ -1,6 +1,7 @@
 import psycopg2
 import pandas as pd
 import matplotlib.pyplot as plt
+import seaborn as sns
 from pathlib import Path
 from config import open_connection, close_connection
 import numpy as np
@@ -13,6 +14,8 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
     cur, conn = open_connection()
 
     # Set sql query according to mode
+
+    # CPU SPEEDUP
     if mode == 8:
         sql_query = """
                         WITH T_CPU AS (
@@ -142,6 +145,8 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                         FROM T_CPU INNER JOIN T_GPU ON (T_CPU.CD_PARAMETER = T_GPU.CD_PARAMETER)
                         WHERE
                         T_CPU.VL_TOTAL_EXECUTION_TIME < T_GPU.VL_TOTAL_EXECUTION_TIME;"""
+
+    # GPU SPEEDUP
     elif mode == 9:
         sql_query = """
                         WITH T_CPU AS (
@@ -277,7 +282,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                         --AND T_GPU.DS_PARAMETER_TYPE = 'VAR_BLOCK_CAPACITY_SIZE'
                         --AND T_GPU.DS_PARAMETER_TYPE = 'VAR_PARALLELISM_LEVEL'
                         ORDER BY T_CPU.VL_TOTAL_EXECUTION_TIME/T_GPU.VL_TOTAL_EXECUTION_TIME DESC;"""
-    # MODE 8.1: FIND WHERE CPUs HAVE A LOWER LATENCY THAN GPUs
+    # FIND WHERE CPUs HAVE A LOWER LATENCY THAN GPUs
     elif mode == 10:
         sql_query = """
                         SELECT
@@ -472,7 +477,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                 --AND T_CPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC < T_GPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
                             )
                         ) SBQ;"""
-
+    # OTHER MODES
     else:
         sql_query = """SELECT
                             A.ID_EXPERIMENT,
@@ -549,6 +554,8 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                     (df["ds_algorithm"] == ds_algorithm.upper()) # FIXED VALUE
                     & (df["nr_iterations"] == int(nr_iterations)) # FIXED VALUE
                     & (df["ds_resource"] == ds_resource.upper()) # FIXED VALUE
+                    # & (df["ds_dataset"].isin(["S_A_1","S_A_2","S_A_3","S_A_4","S_B_1","S_B_2","S_B_3","S_B_4","S_C_1","S_C_2","S_C_3","S_C_4"])) # FIXED VALUE
+                    & (df["ds_dataset"].isin(["S_AA_1","S_AA_2","S_AA_3","S_AA_4","S_BB_1","S_BB_2","S_BB_3","S_BB_4","S_CC_1","S_CC_2","S_CC_3","S_CC_4"])) # FIXED VALUE
                     # & (df["ds_parameter_type"] == "VAR_BLOCK_CAPACITY_SIZE") # 1.1, 1.2, 1.3, 1.4
                     # & (df["ds_parameter_type"] == "VAR_PARALLELISM_LEVEL") # 2.1, 2.2
                     # & (df["ds_parameter_attribute"] == "0.25") # 1.1
@@ -1193,6 +1200,26 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         plt.grid(zorder=0)
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_speedup_cpu_per_ds_dataset_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
+
+        # Heatmap CPU Speedups over GPU
+        df_filtered_heatmap = df_filtered[["ds_dataset","ds_parameter_attribute","speedup_cpu_total_execution_time"]].sort_values(by=["speedup_cpu_total_execution_time"], ascending=False)
+        df_filtered_heatmap['ds_parameter_attribute'] = np.where(df_filtered_heatmap['ds_parameter_attribute'] == 'MIN_INTER_MAX_INTRA', 'MIN_I',
+                np.where(df_filtered_heatmap['ds_parameter_attribute'] == 'MAX_INTER_MIN_INTRA', 'MAX_I', df_filtered_heatmap['ds_parameter_attribute']))
+
+        x = pd.DataFrame(df_filtered_heatmap['ds_parameter_attribute'].unique())
+        heatmap_pt = pd.pivot_table(df_filtered_heatmap,values ='speedup_cpu_total_execution_time', index=['ds_dataset'], columns='ds_parameter_attribute')
+        
+        plt.figure(5)
+        fig, ax = plt.subplots(figsize=(16,8))
+        sns.set()
+        sns.heatmap(heatmap_pt, cmap='YlGnBu')
+        plt.xticks(rotation=15)
+        plt.xlabel('Block Dimension')
+        plt.ylabel('Data Set Type')
+        plt.title('Speedup CPU over GPU',fontstyle='italic',fontweight="bold")
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_heatmap_speedup_cpu_per_ds_dataset_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+
     elif mode == 9:
         
         print("\nMode ",mode,": Ploting an overview of GPU speedup over CPU per vl_dataset_memory_size, ds_parameter_type, ds_parameter_attribute, ds_dataset")
@@ -1258,7 +1285,23 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         plt.grid(zorder=0)
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_speedup_gpu_per_ds_dataset_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
+        # Heatmap GPU Speedups over CPU
+        df_filtered_heatmap = df_filtered[["ds_dataset","ds_parameter_attribute","speedup_gpu_total_execution_time"]].sort_values(by=["speedup_gpu_total_execution_time"], ascending=False)
+        df_filtered_heatmap['ds_parameter_attribute'] = np.where(df_filtered_heatmap['ds_parameter_attribute'] == 'MIN_INTER_MAX_INTRA', 'MIN_I',
+                np.where(df_filtered_heatmap['ds_parameter_attribute'] == 'MAX_INTER_MIN_INTRA', 'MAX_I', df_filtered_heatmap['ds_parameter_attribute']))
 
+        x = pd.DataFrame(df_filtered_heatmap['ds_parameter_attribute'].unique())
+        heatmap_pt = pd.pivot_table(df_filtered_heatmap,values ='speedup_gpu_total_execution_time', index=['ds_dataset'], columns='ds_parameter_attribute')
+        
+        plt.figure(5)
+        fig, ax = plt.subplots(figsize=(16,8))
+        sns.set()
+        sns.heatmap(heatmap_pt, cmap='YlGnBu')
+        plt.xticks(rotation=15)
+        plt.xlabel('Block Dimension')
+        plt.ylabel('Data Set Type')
+        plt.title('Speedup GPU over CPU',fontstyle='italic',fontweight="bold")
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_heatmap_speedup_gpu_per_ds_dataset_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
         # # Speedup CPU Per ds_parameter_attribute
         # df_filtered_mean = df_filtered_mean[["vl_dataset_memory_size","ds_dataset","ds_parameter_attribute","speedup_gpu_total_execution_time","speedup_gpu_inter_task_execution_time","speedup_gpu_intra_task_execution_time_full_func","speedup_gpu_intra_task_execution_time_device_func"]].sort_values(by=["speedup_gpu_total_execution_time"], ascending=False)
