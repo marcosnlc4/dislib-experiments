@@ -27,10 +27,13 @@ def main():
     df_parameters = df_parameters[
                                     (df_parameters["ds_algorithm"] == "KMEANS") # FIXED VALUE
                                     & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
-                                    & (df_parameters["ds_resource"] == "MINOTAURO_1") # FIXED VALUE
+                                    & (df_parameters["ds_resource"] == "MINOTAURO_2") # FIXED VALUE
+                                    # & (df_parameters["ds_dataset"] == "S_AA_1" | df_parameters["ds_dataset"] == "S_AA_2" | df_parameters["ds_dataset"] == "S_AA_3" | df_parameters["ds_dataset"] == "S_AA_4" | df_parameters["ds_dataset"] == "S_BB_1" | df_parameters["ds_dataset"] == "S_BB_2" | df_parameters["ds_dataset"] == "S_BB_3" | df_parameters["ds_dataset"] == "S_BB_4" | df_parameters["ds_dataset"] == "S_CC_1" | df_parameters["ds_dataset"] == "S_CC_2" | df_parameters["ds_dataset"] == "S_CC_3" | df_parameters["ds_dataset"] == "S_CC_4") # FIXED VALUE
+                                    # & (df_parameters["ds_dataset"].isin(["S_A_1","S_A_2","S_A_3","S_A_4","S_B_1","S_B_2","S_B_3","S_B_4","S_C_1","S_C_2","S_C_3","S_C_4"])) # FIXED VALUE
+                                    & (df_parameters["ds_dataset"].isin(["S_AA_1","S_AA_2","S_AA_3","S_AA_4","S_BB_1","S_BB_2","S_BB_3","S_BB_4","S_CC_1","S_CC_2","S_CC_3","S_CC_4"])) # FIXED VALUE
                                     & (df_parameters["ds_parameter_type"] == "VAR_BLOCK_CAPACITY_SIZE") # 1.1, 1.2, 1.3, 1.4
                                     # & (df_parameters["ds_parameter_type"] == "VAR_PARALLELISM_LEVEL") # 2.1, 2.2
-                                    & (df_parameters["ds_parameter_attribute"] == "0.25") # 1.1
+                                    # & (df_parameters["ds_parameter_attribute"] == "0.25") # 1.1
                                     # & (df_parameters["ds_parameter_attribute"] == "0.50") # 1.2
                                     # & (df_parameters["ds_parameter_attribute"] == "0.75") # 1.3
                                     # & (df_parameters["ds_parameter_attribute"] == "1.00") # 1.4
@@ -39,6 +42,9 @@ def main():
                                     # & (df_parameters["vl_dataset_memory_size"] == 400) # 2.2.1
                                     # & (df_parameters["vl_dataset_memory_size"] == 400000) # 2.2.2
                                     # & (df_parameters["vl_dataset_memory_size"] == 400000000) # 2.2.3
+                                    # & (df_parameters["vl_dataset_memory_size"] == 720) # 2.2.1
+                                    # & (df_parameters["vl_dataset_memory_size"] == 720000) # 2.2.2
+                                    # & (df_parameters["vl_dataset_memory_size"] == 720000000) # 2.2.3
                                 ].sort_values(by=["id_parameter"])
 
 
