@@ -20,7 +20,7 @@ DECLARE
 									{1,_PARTIAL_SUM,1}
 								 }';
 	arr_id_device bigint[];
-	arr_cd_algorithm bigint[];
+	arr_id_algorithm bigint[];
 	arr_device_config bigint[];
 	-- Resource parameters (DS_RESOURCE, NR_NODES, NR_COMPUTING_UNITS_CPU, NR_COMPUTING_UNITS_GPU, VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT, VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT)
 	arr_resource_data text[] := '{
@@ -41,18 +41,18 @@ DECLARE
 									{S_C_2,400000000,FLOAT64,8,50000000,10000000,5,170},
 									{S_C_3,400000000,FLOAT64,8,50000000,5000000,10,170},
 									{S_C_4,400000000,FLOAT64,8,50000000,7071,7071,170},
-									{S_AA_1,720,FLOAT64,8,90,90,1,170},
-									{S_AA_2,720,FLOAT64,8,90,30,3,170},
-									{S_AA_3,720,FLOAT64,8,90,10,9,170},
-									{S_AA_4,720,FLOAT64,8,90,9,9,170},
-							  		{S_BB_1,720000,FLOAT64,8,90000,90000,1,170},
-									{S_BB_2,720000,FLOAT64,8,90000,30000,3,170},
-									{S_BB_3,720000,FLOAT64,8,90000,10000,9,170},
-									{S_BB_4,720000,FLOAT64,8,90000,300,300,170},
-							  		{S_CC_1,720000000,FLOAT64,8,90000000,90000000,1,170},
-									{S_CC_2,720000000,FLOAT64,8,90000000,30000000,3,170},
-									{S_CC_3,720000000,FLOAT64,8,90000000,10000000,9,170},
-									{S_CC_4,720000000,FLOAT64,8,90000000,9486,9486,170}
+									{S_AA_1,640,FLOAT64,8,80,80,1,170},
+									{S_AA_2,640,FLOAT64,8,80,20,4,170},
+									{S_AA_3,640,FLOAT64,8,80,5,16,170},
+									{S_AA_4,640,FLOAT64,8,80,8,8,170},
+							  		{S_BB_1,640000,FLOAT64,8,80000,80000,1,170},
+									{S_BB_2,640000,FLOAT64,8,80000,20000,4,170},
+									{S_BB_3,640000,FLOAT64,8,80000,5000,16,170},
+									{S_BB_4,640000,FLOAT64,8,80000,282,282,170},
+							  		{S_CC_1,640000000,FLOAT64,8,80000000,80000000,1,170},
+									{S_CC_2,640000000,FLOAT64,8,80000000,20000000,4,170},
+									{S_CC_3,640000000,FLOAT64,8,80000000,5000000,16,170},
+									{S_CC_4,640000000,FLOAT64,8,80000000,8944,8944,170}
 								}';
 	-- Number of repetitions for each parameter set
 	arr_nr_iteration bigint[] := '{
@@ -85,11 +85,12 @@ DECLARE
 	arr_text_iterator text[];
 	text_iterator text;
 	bigint_iterator bigint;
+	id_algorithm_iterator bigint;
 
 BEGIN
-
-	SET search_path = user_dev,schema_dev;	
 	
+	SET search_path = user_dev,schema_dev;
+
 	--DEVICE TABLE
 	FOREACH text_iterator IN ARRAY arr_ds_device
 	LOOP
@@ -133,20 +134,24 @@ BEGIN
 		
 		var_id_algorithm := (SELECT DISTINCT ID_ALGORITHM FROM ALGORITHM WHERE ID_ALGORITHM = cast(arr_text_iterator[3] AS BIGINT));
 		
-		IF EXISTS(SELECT FROM FUNCTION WHERE CD_FUNCTION = cast(arr_text_iterator[1] AS BIGINT) AND DS_FUNCTION = arr_text_iterator[2] AND ID_DEVICE = var_id_algorithm AND ID_ALGORITHM = var_id_algorithm)
-		THEN
+		FOREACH bigint_iterator IN ARRAY arr_id_device
+		LOOP
 		
-			CONTINUE;
+			IF EXISTS(SELECT FROM FUNCTION WHERE CD_FUNCTION = cast(arr_text_iterator[1] AS BIGINT) AND DS_FUNCTION = arr_text_iterator[2] AND ID_DEVICE = bigint_iterator AND ID_ALGORITHM = var_id_algorithm)
+			THEN
+
+				CONTINUE;
+
+			ELSE
 			
-		ELSE
+					INSERT INTO FUNCTION(ID_FUNCTION,CD_FUNCTION,DS_FUNCTION,ID_DEVICE,ID_ALGORITHM)
+					VALUES
+					(DEFAULT,cast(arr_text_iterator[1] AS BIGINT), arr_text_iterator[2],bigint_iterator,var_id_algorithm);
+
+			END IF;
+			
+		END LOOP;
 		
-			FOREACH bigint_iterator IN ARRAY arr_id_device
-			LOOP
-				INSERT INTO FUNCTION(ID_FUNCTION,CD_FUNCTION,DS_FUNCTION,ID_DEVICE,ID_ALGORITHM)
-				VALUES
-				(DEFAULT,cast(arr_text_iterator[1] AS BIGINT), arr_text_iterator[2],bigint_iterator,var_id_algorithm);
-			END LOOP;
-		END IF;
 	END LOOP;
 	
 	
@@ -157,10 +162,10 @@ BEGIN
 	ALTER SEQUENCE configuration_id_configuration_seq RESTART WITH 1;
 		
 	-- SELECT AVAILABLE ALGORITHMS
-	arr_cd_algorithm := ARRAY(SELECT DISTINCT A.ID_ALGORITHM FROM ALGORITHM A ORDER BY A.ID_ALGORITHM);
+	arr_id_algorithm := ARRAY(SELECT DISTINCT A.ID_ALGORITHM FROM ALGORITHM A ORDER BY A.ID_ALGORITHM);
 	
 	-- FOR EACH ALGORITHM
-	FOREACH bigint_iterator IN ARRAY arr_cd_algorithm
+	FOREACH bigint_iterator IN ARRAY arr_id_algorithm
 	LOOP
 								
 		-- GET THE TOTAL NUMBER OF FUNCTIONS OF AN ALGORITHM
@@ -291,25 +296,31 @@ BEGIN
 	
 	-- PARAMETER TABLE
 	-- SELECT AVAILABLE RESOURCES
+	arr_id_algorithm := ARRAY(SELECT DISTINCT A.ID_ALGORITHM FROM ALGORITHM A ORDER BY A.ID_ALGORITHM);
 	arr_id_resource := ARRAY(SELECT DISTINCT ID_RESOURCE FROM RESOURCE ORDER BY ID_RESOURCE);
 	arr_id_dataset := ARRAY(SELECT DISTINCT ID_DATASET FROM DATASET ORDER BY ID_DATASET);
-	arr_cd_configuration := ARRAY(SELECT DISTINCT CD_CONFIGURATION FROM CONFIGURATION ORDER BY CD_CONFIGURATION);
 	arr_id_parameter_type := ARRAY(SELECT DISTINCT ID_PARAMETER_TYPE FROM PARAMETER_TYPE ORDER BY ID_PARAMETER_TYPE);
 	
 	-- INSERT NEW PARAMETERS
-	-- FOR EACH "NUMBER ITERATIONS"
-	FOREACH bigint_iterator IN ARRAY arr_nr_iteration
+	-- FOR EACH ALGORITHM
+	FOREACH id_algorithm_iterator IN ARRAY arr_id_algorithm
 	LOOP
-	
-		-- FOR EACH PARAMETER TYPE
-		FOREACH var_id_parameter_type IN ARRAY arr_id_parameter_type
+		arr_cd_configuration := ARRAY(SELECT DISTINCT CD_CONFIGURATION FROM CONFIGURATION WHERE ID_ALGORITHM = id_algorithm_iterator ORDER BY CD_CONFIGURATION);
+		-- FOR EACH "NUMBER ITERATIONS"
+		FOREACH bigint_iterator IN ARRAY arr_nr_iteration
 		LOOP
 
-			var_ds_parameter_type := (SELECT DISTINCT DS_PARAMETER_TYPE FROM PARAMETER_TYPE WHERE ID_PARAMETER_TYPE = var_id_parameter_type);
-			var_ds_parameter_attribute := (SELECT DISTINCT DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE WHERE ID_PARAMETER_TYPE = var_id_parameter_type);
-		
-			CALL PARAMETER_INSERT(bigint_iterator, var_id_parameter_type, var_ds_parameter_type, var_ds_parameter_attribute, arr_id_resource, arr_id_dataset, arr_cd_configuration);
-	
+			-- FOR EACH PARAMETER TYPE
+			FOREACH var_id_parameter_type IN ARRAY arr_id_parameter_type
+			LOOP
+
+				var_ds_parameter_type := (SELECT DISTINCT DS_PARAMETER_TYPE FROM PARAMETER_TYPE WHERE ID_PARAMETER_TYPE = var_id_parameter_type);
+				var_ds_parameter_attribute := (SELECT DISTINCT DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE WHERE ID_PARAMETER_TYPE = var_id_parameter_type);
+
+				CALL PARAMETER_INSERT(id_algorithm_iterator, bigint_iterator, var_id_parameter_type, var_ds_parameter_type, var_ds_parameter_attribute, arr_id_resource, arr_id_dataset, arr_cd_configuration);
+
+			END LOOP;
+
 		END LOOP;
 		
 	END LOOP;
@@ -326,7 +337,7 @@ AS $BODY$
 BEGIN
 
 	SET search_path = user_dev,schema_dev;
-	
+
 	-- DELETE TABLES
 	DELETE FROM EXPERIMENT;
 	DELETE FROM PARAMETER;
@@ -440,7 +451,7 @@ BEGIN
 		VL_BLOCK_MEMORY_SIZE_PERCENT_CPU DOUBLE PRECISION,
 		VL_BLOCK_MEMORY_SIZE_PERCENT_GPU DOUBLE PRECISION
 	);
-
+	
 	CREATE TABLE EXPERIMENT
 	(
 		ID_EXPERIMENT BIGSERIAL PRIMARY KEY,
@@ -520,8 +531,8 @@ DECLARE
     var_cd_configuration_2 bigint;
 
 BEGIN
-	
-	SET search_path = user_dev,schema_dev;
+
+	SET search_path = user_dev,schema_dev;	
 
     var_cd_configuration_2 := 
     (
@@ -566,9 +577,8 @@ $BODY$;
 
 
 
-
 -- PARAMETER_INSERT
-CREATE OR REPLACE PROCEDURE PARAMETER_INSERT(bigint_iterator bigint, var_id_parameter_type bigint, var_ds_parameter_type text, var_ds_parameter_attribute text, arr_id_resource bigint[], arr_id_dataset bigint[], arr_cd_configuration bigint[])
+CREATE OR REPLACE PROCEDURE PARAMETER_INSERT(id_algorithm_iterator bigint, bigint_iterator bigint, var_id_parameter_type bigint, var_ds_parameter_type text, var_ds_parameter_attribute text, arr_id_resource bigint[], arr_id_dataset bigint[], arr_cd_configuration bigint[])
 LANGUAGE plpgsql
 AS $BODY$
 #variable_conflict use_column
@@ -578,8 +588,14 @@ DECLARE
 	id_dataset_iterator bigint;
 	cd_configuration_iterator bigint;
 	id_parameter_type bigint;
+	id_configuration bigint;
+	arr_id_configuration bigint[];
 	
 	var_cd_parameter bigint;
+	
+	flag_increment_cd_parameter boolean default TRUE;
+	
+	flag_insert boolean default TRUE;
 
 BEGIN
 
@@ -601,65 +617,72 @@ BEGIN
 			FOREACH id_dataset_iterator IN ARRAY arr_id_dataset
 			LOOP
 			
-				var_cd_parameter := var_cd_parameter + 1;
+				IF (flag_increment_cd_parameter = TRUE)
+				THEN
+			
+					var_cd_parameter := var_cd_parameter + 1;
+				
+				END IF;
 			
 				-- FOR EACH CONFIGURATION
 				FOREACH cd_configuration_iterator IN ARRAY arr_cd_configuration
 				LOOP
+				
+				
+					arr_id_configuration := ARRAY(SELECT C.ID_CONFIGURATION FROM CONFIGURATION C WHERE C.CD_CONFIGURATION = cd_configuration_iterator AND C.ID_ALGORITHM = id_algorithm_iterator);
+					
+					flag_insert := CHECK_PARAMETER_EXISTENCE(arr_id_configuration, var_ds_parameter_type, var_ds_parameter_attribute, var_cd_parameter, cd_configuration_iterator, id_algorithm_iterator, id_resource_iterator, id_dataset_iterator, var_id_parameter_type, bigint_iterator, var_ds_parameter_attribute_numeric);
+					
+					-- COMBINE ALL ELEMENTS FROM "CONFIGURATION", "RESOURCE" AND "DATASET" TABLES AND INSERT INTO "PARAMETER" TABLE					
+					IF (flag_insert = TRUE)
+					THEN
 
-					-- COMBINE ALL ELEMENTS FROM "CONFIGURATION", "RESOURCE" AND "DATASET" TABLES AND INSERT INTO "PARAMETER" TABLE
-					IF EXISTS(
-						WITH T_CONFIGURATION AS (
-										SELECT
-										var_cd_parameter AS CD_PARAMETER,
-										A.CD_CONFIGURATION,
-										A.ID_ALGORITHM,
-										A.CD_FUNCTION,
-										A.ID_DEVICE
-										FROM CONFIGURATION  A
-										WHERE A.CD_CONFIGURATION = cd_configuration_iterator
-										),
-						T_RESOURCE AS (
-										SELECT
-										var_cd_parameter AS CD_PARAMETER,
-										A.ID_RESOURCE,
-										VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
-										VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT
-										FROM RESOURCE A
-										WHERE A.ID_RESOURCE = id_resource_iterator
-										),
-						T_DATASET AS (
-										SELECT
-										var_cd_parameter AS CD_PARAMETER,
-										A.ID_DATASET,
-										A.VL_DATASET_DIMENSION,
-										A.VL_DATASET_ROW_DIMENSION,
-										A.VL_DATASET_COLUMN_DIMENSION,
-										A.VL_DATA_TYPE_MEMORY_SIZE
-										FROM DATASET A
-										WHERE A.ID_DATASET = id_dataset_iterator
-										)
-						
+						flag_increment_cd_parameter := FALSE;
+
+						CONTINUE;
+
+					ELSE
+
+						flag_increment_cd_parameter := TRUE;
+
+						INSERT INTO PARAMETER(CD_PARAMETER,CD_CONFIGURATION,ID_ALGORITHM,ID_FUNCTION,ID_DATASET,ID_RESOURCE,ID_PARAMETER_TYPE,NR_ITERATIONS,VL_GRID_ROW_DIMENSION,VL_GRID_COLUMN_DIMENSION,VL_BLOCK_ROW_DIMENSION,VL_BLOCK_COLUMN_DIMENSION,VL_BLOCK_MEMORY_SIZE,VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,VL_BLOCK_MEMORY_SIZE_PERCENT_GPU)
+						(
+
+							WITH T_CONFIGURATION AS (
+											SELECT
+											var_cd_parameter AS CD_PARAMETER,
+											A.CD_CONFIGURATION,
+											A.ID_ALGORITHM,
+											A.CD_FUNCTION,
+											A.ID_DEVICE
+											FROM CONFIGURATION  A
+											WHERE
+											A.CD_CONFIGURATION = cd_configuration_iterator
+											AND A.ID_ALGORITHM = id_algorithm_iterator
+											),
+							T_RESOURCE AS (
+											SELECT
+											var_cd_parameter AS CD_PARAMETER,
+											A.ID_RESOURCE,
+											VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+											VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT
+											FROM RESOURCE A
+											WHERE A.ID_RESOURCE = id_resource_iterator
+											),
+							T_DATASET AS (
+											SELECT
+											var_cd_parameter AS CD_PARAMETER,
+											A.ID_DATASET,
+											A.VL_DATASET_DIMENSION,
+											A.VL_DATASET_ROW_DIMENSION,
+											A.VL_DATASET_COLUMN_DIMENSION,
+											A.VL_DATA_TYPE_MEMORY_SIZE
+											FROM DATASET A
+											WHERE A.ID_DATASET = id_dataset_iterator
+											)
+
 							SELECT
-							CD_CONFIGURATION,
-							ID_ALGORITHM,
-							ID_FUNCTION,
-							ID_DATASET,
-							ID_RESOURCE,
-							ID_PARAMETER_TYPE,
-							NR_ITERATIONS,
-							VL_GRID_ROW_DIMENSION,
-							VL_GRID_COLUMN_DIMENSION,
-							VL_BLOCK_ROW_DIMENSION,
-							VL_BLOCK_COLUMN_DIMENSION,
-							VL_BLOCK_MEMORY_SIZE,
-							VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
-							VL_BLOCK_MEMORY_SIZE_PERCENT_GPU
-							FROM PARAMETER
-							
-								INTERSECT
-							
-							SELECT
+							A.CD_PARAMETER,
 							A.CD_CONFIGURATION,
 							A.ID_ALGORITHM,
 							(SELECT DISTINCT ID_FUNCTION FROM FUNCTION Z WHERE Z.ID_ALGORITHM = A.ID_ALGORITHM AND Z.CD_FUNCTION = A.CD_FUNCTION AND Z.ID_DEVICE = A.ID_DEVICE) AS ID_FUNCTION,
@@ -677,70 +700,10 @@ BEGIN
 							FROM T_CONFIGURATION A
 							INNER JOIN T_DATASET B ON (A.CD_PARAMETER = B.CD_PARAMETER)
 							INNER JOIN T_RESOURCE C ON (A.CD_PARAMETER = C.CD_PARAMETER)
-						)
-						THEN
 
-							CONTINUE;
+						);
 
-						ELSE
-
-							INSERT INTO PARAMETER(CD_PARAMETER,CD_CONFIGURATION,ID_ALGORITHM,ID_FUNCTION,ID_DATASET,ID_RESOURCE,ID_PARAMETER_TYPE,NR_ITERATIONS,VL_GRID_ROW_DIMENSION,VL_GRID_COLUMN_DIMENSION,VL_BLOCK_ROW_DIMENSION,VL_BLOCK_COLUMN_DIMENSION,VL_BLOCK_MEMORY_SIZE,VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,VL_BLOCK_MEMORY_SIZE_PERCENT_GPU)
-							(
-
-								WITH T_CONFIGURATION AS (
-												SELECT
-												var_cd_parameter AS CD_PARAMETER,
-												A.CD_CONFIGURATION,
-												A.ID_ALGORITHM,
-												A.CD_FUNCTION,
-												A.ID_DEVICE
-												FROM CONFIGURATION  A
-												WHERE A.CD_CONFIGURATION = cd_configuration_iterator
-												),
-								T_RESOURCE AS (
-												SELECT
-												var_cd_parameter AS CD_PARAMETER,
-												A.ID_RESOURCE,
-												VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
-												VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT
-												FROM RESOURCE A
-												WHERE A.ID_RESOURCE = id_resource_iterator
-												),
-								T_DATASET AS (
-												SELECT
-												var_cd_parameter AS CD_PARAMETER,
-												A.ID_DATASET,
-												A.VL_DATASET_DIMENSION,
-												A.VL_DATASET_ROW_DIMENSION,
-												A.VL_DATASET_COLUMN_DIMENSION,
-												A.VL_DATA_TYPE_MEMORY_SIZE
-												FROM DATASET A
-												WHERE A.ID_DATASET = id_dataset_iterator
-												)
-
-								SELECT
-								A.CD_PARAMETER,
-								A.CD_CONFIGURATION,
-								A.ID_ALGORITHM,
-								(SELECT DISTINCT ID_FUNCTION FROM FUNCTION Z WHERE Z.ID_ALGORITHM = A.ID_ALGORITHM AND Z.CD_FUNCTION = A.CD_FUNCTION AND Z.ID_DEVICE = A.ID_DEVICE) AS ID_FUNCTION,
-								B.ID_DATASET,
-								C.ID_RESOURCE,
-								var_id_parameter_type AS ID_PARAMETER_TYPE,
-								bigint_iterator AS NR_ITERATIONS,
-								CEIL(B.VL_DATASET_ROW_DIMENSION/(CEIL(((B.VL_DATASET_ROW_DIMENSION*B.VL_DATASET_COLUMN_DIMENSION)*var_ds_parameter_attribute_numeric)/B.VL_DATASET_COLUMN_DIMENSION))) AS VL_GRID_ROW_DIMENSION,
-								CEIL(B.VL_DATASET_COLUMN_DIMENSION/(CEIL(((B.VL_DATASET_ROW_DIMENSION*B.VL_DATASET_COLUMN_DIMENSION)*var_ds_parameter_attribute_numeric)/B.VL_DATASET_ROW_DIMENSION))) AS VL_GRID_COLUMN_DIMENSION,
-								CEIL(((B.VL_DATASET_ROW_DIMENSION*B.VL_DATASET_COLUMN_DIMENSION)*var_ds_parameter_attribute_numeric)/B.VL_DATASET_COLUMN_DIMENSION) AS VL_BLOCK_ROW_DIMENSION,
-								CEIL(((B.VL_DATASET_ROW_DIMENSION*B.VL_DATASET_COLUMN_DIMENSION)*var_ds_parameter_attribute_numeric)/B.VL_DATASET_ROW_DIMENSION) AS VL_BLOCK_COLUMN_DIMENSION,
-								CEIL(((B.VL_DATASET_ROW_DIMENSION*B.VL_DATASET_COLUMN_DIMENSION)*var_ds_parameter_attribute_numeric)/B.VL_DATASET_COLUMN_DIMENSION) * CEIL(((B.VL_DATASET_ROW_DIMENSION*B.VL_DATASET_COLUMN_DIMENSION)*var_ds_parameter_attribute_numeric)/B.VL_DATASET_ROW_DIMENSION) * B.VL_DATA_TYPE_MEMORY_SIZE AS VL_BLOCK_MEMORY_SIZE,
-								(CEIL(((B.VL_DATASET_ROW_DIMENSION*B.VL_DATASET_COLUMN_DIMENSION)*var_ds_parameter_attribute_numeric)/B.VL_DATASET_COLUMN_DIMENSION) * CEIL(((B.VL_DATASET_ROW_DIMENSION*B.VL_DATASET_COLUMN_DIMENSION)*var_ds_parameter_attribute_numeric)/B.VL_DATASET_ROW_DIMENSION) * B.VL_DATA_TYPE_MEMORY_SIZE) / VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT AS VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
-								(CEIL(((B.VL_DATASET_ROW_DIMENSION*B.VL_DATASET_COLUMN_DIMENSION)*var_ds_parameter_attribute_numeric)/B.VL_DATASET_COLUMN_DIMENSION) * CEIL(((B.VL_DATASET_ROW_DIMENSION*B.VL_DATASET_COLUMN_DIMENSION)*var_ds_parameter_attribute_numeric)/B.VL_DATASET_ROW_DIMENSION) * B.VL_DATA_TYPE_MEMORY_SIZE) / VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT AS VL_BLOCK_MEMORY_SIZE_PERCENT_GPU
-								FROM T_CONFIGURATION A
-								INNER JOIN T_DATASET B ON (A.CD_PARAMETER = B.CD_PARAMETER)
-								INNER JOIN T_RESOURCE C ON (A.CD_PARAMETER = C.CD_PARAMETER)
-
-							);
-
-						END IF;
+					END IF;
 						
 				END LOOP;
 				
@@ -762,15 +725,36 @@ BEGIN
 				FOREACH id_dataset_iterator IN ARRAY arr_id_dataset
 				LOOP
 				
-					var_cd_parameter := var_cd_parameter + 1;
+					IF (flag_increment_cd_parameter = TRUE)
+					THEN
+
+						var_cd_parameter := var_cd_parameter + 1;
+
+					END IF;
 			
 					-- FOR EACH CONFIGURATION
 					FOREACH cd_configuration_iterator IN ARRAY arr_cd_configuration
 					LOOP
-			
+						
+						arr_id_configuration := ARRAY(SELECT C.ID_CONFIGURATION FROM CONFIGURATION C WHERE C.CD_CONFIGURATION = cd_configuration_iterator AND C.ID_ALGORITHM = id_algorithm_iterator);
+						flag_insert := CHECK_PARAMETER_EXISTENCE(arr_id_configuration, var_ds_parameter_type, var_ds_parameter_attribute, var_cd_parameter, cd_configuration_iterator, id_algorithm_iterator, id_resource_iterator, id_dataset_iterator, var_id_parameter_type, bigint_iterator, var_ds_parameter_attribute_numeric);
+						
+						
 						-- COMBINE ALL ELEMENTS FROM "CONFIGURATION", "RESOURCE" AND "DATASET" TABLES AND INSERT INTO "PARAMETER" TABLE
-						IF EXISTS(
-								WITH T_CONFIGURATION AS (
+						IF (flag_insert = TRUE)
+						THEN
+
+							flag_increment_cd_parameter := FALSE;
+
+							CONTINUE;
+
+						ELSE
+
+							flag_increment_cd_parameter := TRUE;
+
+							INSERT INTO PARAMETER(CD_PARAMETER,CD_CONFIGURATION,ID_ALGORITHM,ID_FUNCTION,ID_DATASET,ID_RESOURCE,ID_PARAMETER_TYPE,NR_ITERATIONS,VL_GRID_ROW_DIMENSION,VL_GRID_COLUMN_DIMENSION,VL_BLOCK_ROW_DIMENSION,VL_BLOCK_COLUMN_DIMENSION,VL_BLOCK_MEMORY_SIZE,VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,VL_BLOCK_MEMORY_SIZE_PERCENT_GPU)
+							(
+									WITH T_CONFIGURATION AS (
 													SELECT
 													var_cd_parameter AS CD_PARAMETER,
 													A.CD_CONFIGURATION,
@@ -778,7 +762,9 @@ BEGIN
 													A.CD_FUNCTION,
 													A.ID_DEVICE
 													FROM CONFIGURATION  A
-													WHERE A.CD_CONFIGURATION = cd_configuration_iterator
+													WHERE
+													A.CD_CONFIGURATION = cd_configuration_iterator
+													AND A.ID_ALGORITHM = id_algorithm_iterator
 													),
 									T_RESOURCE AS (
 													SELECT
@@ -800,27 +786,8 @@ BEGIN
 													FROM DATASET A
 													WHERE A.ID_DATASET = id_dataset_iterator
 													)
-							
 									SELECT
-									CD_CONFIGURATION,
-									ID_ALGORITHM,
-									ID_FUNCTION,
-									ID_DATASET,
-									ID_RESOURCE,
-									ID_PARAMETER_TYPE,
-									NR_ITERATIONS,
-									VL_GRID_ROW_DIMENSION,
-									VL_GRID_COLUMN_DIMENSION,
-									VL_BLOCK_ROW_DIMENSION,
-									VL_BLOCK_COLUMN_DIMENSION,
-									VL_BLOCK_MEMORY_SIZE,
-									VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
-									VL_BLOCK_MEMORY_SIZE_PERCENT_GPU
-									FROM PARAMETER
-
-										INTERSECT
-									
-									SELECT
+									A.CD_PARAMETER,
 									A.CD_CONFIGURATION,
 									A.ID_ALGORITHM,
 									(SELECT DISTINCT ID_FUNCTION FROM FUNCTION Z WHERE Z.ID_ALGORITHM = A.ID_ALGORITHM AND Z.CD_FUNCTION = A.CD_FUNCTION AND Z.ID_DEVICE = A.ID_DEVICE) AS ID_FUNCTION,
@@ -838,68 +805,9 @@ BEGIN
 									FROM T_CONFIGURATION A
 									INNER JOIN T_DATASET B ON (A.CD_PARAMETER = B.CD_PARAMETER)
 									INNER JOIN T_RESOURCE C ON (A.CD_PARAMETER = C.CD_PARAMETER)
-							
-							)
-							THEN
-							
-								CONTINUE;
-								
-							ELSE
-							
-								INSERT INTO PARAMETER(CD_PARAMETER,CD_CONFIGURATION,ID_ALGORITHM,ID_FUNCTION,ID_DATASET,ID_RESOURCE,ID_PARAMETER_TYPE,NR_ITERATIONS,VL_GRID_ROW_DIMENSION,VL_GRID_COLUMN_DIMENSION,VL_BLOCK_ROW_DIMENSION,VL_BLOCK_COLUMN_DIMENSION,VL_BLOCK_MEMORY_SIZE,VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,VL_BLOCK_MEMORY_SIZE_PERCENT_GPU)
-								(
-										WITH T_CONFIGURATION AS (
-														SELECT
-														var_cd_parameter AS CD_PARAMETER,
-														A.CD_CONFIGURATION,
-														A.ID_ALGORITHM,
-														A.CD_FUNCTION,
-														A.ID_DEVICE
-														FROM CONFIGURATION  A
-														WHERE A.CD_CONFIGURATION = cd_configuration_iterator
-														),
-										T_RESOURCE AS (
-														SELECT
-														var_cd_parameter AS CD_PARAMETER,
-														A.ID_RESOURCE,
-														VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
-														VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT
-														FROM RESOURCE A
-														WHERE A.ID_RESOURCE = id_resource_iterator
-														),
-										T_DATASET AS (
-														SELECT
-														var_cd_parameter AS CD_PARAMETER,
-														A.ID_DATASET,
-														A.VL_DATASET_DIMENSION,
-														A.VL_DATASET_ROW_DIMENSION,
-														A.VL_DATASET_COLUMN_DIMENSION,
-														A.VL_DATA_TYPE_MEMORY_SIZE
-														FROM DATASET A
-														WHERE A.ID_DATASET = id_dataset_iterator
-														)
-										SELECT
-										A.CD_PARAMETER,
-										A.CD_CONFIGURATION,
-										A.ID_ALGORITHM,
-										(SELECT DISTINCT ID_FUNCTION FROM FUNCTION Z WHERE Z.ID_ALGORITHM = A.ID_ALGORITHM AND Z.CD_FUNCTION = A.CD_FUNCTION AND Z.ID_DEVICE = A.ID_DEVICE) AS ID_FUNCTION,
-										B.ID_DATASET,
-										C.ID_RESOURCE,
-										var_id_parameter_type AS ID_PARAMETER_TYPE,
-										bigint_iterator AS NR_ITERATIONS,
-										1 AS VL_GRID_ROW_DIMENSION,
-										1 AS VL_GRID_COLUMN_DIMENSION,
-										CEIL(B.VL_DATASET_ROW_DIMENSION/1) AS VL_BLOCK_ROW_DIMENSION,
-										CEIL(B.VL_DATASET_COLUMN_DIMENSION/1) AS VL_BLOCK_COLUMN_DIMENSION,
-										CEIL(B.VL_DATASET_ROW_DIMENSION/1) * CEIL(B.VL_DATASET_COLUMN_DIMENSION/1) * VL_DATA_TYPE_MEMORY_SIZE AS VL_BLOCK_MEMORY_SIZE,
-										(CEIL(B.VL_DATASET_ROW_DIMENSION/1) * CEIL(B.VL_DATASET_COLUMN_DIMENSION/1) * VL_DATA_TYPE_MEMORY_SIZE) / VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT AS VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
-										(CEIL(B.VL_DATASET_ROW_DIMENSION/1) * CEIL(B.VL_DATASET_COLUMN_DIMENSION/1) * VL_DATA_TYPE_MEMORY_SIZE) / VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT AS VL_BLOCK_MEMORY_SIZE_PERCENT_GPU
-										FROM T_CONFIGURATION A
-										INNER JOIN T_DATASET B ON (A.CD_PARAMETER = B.CD_PARAMETER)
-										INNER JOIN T_RESOURCE C ON (A.CD_PARAMETER = C.CD_PARAMETER)
-								);
-								
-							END IF;
+							);
+
+						END IF;
 						
 					END LOOP;
 
@@ -917,91 +825,31 @@ BEGIN
 				FOREACH id_dataset_iterator IN ARRAY arr_id_dataset
 				LOOP
 			
-					var_cd_parameter := var_cd_parameter + 1;
+					IF (flag_increment_cd_parameter = TRUE)
+					THEN
+
+						var_cd_parameter := var_cd_parameter + 1;
+
+					END IF;
 					
 					-- FOR EACH CONFIGURATION
 					FOREACH cd_configuration_iterator IN ARRAY arr_cd_configuration
 					LOOP
-
-						-- COMBINE ALL ELEMENTS FROM "CONFIGURATION", "RESOURCE" AND "DATASET" TABLES AND INSERT INTO "PARAMETER" TABLE
-						IF EXISTS(
-							
-							WITH T_CONFIGURATION AS (
-												SELECT
-												var_cd_parameter AS CD_PARAMETER,
-												A.CD_CONFIGURATION,
-												A.ID_ALGORITHM,
-												A.CD_FUNCTION,
-												A.ID_DEVICE
-												FROM CONFIGURATION  A
-												WHERE A.CD_CONFIGURATION = cd_configuration_iterator
-												),
-								T_RESOURCE AS (
-												SELECT
-												var_cd_parameter AS CD_PARAMETER,
-												A.ID_RESOURCE,
-												VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
-												VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT
-												FROM RESOURCE A
-												WHERE A.ID_RESOURCE = id_resource_iterator
-												),
-								T_DATASET AS (
-												SELECT
-												var_cd_parameter AS CD_PARAMETER,
-												A.ID_DATASET,
-												A.VL_DATASET_DIMENSION,
-												A.VL_DATASET_ROW_DIMENSION,
-												A.VL_DATASET_COLUMN_DIMENSION,
-												A.VL_DATA_TYPE_MEMORY_SIZE
-												FROM DATASET A
-												WHERE A.ID_DATASET = id_dataset_iterator
-												)
-							
-								SELECT
-								CD_CONFIGURATION,
-								ID_ALGORITHM,
-								ID_FUNCTION,
-								ID_DATASET,
-								ID_RESOURCE,
-								ID_PARAMETER_TYPE,
-								NR_ITERATIONS,
-								VL_GRID_ROW_DIMENSION,
-								VL_GRID_COLUMN_DIMENSION,
-								VL_BLOCK_ROW_DIMENSION,
-								VL_BLOCK_COLUMN_DIMENSION,
-								VL_BLOCK_MEMORY_SIZE,
-								VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
-								VL_BLOCK_MEMORY_SIZE_PERCENT_GPU
-								FROM PARAMETER
-
-									INTERSECT
-							
-								SELECT
-								A.CD_CONFIGURATION,
-								A.ID_ALGORITHM,
-								(SELECT DISTINCT ID_FUNCTION FROM FUNCTION Z WHERE Z.ID_ALGORITHM = A.ID_ALGORITHM AND Z.CD_FUNCTION = A.CD_FUNCTION AND Z.ID_DEVICE = A.ID_DEVICE) AS ID_FUNCTION,
-								B.ID_DATASET,
-								C.ID_RESOURCE,
-								var_id_parameter_type AS ID_PARAMETER_TYPE,
-								bigint_iterator AS NR_ITERATIONS,
-								B.VL_DATASET_ROW_DIMENSION AS VL_GRID_ROW_DIMENSION,
-								B.VL_DATASET_COLUMN_DIMENSION AS VL_GRID_COLUMN_DIMENSION,
-								CEIL(B.VL_DATASET_ROW_DIMENSION/B.VL_DATASET_ROW_DIMENSION) AS VL_BLOCK_ROW_DIMENSION,
-								CEIL(B.VL_DATASET_COLUMN_DIMENSION/B.VL_DATASET_COLUMN_DIMENSION) AS VL_BLOCK_COLUMN_DIMENSION,
-								CEIL(B.VL_DATASET_ROW_DIMENSION/B.VL_DATASET_ROW_DIMENSION) * CEIL(B.VL_DATASET_COLUMN_DIMENSION/B.VL_DATASET_COLUMN_DIMENSION) * VL_DATA_TYPE_MEMORY_SIZE AS VL_BLOCK_MEMORY_SIZE,
-								(CEIL(B.VL_DATASET_ROW_DIMENSION/B.VL_DATASET_ROW_DIMENSION) * CEIL(B.VL_DATASET_COLUMN_DIMENSION/B.VL_DATASET_COLUMN_DIMENSION) * VL_DATA_TYPE_MEMORY_SIZE) / VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT AS VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
-								(CEIL(B.VL_DATASET_ROW_DIMENSION/B.VL_DATASET_ROW_DIMENSION) * CEIL(B.VL_DATASET_COLUMN_DIMENSION/B.VL_DATASET_COLUMN_DIMENSION) * VL_DATA_TYPE_MEMORY_SIZE) / VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT AS VL_BLOCK_MEMORY_SIZE_PERCENT_GPU
-								FROM T_CONFIGURATION A
-								INNER JOIN T_DATASET B ON (A.CD_PARAMETER = B.CD_PARAMETER)
-								INNER JOIN T_RESOURCE C ON (A.CD_PARAMETER = C.CD_PARAMETER)
-							
-						)
-						THEN
-							
-							CONTINUE;
-							
-						ELSE
 						
+						arr_id_configuration := ARRAY(SELECT C.ID_CONFIGURATION FROM CONFIGURATION C WHERE C.CD_CONFIGURATION = cd_configuration_iterator AND C.ID_ALGORITHM = id_algorithm_iterator);
+						flag_insert := CHECK_PARAMETER_EXISTENCE(arr_id_configuration,var_ds_parameter_type, var_ds_parameter_attribute, var_cd_parameter, cd_configuration_iterator, id_algorithm_iterator, id_resource_iterator, id_dataset_iterator, var_id_parameter_type, bigint_iterator, var_ds_parameter_attribute_numeric);
+						-- COMBINE ALL ELEMENTS FROM "CONFIGURATION", "RESOURCE" AND "DATASET" TABLES AND INSERT INTO "PARAMETER" TABLE
+						IF (flag_insert = TRUE)
+						THEN
+
+							flag_increment_cd_parameter := FALSE;
+
+							CONTINUE;
+
+						ELSE
+
+							flag_increment_cd_parameter := TRUE;
+
 							INSERT INTO PARAMETER(CD_PARAMETER,CD_CONFIGURATION,ID_ALGORITHM,ID_FUNCTION,ID_DATASET,ID_RESOURCE,ID_PARAMETER_TYPE,NR_ITERATIONS,VL_GRID_ROW_DIMENSION,VL_GRID_COLUMN_DIMENSION,VL_BLOCK_ROW_DIMENSION,VL_BLOCK_COLUMN_DIMENSION,VL_BLOCK_MEMORY_SIZE,VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,VL_BLOCK_MEMORY_SIZE_PERCENT_GPU)
 							(
 									WITH T_CONFIGURATION AS (
@@ -1012,7 +860,9 @@ BEGIN
 													A.CD_FUNCTION,
 													A.ID_DEVICE
 													FROM CONFIGURATION  A
-													WHERE A.CD_CONFIGURATION = cd_configuration_iterator
+													WHERE
+													A.CD_CONFIGURATION = cd_configuration_iterator
+													AND A.ID_ALGORITHM = id_algorithm_iterator
 													),
 									T_RESOURCE AS (
 													SELECT
@@ -1054,7 +904,7 @@ BEGIN
 									INNER JOIN T_DATASET B ON (A.CD_PARAMETER = B.CD_PARAMETER)
 									INNER JOIN T_RESOURCE C ON (A.CD_PARAMETER = C.CD_PARAMETER)
 							);
-							
+
 						END IF;
 						
 					END LOOP;
@@ -1075,3 +925,56 @@ BEGIN
 
 END;
 $BODY$;
+
+
+
+CREATE OR REPLACE FUNCTION CHECK_PARAMETER_EXISTENCE(arr_id_configuration bigint[], var_ds_parameter_type TEXT, var_ds_parameter_attribute TEXT, var_cd_parameter BIGINT, cd_configuration_iterator BIGINT, id_algorithm_iterator BIGINT, id_resource_iterator BIGINT, id_dataset_iterator BIGINT, var_id_parameter_type BIGINT, bigint_iterator BIGINT, var_ds_parameter_attribute_numeric NUMERIC)
+returns boolean
+language plpgsql
+as
+$$
+declare
+   flag_insert boolean default TRUE;
+   id_configuration_iterator bigint;
+begin
+
+	SET search_path = user_dev,schema_dev;
+
+	-- FOR EACH CONFIGURATION ID
+	FOREACH id_configuration_iterator IN ARRAY arr_id_configuration
+	LOOP
+
+		flag_insert := (select exists(
+
+						SELECT
+						P.CD_CONFIGURATION,
+						P.ID_ALGORITHM,
+						P.ID_FUNCTION,
+						P.ID_DATASET,
+						P.ID_RESOURCE,
+						P.ID_PARAMETER_TYPE,
+						P.NR_ITERATIONS,
+						P.VL_GRID_ROW_DIMENSION,
+						P.VL_GRID_COLUMN_DIMENSION,
+						P.VL_BLOCK_ROW_DIMENSION,
+						P.VL_BLOCK_COLUMN_DIMENSION,
+						P.VL_BLOCK_MEMORY_SIZE,
+						P.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+						P.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU
+						FROM PARAMETER P
+						WHERE
+						P.CD_CONFIGURATION IN (SELECT C.CD_CONFIGURATION FROM CONFIGURATION C WHERE C.ID_CONFIGURATION = id_configuration_iterator)
+						AND P.ID_ALGORITHM = id_algorithm_iterator
+						AND P.ID_RESOURCE = id_resource_iterator
+						AND P.ID_DATASET = id_dataset_iterator
+						AND P.ID_PARAMETER_TYPE = var_id_parameter_type
+						AND P.NR_ITERATIONS = bigint_iterator
+
+		));
+
+   
+   END LOOP;
+   
+   return flag_insert;
+end;
+$$;
