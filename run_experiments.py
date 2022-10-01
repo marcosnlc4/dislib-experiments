@@ -42,9 +42,9 @@ def main():
                                     # & (df_parameters["vl_dataset_memory_size"] == 400) # 2.2.1
                                     # & (df_parameters["vl_dataset_memory_size"] == 400000) # 2.2.2
                                     # & (df_parameters["vl_dataset_memory_size"] == 400000000) # 2.2.3
-                                    # & (df_parameters["vl_dataset_memory_size"] == 720) # 2.2.1
-                                    # & (df_parameters["vl_dataset_memory_size"] == 720000) # 2.2.2
-                                    # & (df_parameters["vl_dataset_memory_size"] == 720000000) # 2.2.3
+                                    # & (df_parameters["vl_dataset_memory_size"] == 640) # 2.2.1
+                                    # & (df_parameters["vl_dataset_memory_size"] == 640000) # 2.2.2
+                                    & (df_parameters["vl_dataset_memory_size"] != 640000000) # 2.2.3
                                 ].sort_values(by=["id_parameter"])
 
 

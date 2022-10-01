@@ -567,6 +567,9 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                     # & (df["vl_dataset_memory_size"] == 400) # 2.2.1
                     # & (df["vl_dataset_memory_size"] == 400000) # 2.2.2
                     # & (df["vl_dataset_memory_size"] == 400000000) # 2.2.3
+                    # & (df["vl_dataset_memory_size"] == 640) # 2.2.1
+                    # & (df["vl_dataset_memory_size"] == 640000) # 2.2.2
+                    # & (df["vl_dataset_memory_size"] == 640000000) # 2.2.3
                     # & (df["ds_dataset"] == "S_A_1")
                     # & (df["ds_dataset"] == "S_A_2")
                     # & (df["ds_dataset"] == "S_A_3")
