@@ -132,7 +132,7 @@ BEGIN
 	FOREACH arr_text_iterator SLICE 1 IN ARRAY arr_function_data
 	LOOP
 		
-		var_id_algorithm := (SELECT DISTINCT ID_ALGORITHM FROM ALGORITHM WHERE ID_ALGORITHM = cast(arr_text_iterator[3] AS BIGINT));
+		var_id_algorithm := (SELECT DISTINCT ID_ALGORITHM FROM ALGORITHM WHERE ID_ALGORITHM = cast(arr_text_iterator[3] AS BIGINT) ORDER BY ID_ALGORITHM);
 		
 		FOREACH bigint_iterator IN ARRAY arr_id_device
 		LOOP
