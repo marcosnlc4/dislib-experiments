@@ -23,28 +23,40 @@ def main():
     param_file = os.path.join(src_path_parameters)
     df_parameters = pd.read_csv(param_file)
 
-    # Filtering and sorting parameters
+    # # Filtering and sorting parameters
+    # df_parameters = df_parameters[
+    #                                 (df_parameters["ds_algorithm"] == "KMEANS") # FIXED VALUE
+    #                                 & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
+    #                                 & (df_parameters["ds_resource"] == "MINOTAURO_2") # FIXED VALUE
+    #                                 # & (df_parameters["ds_dataset"] == "S_AA_1" | df_parameters["ds_dataset"] == "S_AA_2" | df_parameters["ds_dataset"] == "S_AA_3" | df_parameters["ds_dataset"] == "S_AA_4" | df_parameters["ds_dataset"] == "S_BB_1" | df_parameters["ds_dataset"] == "S_BB_2" | df_parameters["ds_dataset"] == "S_BB_3" | df_parameters["ds_dataset"] == "S_BB_4" | df_parameters["ds_dataset"] == "S_CC_1" | df_parameters["ds_dataset"] == "S_CC_2" | df_parameters["ds_dataset"] == "S_CC_3" | df_parameters["ds_dataset"] == "S_CC_4") # FIXED VALUE
+    #                                 # & (df_parameters["ds_dataset"].isin(["S_A_1","S_A_2","S_A_3","S_A_4","S_B_1","S_B_2","S_B_3","S_B_4","S_C_1","S_C_2","S_C_3","S_C_4"])) # FIXED VALUE
+    #                                 & (df_parameters["ds_dataset"].isin(["S_AA_1","S_AA_2","S_AA_3","S_AA_4","S_BB_1","S_BB_2","S_BB_3","S_BB_4","S_CC_1","S_CC_2","S_CC_3","S_CC_4"])) # FIXED VALUE
+    #                                 & (df_parameters["ds_parameter_type"] == "VAR_BLOCK_CAPACITY_SIZE") # 1.1, 1.2, 1.3, 1.4
+    #                                 # & (df_parameters["ds_parameter_type"] == "VAR_PARALLELISM_LEVEL") # 2.1, 2.2
+    #                                 # & (df_parameters["ds_parameter_attribute"] == "0.25") # 1.1
+    #                                 # & (df_parameters["ds_parameter_attribute"] == "0.50") # 1.2
+    #                                 # & (df_parameters["ds_parameter_attribute"] == "0.75") # 1.3
+    #                                 # & (df_parameters["ds_parameter_attribute"] == "1.00") # 1.4
+    #                                 # & (df_parameters["ds_parameter_attribute"] == "MIN_INTER_MAX_INTRA") # 2.1
+    #                                 # & (df_parameters["ds_parameter_attribute"] == "MAX_INTER_MIN_INTRA") # 2.2
+    #                                 # & (df_parameters["vl_dataset_memory_size"] == 400) # 2.2.1
+    #                                 # & (df_parameters["vl_dataset_memory_size"] == 400000) # 2.2.2
+    #                                 # & (df_parameters["vl_dataset_memory_size"] == 400000000) # 2.2.3
+    #                                 # & (df_parameters["vl_dataset_memory_size"] == 640) # 2.2.1
+    #                                 # & (df_parameters["vl_dataset_memory_size"] == 640000) # 2.2.2
+    #                                 & (df_parameters["vl_dataset_memory_size"] != 640000000) # 2.2.3
+    #                             ].sort_values(by=["id_parameter"])
+
+
+    # Filtering and sorting parameters V2
     df_parameters = df_parameters[
                                     (df_parameters["ds_algorithm"] == "KMEANS") # FIXED VALUE
                                     & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
-                                    & (df_parameters["ds_resource"] == "MINOTAURO_2") # FIXED VALUE
-                                    # & (df_parameters["ds_dataset"] == "S_AA_1" | df_parameters["ds_dataset"] == "S_AA_2" | df_parameters["ds_dataset"] == "S_AA_3" | df_parameters["ds_dataset"] == "S_AA_4" | df_parameters["ds_dataset"] == "S_BB_1" | df_parameters["ds_dataset"] == "S_BB_2" | df_parameters["ds_dataset"] == "S_BB_3" | df_parameters["ds_dataset"] == "S_BB_4" | df_parameters["ds_dataset"] == "S_CC_1" | df_parameters["ds_dataset"] == "S_CC_2" | df_parameters["ds_dataset"] == "S_CC_3" | df_parameters["ds_dataset"] == "S_CC_4") # FIXED VALUE
-                                    # & (df_parameters["ds_dataset"].isin(["S_A_1","S_A_2","S_A_3","S_A_4","S_B_1","S_B_2","S_B_3","S_B_4","S_C_1","S_C_2","S_C_3","S_C_4"])) # FIXED VALUE
-                                    & (df_parameters["ds_dataset"].isin(["S_AA_1","S_AA_2","S_AA_3","S_AA_4","S_BB_1","S_BB_2","S_BB_3","S_BB_4","S_CC_1","S_CC_2","S_CC_3","S_CC_4"])) # FIXED VALUE
-                                    & (df_parameters["ds_parameter_type"] == "VAR_BLOCK_CAPACITY_SIZE") # 1.1, 1.2, 1.3, 1.4
-                                    # & (df_parameters["ds_parameter_type"] == "VAR_PARALLELISM_LEVEL") # 2.1, 2.2
-                                    # & (df_parameters["ds_parameter_attribute"] == "0.25") # 1.1
-                                    # & (df_parameters["ds_parameter_attribute"] == "0.50") # 1.2
-                                    # & (df_parameters["ds_parameter_attribute"] == "0.75") # 1.3
-                                    # & (df_parameters["ds_parameter_attribute"] == "1.00") # 1.4
-                                    # & (df_parameters["ds_parameter_attribute"] == "MIN_INTER_MAX_INTRA") # 2.1
-                                    # & (df_parameters["ds_parameter_attribute"] == "MAX_INTER_MIN_INTRA") # 2.2
-                                    # & (df_parameters["vl_dataset_memory_size"] == 400) # 2.2.1
-                                    # & (df_parameters["vl_dataset_memory_size"] == 400000) # 2.2.2
-                                    # & (df_parameters["vl_dataset_memory_size"] == 400000000) # 2.2.3
-                                    # & (df_parameters["vl_dataset_memory_size"] == 640) # 2.2.1
-                                    # & (df_parameters["vl_dataset_memory_size"] == 640000) # 2.2.2
-                                    & (df_parameters["vl_dataset_memory_size"] != 640000000) # 2.2.3
+                                    # & (df_parameters["ds_dataset"].isin(["S_10MB_1","S_100MB_1","S_1GB_1","S_10GB_1"])) # FIXED VALUE
+                                    & (df_parameters["ds_dataset"] == "S_10MB_1")
+                                    & (df_parameters["ds_resource"] == "MINOTAURO_9_NODES_16_CORES")
+                                    & (df_parameters["ds_parameter_type"] == "VAR_GRID_ROW") # 1
+                                    # & (df_parameters["ds_parameter_type"] == "VAR_GRID_COLUMN") # 2
                                 ].sort_values(by=["id_parameter"])
 
 
@@ -55,7 +67,7 @@ def main():
 
     # DataFrame to store final table
     df_experiments = pd.DataFrame(columns=["id_parameter", "vl_total_execution_time", "vl_inter_task_execution_time", "vl_intra_task_execution_time_device_func", "vl_intra_task_execution_time_full_func", "vl_communication_time"])
-    
+
     # array to store temporary results
     data = []
 
@@ -135,29 +147,27 @@ def main():
             if ds_algorithm == "KMEANS":
 
                 # generate and load data into a ds-array
-                x, y = make_blobs(n_samples=vl_dataset_row_dimension, n_features=vl_dataset_column_dimension, random_state=nr_random_state)
-                dis_x = ds.array(x, block_size=(vl_block_row_dimension, vl_block_column_dimension))
+                dis_x = ds.random_array((vl_dataset_row_dimension, vl_dataset_column_dimension), (vl_block_row_dimension, vl_block_column_dimension), random_state=nr_random_state)
 
                 if ds_device == "GPU":
 
                     # execution 1 - extract intra execution times with CUDA events
                     kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=4, max_iter=5, tol=0, arity=48)
-                    y_pred = kmeans.fit_predict(dis_x).collect()
+                    kmeans.fit(dis_x)
 
                     # execution 2 - extract total and inter execution times with synchornized function calls
                     kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=6, max_iter=5, tol=0, arity=48)
-                    y_pred = kmeans.fit_predict(dis_x).collect()
+                    kmeans.fit(dis_x)
 
                 else:
 
                     # execution 1 - extract intra execution times with synchornized function calls
                     kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=3, max_iter=5, tol=0, arity=48)
-                    y_pred = kmeans.fit_predict(dis_x).collect()
-
+                    kmeans.fit(dis_x)
 
                     # execution 2 - extract total and inter execution times with synchornized function calls
                     kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=5, max_iter=5, tol=0, arity=48)
-                    y_pred = kmeans.fit_predict(dis_x).collect()
+                    kmeans.fit(dis_x)
 
 
                 # log inter and intra execution times and communication time
@@ -172,7 +182,7 @@ def main():
                 compss_barrier()
                 start = time.perf_counter()
                 kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=id_device, max_iter=5, tol=0, arity=48)
-                y_pred = kmeans.fit_predict(dis_x).collect()
+                kmeans.fit(dis_x)
                 compss_barrier()
                 end = time.perf_counter()
 
@@ -198,11 +208,11 @@ def main():
 
                 data.append([id_parameter, total_execution_time, inter_task_execution_time, intra_task_execution_full_func, intra_task_execution_device_func, communication_time])
 
-    # Saving experiments results
-    df0 = pd.DataFrame(data, columns=["id_parameter", "vl_total_execution_time", "vl_inter_task_execution_time", "vl_intra_task_execution_time_full_func", "vl_intra_task_execution_time_device_func", "vl_communication_time"])
-    df_experiments = df0.groupby(["id_parameter"], as_index=False).mean()
-    df_experiments["dt_processing"] = datetime.datetime.now()
-    df_experiments.to_csv(dst_path_experiments, index=False)
+        # Saving experiments results
+        df0 = pd.DataFrame(data, columns=["id_parameter", "vl_total_execution_time", "vl_inter_task_execution_time", "vl_intra_task_execution_time_full_func", "vl_intra_task_execution_time_device_func", "vl_communication_time"])
+        df_experiments = df0.groupby(["id_parameter"], as_index=False).mean()
+        df_experiments["dt_processing"] = datetime.datetime.now()
+        df_experiments.to_csv(dst_path_experiments, index=False)
 
 if __name__ == "__main__":
     main()
