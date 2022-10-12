@@ -14,12 +14,12 @@ if __name__ == '__main__':
     # block_column_size = 2
     # n_clusters = 10
 
-    samples = 1000000000
-    features = 10
+    samples = 12500000
+    features = 100
     start_random_state = 170
-    block_row_size = 1000000
-    block_column_size = 10
-    n_clusters = 50
+    block_row_size = 12500000
+    block_column_size = 100
+    n_clusters = 10
     start = time.perf_counter()
     x = ds.random_array((samples, features), (block_row_size, block_column_size), random_state=start_random_state)
     print("==== TIME DATA GENERATION ==== ", time.perf_counter()-start)

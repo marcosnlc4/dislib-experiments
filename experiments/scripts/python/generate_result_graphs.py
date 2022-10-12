@@ -555,7 +555,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                     & (df["nr_iterations"] == int(nr_iterations)) # FIXED VALUE
                     & (df["ds_resource"] == ds_resource.upper()) # FIXED VALUE
                     # & (df["ds_dataset"].isin(["S_A_1","S_A_2","S_A_3","S_A_4","S_B_1","S_B_2","S_B_3","S_B_4","S_C_1","S_C_2","S_C_3","S_C_4"])) # FIXED VALUE
-                    & (df["ds_dataset"].isin(["S_AA_1","S_AA_2","S_AA_3","S_AA_4","S_BB_1","S_BB_2","S_BB_3","S_BB_4","S_CC_1","S_CC_2","S_CC_3","S_CC_4"])) # FIXED VALUE
+                    # & (df["ds_dataset"].isin(["S_AA_1","S_AA_2","S_AA_3","S_AA_4","S_BB_1","S_BB_2","S_BB_3","S_BB_4","S_CC_1","S_CC_2","S_CC_3","S_CC_4"])) # FIXED VALUE
                     # & (df["ds_parameter_type"] == "VAR_BLOCK_CAPACITY_SIZE") # 1.1, 1.2, 1.3, 1.4
                     # & (df["ds_parameter_type"] == "VAR_PARALLELISM_LEVEL") # 2.1, 2.2
                     # & (df["ds_parameter_attribute"] == "0.25") # 1.1
@@ -1368,14 +1368,14 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         plt.figure()
         plt.title('Experiments Overview',fontstyle='italic',fontweight="bold")
         labels = ['Done', 'Not Done']
-        values = [90.28, 9.72]
+        values = [89.93, 10.07]
         colors = ["green","red"]
         plt.pie(values, labels = labels, autopct='%1.2f%%', colors = colors, pctdistance=1.35)
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiments_overview_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
 
         plt.figure()
-        plt.title('Experiments With Lowest Total Execution Time per Device',fontstyle='italic',fontweight="bold")
+        plt.title('Experiments With Lowest Total Execution Time in CPU per Device',fontstyle='italic',fontweight="bold")
         labels = ['GPU', 'CPU']
         values = [61.54, 38.46]
         colors = ["#1B4F72","#21618C"]
