@@ -767,8 +767,8 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                     & (df["nr_iterations"] == int(nr_iterations)) # FIXED VALUE
                     & (df["ds_resource"] == ds_resource.upper()) # FIXED VALUE
                     # & (df["ds_dataset"].isin(["S_10MB_1","S_100MB_1","S_1GB_1","S_10GB_1"])) # FIXED VALUE
-                    & (df["ds_dataset"] == "S_10GB_1")
-                    & (df["ds_parameter_type"] == "VAR_GRID_ROW")
+                    & (df["ds_dataset"] == "S_10MB_1")
+                    & (df["ds_parameter_type"] == "VAR_GRID_COLUMN")
                     ]
 
     if mode == 1:
@@ -2299,12 +2299,6 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         df_filtered_mean_cpu.sort_values('vl_grid_column_dimension', inplace=True)
         df_filtered_mean_gpu.sort_values('vl_grid_column_dimension', inplace=True)
 
-        new_list = df_filtered_mean_cpu['vl_concat_grid_column_dimension_percent_dataset']
-        # plt.xticks(new_list)
-        
-        print(new_list)
-        # print(df_filtered_mean_gpu['vl_concat_grid_column_dimension_percent_dataset'])
-
         # VL_TOTAL_EXECUTION_TIME
         fig = plt.figure()
         ax = plt.gca()
@@ -2314,11 +2308,10 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         plt.ylabel('Average Total Execution Time (s)')
         plt.title('Average Total Execution Time x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
         plt.grid(zorder=0)
-        plt.xticks(new_list)
-        ax.tick_params(axis='x', labelrotation = 90)
-        # ax.set_xticklabels(rotation=90)
-        # plt.ylim([1e0, 1e3])
-        plt.yscale("log")
+        xlabels = df_filtered_mean_cpu["vl_concat_grid_column_dimension_percent_dataset"].unique()
+        plt.xticks(np.arange(len(df_filtered_mean_cpu["vl_concat_grid_column_dimension_percent_dataset"].unique())), xlabels, rotation=90)
+        # plt.ylim([1e-4, 1e0])
+        # plt.yscale("log")
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_total_execution_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
         
         # VL_INTER_TASK_EXECUTION_TIME
@@ -2330,11 +2323,10 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         plt.ylabel('Average Inter-Task Time (s)')
         plt.title('Average Inter-Task Time x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
         plt.grid(zorder=0)
-        plt.xticks(new_list)
-        ax.tick_params(axis='x', labelrotation = 90)
-        # ax.set_xticklabels(rotation=90)
+        xlabels = df_filtered_mean_cpu["vl_concat_grid_column_dimension_percent_dataset"].unique()
+        plt.xticks(np.arange(len(df_filtered_mean_cpu["vl_concat_grid_column_dimension_percent_dataset"].unique())), xlabels, rotation=90)
         # plt.ylim([1e-1, 1e3])
-        plt.yscale("log")
+        # plt.yscale("log")
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_inter_task_execution_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
         # VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC
@@ -2346,11 +2338,10 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         plt.ylabel('Average Intra-Task (full func) Time (s)')
         plt.title('Average Intra-Task (full func) Time x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
         plt.grid(zorder=0)
-        plt.xticks(new_list)
-        ax.tick_params(axis='x', labelrotation = 90)
-        # ax.set_xticklabels(rotation=90)
+        xlabels = df_filtered_mean_cpu["vl_concat_grid_column_dimension_percent_dataset"].unique()
+        plt.xticks(np.arange(len(df_filtered_mean_cpu["vl_concat_grid_column_dimension_percent_dataset"].unique())), xlabels, rotation=90)
         # plt.ylim([1e-3, 1e2])
-        plt.yscale("log")
+        # plt.yscale("log")
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_intra_task_execution_time_full_func_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
         # VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
@@ -2362,11 +2353,10 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         plt.ylabel('Average Intra-Task (device func) Time (s)')
         plt.title('Average Intra-Task (device func) Time x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
         plt.grid(zorder=0)
-        plt.xticks(new_list)
-        ax.tick_params(axis='x', labelrotation = 90)
-        # ax.set_xticklabels(rotation=90)
+        xlabels = df_filtered_mean_cpu["vl_concat_grid_column_dimension_percent_dataset"].unique()
+        plt.xticks(np.arange(len(df_filtered_mean_cpu["vl_concat_grid_column_dimension_percent_dataset"].unique())), xlabels, rotation=90)
         # plt.ylim([1e-4, 1e1])
-        plt.yscale("log")
+        # plt.yscale("log")
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_intra_task_execution_time_device_func_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
         # VL_COMMUNICATION_TIME
@@ -2378,12 +2368,31 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         plt.ylabel('Average Communication Time (s)')
         plt.title('Average Communication Time x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
         plt.grid(zorder=0)
-        plt.xticks(new_list)
-        ax.tick_params(axis='x', labelrotation = 90)
-        # ax.set_xticklabels(rotation=90)
+        xlabels = df_filtered_mean_cpu["vl_concat_grid_column_dimension_percent_dataset"].unique()
+        plt.xticks(np.arange(len(df_filtered_mean_cpu["vl_concat_grid_column_dimension_percent_dataset"].unique())), xlabels, rotation=90)
         # plt.ylim([1e-4, 1e0])
-        plt.yscale("log")
+        # plt.yscale("log")
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_communication_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+
+        # VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC and VL_COMMUNICATION_TIME
+        fig = plt.figure()
+        ax = plt.gca()
+        df_filtered_mean_gpu.plot(x = x_value, y = 'vl_intra_task_execution_time_device_func', kind = 'line', color='C3', linestyle = 'solid', ax=ax, label='Intra-Task (Device)', zorder=3)
+        df_filtered_mean_gpu.plot(x = x_value, y = 'vl_communication_time', kind = 'line', color='C4', linestyle = 'solid', ax=ax, label='Communication', zorder=3)
+        plt.xlabel(x_value_title)
+        plt.ylabel('Average Time (s)')
+        plt.title('Average Intra-Task (Device) and Communication Times x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
+        xlabels = df_filtered_mean_cpu["vl_concat_grid_column_dimension_percent_dataset"].unique()
+        plt.xticks(np.arange(len(df_filtered_mean_cpu["vl_concat_grid_column_dimension_percent_dataset"].unique())), xlabels, rotation=90)
+        # # NORMAL SCALE
+        # plt.ylim([0.0000, 1.0000])
+        # LOG SCALE
+        # plt.ylim([1e-4, 1e0])
+        # plt.yscale("log")
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_intra_task_execution_time_device_func_communication_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
 
 
     elif mode == 18:
