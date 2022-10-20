@@ -647,6 +647,131 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                 --AND T_CPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC < T_GPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
                             )
                         ) SBQ;"""
+
+    # VARYING GRID COLUMN DIMENSION FROM 1 TO THE MAXIMUM NUMBER OF CORES
+    elif mode == 17:
+        sql_query = """SELECT
+                            A.ID_EXPERIMENT,
+                            A.VL_TOTAL_EXECUTION_TIME,
+                            A.VL_INTER_TASK_EXECUTION_TIME,
+                            A.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
+                            A.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+                            A.VL_COMMUNICATION_TIME,
+                            A.DT_PROCESSING,
+                            B.ID_PARAMETER,
+                            B.CD_PARAMETER,
+                            B.CD_CONFIGURATION,
+                            B.ID_ALGORITHM,
+                            (SELECT DISTINCT X.DS_ALGORITHM FROM ALGORITHM X WHERE X.ID_ALGORITHM = B.ID_ALGORITHM) AS DS_ALGORITHM,
+                            B.ID_FUNCTION,
+                            (SELECT DISTINCT X.DS_FUNCTION FROM FUNCTION X WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_FUNCTION,
+                            (SELECT DISTINCT Y.ID_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS ID_DEVICE,
+                            (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_DEVICE,
+                            B.ID_DATASET,
+                            B.ID_RESOURCE,
+                            B.ID_PARAMETER_TYPE,
+                            (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_TYPE,
+                            (SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_ATTRIBUTE,
+                            B.NR_ITERATIONS,
+                            B.VL_GRID_ROW_DIMENSION,
+                            B.VL_GRID_COLUMN_DIMENSION,
+                            B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION AS VL_GRID_ROW_X_COLUMN_DIMENSION,
+                            ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) AS VL_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
+                            B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION || ' (' || ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) || '%)' AS VL_CONCAT_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
+                            B.VL_BLOCK_ROW_DIMENSION,
+                            B.VL_BLOCK_COLUMN_DIMENSION,
+                            B.VL_BLOCK_ROW_DIMENSION || ' x ' || B.VL_BLOCK_COLUMN_DIMENSION AS VL_BLOCK_ROW_X_COLUMN_DIMENSION,
+                            B.VL_BLOCK_MEMORY_SIZE,
+                            B.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                            B.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                            ROUND((CAST(B.VL_BLOCK_MEMORY_SIZE AS NUMERIC)/CAST(D.VL_DATASET_MEMORY_SIZE AS NUMERIC))*100,2) AS VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                            ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ' (' || ROUND((CAST(B.VL_BLOCK_MEMORY_SIZE AS NUMERIC)/CAST(D.VL_DATASET_MEMORY_SIZE AS NUMERIC))*100,2) || '%)' AS VL_CONCAT_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                            C.DS_RESOURCE,
+                            C.NR_NODES,
+                            C.NR_COMPUTING_UNITS_CPU,
+                            C.NR_COMPUTING_UNITS_GPU,
+                            C.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                            C.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                            D.DS_DATASET,
+                            D.VL_DATASET_MEMORY_SIZE,
+                            D.DS_DATA_TYPE,
+                            D.VL_DATA_TYPE_MEMORY_SIZE,
+                            D.VL_DATASET_DIMENSION,
+                            D.VL_DATASET_ROW_DIMENSION,
+                            D.VL_DATASET_COLUMN_DIMENSION,
+                            D.VL_DATASET_ROW_DIMENSION || ' x ' || D.VL_DATASET_COLUMN_DIMENSION AS VL_DATASET_ROW_X_COLUMN_DIMENSION,
+                            D.NR_RANDOM_STATE
+                        FROM EXPERIMENT A
+                        INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER)
+                        INNER JOIN RESOURCE C ON (B.ID_RESOURCE = C.ID_RESOURCE)
+                        INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
+                        WHERE
+                        (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) = 'VAR_GRID_COLUMN'
+
+                        UNION ALL
+
+                        SELECT
+                            A.ID_EXPERIMENT,
+                            A.VL_TOTAL_EXECUTION_TIME,
+                            A.VL_INTER_TASK_EXECUTION_TIME,
+                            A.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
+                            A.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+                            A.VL_COMMUNICATION_TIME,
+                            A.DT_PROCESSING,
+                            B.ID_PARAMETER,
+                            B.CD_PARAMETER,
+                            B.CD_CONFIGURATION,
+                            B.ID_ALGORITHM,
+                            (SELECT DISTINCT X.DS_ALGORITHM FROM ALGORITHM X WHERE X.ID_ALGORITHM = B.ID_ALGORITHM) AS DS_ALGORITHM,
+                            B.ID_FUNCTION,
+                            (SELECT DISTINCT X.DS_FUNCTION FROM FUNCTION X WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_FUNCTION,
+                            (SELECT DISTINCT Y.ID_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS ID_DEVICE,
+                            (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_DEVICE,
+                            B.ID_DATASET,
+                            B.ID_RESOURCE,
+                            B.ID_PARAMETER_TYPE,
+                            (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_TYPE,
+                            (SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_ATTRIBUTE,
+                            B.NR_ITERATIONS,
+                            B.VL_GRID_ROW_DIMENSION,
+                            B.VL_GRID_COLUMN_DIMENSION,
+                            B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION AS VL_GRID_ROW_X_COLUMN_DIMENSION,
+                            ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) AS VL_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
+                            B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION || ' (' || ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) || '%)' AS VL_CONCAT_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
+                            B.VL_BLOCK_ROW_DIMENSION,
+                            B.VL_BLOCK_COLUMN_DIMENSION,
+                            B.VL_BLOCK_ROW_DIMENSION || ' x ' || B.VL_BLOCK_COLUMN_DIMENSION AS VL_BLOCK_ROW_X_COLUMN_DIMENSION,
+                            B.VL_BLOCK_MEMORY_SIZE,
+                            B.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                            B.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                            ROUND((CAST(B.VL_BLOCK_MEMORY_SIZE AS NUMERIC)/CAST(D.VL_DATASET_MEMORY_SIZE AS NUMERIC))*100,2) AS VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                            ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ' (' || ROUND((CAST(B.VL_BLOCK_MEMORY_SIZE AS NUMERIC)/CAST(D.VL_DATASET_MEMORY_SIZE AS NUMERIC))*100,2) || '%)' AS VL_CONCAT_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                            C.DS_RESOURCE,
+                            C.NR_NODES,
+                            C.NR_COMPUTING_UNITS_CPU,
+                            C.NR_COMPUTING_UNITS_GPU,
+                            C.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                            C.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                            D.DS_DATASET,
+                            D.VL_DATASET_MEMORY_SIZE,
+                            D.DS_DATA_TYPE,
+                            D.VL_DATA_TYPE_MEMORY_SIZE,
+                            D.VL_DATASET_DIMENSION,
+                            D.VL_DATASET_ROW_DIMENSION,
+                            D.VL_DATASET_COLUMN_DIMENSION,
+                            D.VL_DATASET_ROW_DIMENSION || ' x ' || D.VL_DATASET_COLUMN_DIMENSION AS VL_DATASET_ROW_X_COLUMN_DIMENSION,
+                            D.NR_RANDOM_STATE
+                        FROM EXPERIMENT A
+                        INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER)
+                        INNER JOIN RESOURCE C ON (B.ID_RESOURCE = C.ID_RESOURCE)
+                        INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
+                        WHERE
+                        (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) = 'VAR_GRID_ROW'
+                        AND B.VL_GRID_ROW_DIMENSION = 
+                        (
+                        SELECT MAX((R.NR_NODES-1)*R.NR_COMPUTING_UNITS_CPU) FROM RESOURCE R WHERE R.ID_RESOURCE = B.ID_RESOURCE
+                        )
+                        ORDER BY ID_PARAMETER;"""
     # OTHER MODES
     else:
         sql_query = """SELECT
@@ -767,8 +892,8 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                     & (df["nr_iterations"] == int(nr_iterations)) # FIXED VALUE
                     & (df["ds_resource"] == ds_resource.upper()) # FIXED VALUE
                     # & (df["ds_dataset"].isin(["S_10MB_1","S_100MB_1","S_1GB_1","S_10GB_1"])) # FIXED VALUE
-                    & (df["ds_dataset"] == "S_10MB_1")
-                    & (df["ds_parameter_type"] == "VAR_GRID_COLUMN")
+                    & (df["ds_dataset"] == "S_10GB_1")
+                    # & (df["ds_parameter_type"] == "VAR_GRID_COLUMN")
                     ]
 
     if mode == 1:
