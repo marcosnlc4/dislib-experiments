@@ -49,20 +49,29 @@ def main():
 
 
     # Filtering and sorting parameters V2
-    df_parameters = df_parameters[
-                                    (df_parameters["ds_algorithm"] == "KMEANS") # FIXED VALUE
-                                    & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
-                                    # & (df_parameters["ds_dataset"].isin(["S_10MB_1","S_100MB_1","S_1GB_1","S_10GB_1"])) # FIXED VALUE
-                                    & (df_parameters["ds_dataset"] == "S_10MB_1")
-                                    & (df_parameters["ds_resource"] == "MINOTAURO_9_NODES_16_CORES")
-                                    & (df_parameters["ds_parameter_type"] == "VAR_GRID_ROW") # 1
-                                    # & (df_parameters["ds_parameter_type"] == "VAR_GRID_COLUMN") # 2
-                                ].sort_values(by=["id_parameter"])
+    # df_parameters = df_parameters[
+    #                                 (df_parameters["ds_algorithm"] == "KMEANS") # FIXED VALUE
+    #                                 & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
+    #                                 # & (df_parameters["ds_dataset"].isin(["S_10MB_1","S_100MB_1","S_1GB_1","S_10GB_1"])) # FIXED VALUE
+    #                                 & (df_parameters["ds_dataset"] == "S_100B_1")
+    #                                 & (df_parameters["ds_resource"] == "MINOTAURO_9_NODES_16_CORES")
+    #                                 & (df_parameters["ds_parameter_type"] == "VAR_GRID_ROW") # 1
+    #                                 # & (df_parameters["ds_parameter_type"] == "VAR_GRID_COLUMN") # 2
+    #                             ].sort_values(by=["id_parameter"])
 
+    # Filtering and sorting parameters V3
+    # df_parameters = df_parameters[
+    #                                 (df_parameters["ds_algorithm"] == "KMEANS") # FIXED VALUE
+    #                                 & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
+    #                                 & (df_parameters["ds_dataset"] == "S_100GB_1")
+    #                                 & (df_parameters["ds_parameter_type"] == "VAR_CORES_CLUSTER_1") # 1
+    #                                 # & (df_parameters["ds_parameter_type"] == "VAR_CORES_SINGLE_NODE_1") # 2
+    #                                 # & (df_parameters["ds_parameter_type"] == "VAR_NODES_1") # 3
+    #                             ].sort_values(by=["id_parameter"])
 
     # Filtering and sorting parameters (TEST)
-    # df_parameters = df_parameters[(df_parameters["id_parameter"] == 1) | (df_parameters["id_parameter"] == 2)].sort_values(by=["id_parameter"])
-    # df_parameters = df_parameters[(df_parameters["id_parameter"] == 1)]
+    # df_parameters = df_parameters[(df_parameters["id_parameter"] != 11832) & (df_parameters["id_parameter"] != 11830) & (df_parameters["id_parameter"] != 11828) & (df_parameters["id_parameter"] != 11827) & (df_parameters["id_parameter"] != 11826) & (df_parameters["id_parameter"] != 11825)].sort_values(by=["id_parameter"])
+    df_parameters = df_parameters[(df_parameters["id_parameter"] == 7526)]
     # df_parameters = df_parameters[(df_parameters["id_parameter"] == 2)]
 
     # DataFrame to store final table
@@ -178,16 +187,17 @@ def main():
                 intra_task_execution_device_func = df_log_time["intra_task_execution_device_func"].mean()
                 intra_task_execution_full_func = df_log_time["intra_task_execution_full_func"].mean()
 
-                # execution 3 - extract total execution time for CPU (id_device = 1) and GPU (id_device = 2)
-                compss_barrier()
-                start = time.perf_counter()
-                kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=id_device, max_iter=5, tol=0, arity=48)
-                kmeans.fit(dis_x)
-                compss_barrier()
-                end = time.perf_counter()
+                # # execution 3 - extract total execution time for CPU (id_device = 1) and GPU (id_device = 2)
+                # compss_barrier()
+                # start = time.perf_counter()
+                # kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=id_device, max_iter=5, tol=0, arity=48)
+                # kmeans.fit(dis_x)
+                # compss_barrier()
+                # end = time.perf_counter()
 
-                # log total execution time
-                total_execution_time = end - start
+                # # log total execution time
+                # total_execution_time = end - start
+                total_execution_time = 999999999999
 
             # Update result values obtained in the current execution, without the first execution (compiling/warming up device code)
             if i != 0:
