@@ -891,9 +891,9 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                     (df["ds_algorithm"] == ds_algorithm.upper()) # FIXED VALUE
                     & (df["nr_iterations"] == int(nr_iterations)) # FIXED VALUE
                     & (df["ds_resource"] == ds_resource.upper()) # FIXED VALUE
-                    # & (df["ds_dataset"].isin(["S_10MB_1","S_100MB_1","S_1GB_1","S_10GB_1"])) # FIXED VALUE
-                    & (df["ds_dataset"] == "S_10GB_1")
-                    # & (df["ds_parameter_type"] == "VAR_GRID_COLUMN")
+                    # & (df["ds_dataset"].isin(["S_1MB_1","S_10MB_1","S_100MB_1","S_1GB_1","S_10GB_1","S_100GB_1"])) # FIXED VALUE
+                    & (df["ds_dataset"] == "S_1MB_1")
+                    & (df["ds_parameter_type"] == "VAR_GRID_ROW")
                     ]
 
     if mode == 1:
@@ -2168,7 +2168,10 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         ds_dataset = df_filtered["ds_dataset"].unique()
         ds_dataset = '(' + ', '.join(ds_dataset) + ')'
 
-        x_value_list = ['vl_grid_row_x_column_dimension','vl_block_row_x_column_dimension']
+        # x_value_list = ['vl_grid_row_x_column_dimension','vl_block_row_x_column_dimension','vl_grid_row_dimension','vl_block_row_dimension']
+
+        x_value_list = ['vl_grid_row_dimension','vl_block_row_dimension']
+
 
         for x_value in x_value_list:
 
@@ -2177,6 +2180,12 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
             if x_value == 'vl_block_row_x_column_dimension':
                 x_value_title = 'Block Shape'
+
+            if x_value == 'vl_grid_row_dimension':
+                x_value_title = 'Grid Row'
+
+            if x_value == 'vl_block_row_dimension':
+                x_value_title = 'Block Row'
 
         
             df_filtered_mean = df_filtered.groupby(['ds_device', x_value], as_index=False).mean()
@@ -2575,6 +2584,50 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
             plt.savefig(dst_path_figs+'mode_'+str(mode)+'_heatmap_'+speedup+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
 
+    elif mode == 19:
+
+        print("\nMode ",mode,": Ploting the derivative of all execution times x grid and block row")
+
+        ds_dataset = df_filtered["ds_dataset"].unique()
+        ds_dataset = '(' + ', '.join(ds_dataset) + ')'
+        # vl_grid_row_x_column_dimension
+        x_value = 'vl_block_row_dimension'
+        x_value_title = 'Block Row'
+    
+        df_filtered_mean = df_filtered.groupby(['ds_device', x_value], as_index=False).mean()
+
+        df_filtered_mean_cpu = df_filtered_mean[(df_filtered_mean.ds_device=="CPU")]
+        df_filtered_mean_gpu = df_filtered_mean[(df_filtered_mean.ds_device=="GPU")]
+
+        df_filtered_mean_cpu.sort_values('vl_block_row_dimension', inplace=True)
+        df_filtered_mean_gpu.sort_values('vl_block_row_dimension', inplace=True)
+
+        x_cpu = df_filtered_mean_cpu['vl_block_row_dimension'].reset_index(drop=True)
+        y_cpu = df_filtered_mean_cpu['vl_intra_task_execution_time_device_func'].reset_index(drop=True)
+
+      
+        dydx = np.gradient(y_cpu, x_cpu)
+
+        df_filtered_mean_cpu['dydx'] = dydx
+
+        # VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC
+        fig = plt.figure()
+        ax = plt.gca()
+        df_filtered_mean_cpu.plot(x = x_value, y = 'vl_intra_task_execution_time_device_func', kind = 'line', color='C3', linestyle = 'dotted', ax=ax, label='CPU (values)', zorder=3)
+        df_filtered_mean_cpu.plot(x = x_value, y = 'dydx', kind = 'line', color='C3', linestyle = 'solid', ax=ax, label='CPU (derivative)', zorder=3)
+        # df_filtered_mean_gpu.plot(x = x_value, y = 'vl_intra_task_execution_time_device_func', kind = 'line', color='C3', linestyle = 'solid', ax=ax, label='GPU', zorder=3)
+        plt.xlabel(x_value_title)
+        plt.ylabel('Average Intra-Task (device func) Time (s)')
+        plt.title('Average Intra-Task (device func) Time x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
+        ax.tick_params(axis='x', labelrotation = 90)
+        # # NORMAL SCALE
+        # plt.ylim([0.000, 5.000])
+        # LOG SCALE
+        # plt.ylim([1e-4, 1e1])
+        # plt.yscale("log")
+        # plt.show()
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_intra_task_execution_time_device_func_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
     else:
 
         print("\nInvalid mode.")
