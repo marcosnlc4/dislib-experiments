@@ -7,6 +7,8 @@ import csv
 import numpy as np
 import cupy as cp
 
+import datetime
+
 import dislib
 from pycompss.api.api import compss_barrier
 from pycompss.api.api import compss_wait_on
@@ -24,9 +26,9 @@ from dislib.data.util import encoder_helper, decoder_helper, sync_obj
 import dislib.data.util.model as utilmodel
 
 # location of the csv log file
-log_file_path = os.path.dirname(os.path.abspath(__file__))
-log_file_path = log_file_path.replace("/dislib/cluster/kmeans", "/experiments/logs/log_time.csv")
-
+dst_path_experiments = os.path.dirname(os.path.abspath(__file__))
+dst_path_experiments = dst_path_experiments.replace("/dislib/cluster/kmeans", "/experiments/results/tb_experiments.csv")
+var_null = "NULL"
 
 class KMeans(BaseEstimator):
     """ Perform K-means clustering.
@@ -56,14 +58,11 @@ class KMeans(BaseEstimator):
         Whether to print progress information.
     id_device: int (default=1)
         Flag to define the device function implementation according to resource (CPU: 1, GPU: 2, GPU intra: 3)
-    dict_time
-        Dictionary used to store logs about execution time as follows:    
-            communication_time:
-                Communication time required to transfer data betwwen devices (CPU and GPU)
-            intra_task_execution_time:
-                Intra task execution time
-            inter_task_execution_time:
-                Inter task execution time
+    id_parameter: int (default=0)
+        Variable to identify the parameter id
+    nr_algorithm_iteration: int (default=0)
+        Variable to identify the number of the execution of the algorithm
+
     Attributes
     ----------
     centers : ndarray
@@ -93,17 +92,17 @@ class KMeans(BaseEstimator):
     def __init__(self, n_clusters=8, init='random', max_iter=10, tol=1e-4,
                  arity=50, random_state=None, verbose=False,
                  id_device=1,
-                 dict_time={"communication_time":0,
-                            "intra_task_execution_time":0,
-                            "inter_task_execution_time":0}):
+                 id_parameter=0, 
+                 nr_algorithm_iteration=0):
         self.n_clusters = n_clusters
         self.max_iter = max_iter
         self.tol = tol
         self.random_state = random_state
         self.arity = arity
         self.verbose = verbose
+        self.id_parameter = id_parameter
         self.id_device = id_device
-        self.dict_time = dict_time
+        self.nr_algorithm_iteration = nr_algorithm_iteration
         self.init = init
 
     def fit(self, x, y=None):
@@ -120,14 +119,11 @@ class KMeans(BaseEstimator):
         -------
         self : KMeans
         """
-        inter_task_execution_time_list = np.array([])
-
         self.random_state = check_random_state(self.random_state)
         self._init_centers(x.shape[1], x._sparse)
 
         old_centers = None
         iteration = 0
-        self.dict_time["inter_task_execution_time"] = 0
 
         if self.id_device == 1 or self.id_device == 5:
             partial_sum_func = _partial_sum
@@ -135,22 +131,8 @@ class KMeans(BaseEstimator):
             partial_sum_func = _partial_sum_gpu
         elif self.id_device == 3:
             partial_sum_func = _partial_sum_intra_time
-            # defining the structure of the log file
-            header = ['communication_time', 'intra_task_execution_device_func', 'intra_task_execution_full_func']
-            # open the log file in the write mode
-            f = open(log_file_path, "w", encoding='UTF8', newline='')
-            writer = csv.writer(f)
-            writer.writerow(header)
-            f.close()
         elif self.id_device == 4:
             partial_sum_func = _partial_sum_gpu_intra_time
-            # defining the structure of the log file
-            header = ['communication_time', 'intra_task_execution_device_func', 'intra_task_execution_full_func']
-            # open the log file in the write mode
-            f = open(log_file_path, "w", encoding='UTF8', newline='')
-            writer = csv.writer(f)
-            writer.writerow(header)
-            f.close()
         else:
             raise ValueError("Invalid id_device")
 
@@ -158,7 +140,14 @@ class KMeans(BaseEstimator):
             old_centers = self.centers.copy()
             partials = []
             
-            if self.id_device == 5 or self.id_device == 6:
+            if self.id_device == 3 or self.id_device == 4:
+                nr_task = 0
+                for row in x._iterator(axis=0):
+                    partial = partial_sum_func(row._blocks, old_centers, self.id_parameter, self.nr_algorithm_iteration, iteration, nr_task)
+                    partials.append(partial)
+                    nr_task += 1
+            
+            elif self.id_device == 5 or self.id_device == 6:
                 compss_barrier()
                 start_inter_cpu = time.perf_counter()
 
@@ -170,7 +159,17 @@ class KMeans(BaseEstimator):
                 end_inter_cpu = time.perf_counter()
 
                 inter_task_execution_time = end_inter_cpu - start_inter_cpu
-                inter_task_execution_time_list = np.append(inter_task_execution_time_list,inter_task_execution_time)
+
+                # open the log file in the append mode
+                f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+                # create a csv writer
+                writer = csv.writer(f)
+
+                # write the time data 
+                data = [self.id_parameter, self.nr_algorithm_iteration, iteration, var_null, var_null, inter_task_execution_time, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
+                writer.writerow(data)
+                f.close()
 
             else:
                 for row in x._iterator(axis=0):
@@ -179,9 +178,6 @@ class KMeans(BaseEstimator):
     
             self._recompute_centers(partials)
             iteration += 1
-
-        if self.id_device == 5 or self.id_device == 6:
-            self.dict_time["inter_task_execution_time"] = np.mean(inter_task_execution_time_list)
 
         self.n_iter = iteration
 
@@ -205,9 +201,6 @@ class KMeans(BaseEstimator):
 
         self.fit(x)
         return self.predict(x)
-
-    def log_time(self):
-        return self.dict_time
 
     def predict(self, x):
         """ Predict the closest cluster each sample in the data belongs to.
@@ -433,9 +426,9 @@ def _partial_sum_gpu(blocks, centers):
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ])
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
-def _partial_sum_gpu_intra_time(blocks, centers):
+def _partial_sum_gpu_intra_time(blocks, centers, id_parameter, nr_algorithm_iteration, iteration, row):
     # open the log file in the append mode
-    f = open(log_file_path, "a", encoding='UTF8', newline='')
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
 
     # create a csv writer
     writer = csv.writer(f)
@@ -444,19 +437,16 @@ def _partial_sum_gpu_intra_time(blocks, centers):
     start_gpu_intra_device = cp.cuda.Event()
     end_gpu_intra_device = cp.cuda.Event()
 
-
     # Measure additional time 1
     start_additional_time_1 = time.perf_counter()
     partials = np.zeros((centers.shape[0], 2), dtype=object)
     arr = Array._merge_blocks(blocks).astype(np.float32)
     end_additional_time_1 = time.perf_counter()
-    additional_time_1 = end_additional_time_1 - start_additional_time_1
 
     # Measure communication time 1
     start_comm_1 = time.perf_counter()
     arr_gpu, centers_gpu = cp.asarray(arr), cp.asarray(centers).astype(cp.float32)
     end_comm_1 = time.perf_counter()
-    communication_time_1 = end_comm_1 - start_comm_1
 
     # Measure intra task execution time (device function) 
     start_gpu_intra_device.record()
@@ -469,10 +459,6 @@ def _partial_sum_gpu_intra_time(blocks, centers):
     start_comm_2 = time.perf_counter()
     close_centers = cp.asnumpy(close_centers_gpu)
     end_comm_2 = time.perf_counter()
-    communication_time_2 = end_comm_2 - start_comm_2
-
-    # Sum all communication time
-    communication_time = communication_time_1 + communication_time_2
 
     # Measure additional time 2
     start_additional_time_2 = time.perf_counter()
@@ -484,16 +470,16 @@ def _partial_sum_gpu_intra_time(blocks, centers):
         partials[center_idx][1] = indices.shape[0]
 
     end_additional_time_2 = time.perf_counter()
+
+    # Calculating execution times
+    additional_time_1 = end_additional_time_1 - start_additional_time_1
     additional_time_2 = end_additional_time_2 - start_additional_time_2
-
-    # Sum all additional times
-    additional_time = additional_time_1 + additional_time_2
-
-    intra_task_execution_full_func = communication_time + intra_task_execution_device_func + additional_time 
+    communication_time_1 = end_comm_1 - start_comm_1
+    communication_time_2 = end_comm_2 - start_comm_2
+    intra_task_execution_full_func = additional_time_1 + additional_time_2 + intra_task_execution_device_func + communication_time_1 + communication_time_2
 
     # write the time data 
-    data = [communication_time, intra_task_execution_device_func, intra_task_execution_full_func]
-    # writer.writerow(header)
+    data = [id_parameter, nr_algorithm_iteration, iteration, row, var_null, var_null, intra_task_execution_full_func, intra_task_execution_device_func, communication_time_1, communication_time_2, additional_time_1, additional_time_2, datetime.datetime.now()]
     writer.writerow(data)
     f.close()
 
@@ -508,7 +494,7 @@ def _partial_sum(blocks, centers):
 
     close_centers = pairwise_distances(arr, centers).argmin(axis=1)
 
-    for center_idx in range(len(centers)):
+    for center_idx, _ in enumerate(centers):
         indices = np.argwhere(close_centers == center_idx).flatten()
         partials[center_idx][0] = np.sum(arr[indices], axis=0)
         partials[center_idx][1] = indices.shape[0]
@@ -517,39 +503,42 @@ def _partial_sum(blocks, centers):
 
 @constraint(computing_units="${ComputingUnitsCPU}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
-def _partial_sum_intra_time(blocks, centers):
+def _partial_sum_intra_time(blocks, centers, id_parameter, nr_algorithm_iteration, iteration, row):
     # open the log file in the append mode
-    f = open(log_file_path, "a", encoding='UTF8', newline='')
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
 
     # create a csv writer
     writer = csv.writer(f)
 
-    # start measuring intra_task_execution_full_func
-    start_intra_func = time.perf_counter()
-
+    # Measure additional time 1
+    start_additional_time_1 = time.perf_counter()
     partials = np.zeros((centers.shape[0], 2), dtype=object)
     arr = Array._merge_blocks(blocks)
+    end_additional_time_1 = time.perf_counter()
 
-    # start measuring intra_task_execution_device_func
+    # Measure intra task execution time (device function) 
     start_intra_device = time.perf_counter()
     close_centers = pairwise_distances(arr, centers).argmin(axis=1)
     end_intra_device = time.perf_counter()
     intra_task_execution_device_func = end_intra_device - start_intra_device
 
-    # start measuring communication_time
-    communication_time = 0
-
-    for center_idx in range(len(centers)):
+    # Measure additional time 2
+    start_additional_time_2 = time.perf_counter()
+    for center_idx, _ in enumerate(centers):
         indices = np.argwhere(close_centers == center_idx).flatten()
         partials[center_idx][0] = np.sum(arr[indices], axis=0)
         partials[center_idx][1] = indices.shape[0]
+    end_additional_time_2 = time.perf_counter()
 
-    end_intra_func = time.perf_counter()
-    intra_task_execution_full_func = end_intra_func - start_intra_func
+    # Calculating execution times
+    additional_time_1 = end_additional_time_1 - start_additional_time_1
+    additional_time_2 = end_additional_time_2 - start_additional_time_2
+    communication_time_1 = 0
+    communication_time_2 = 0
+    intra_task_execution_full_func = communication_time_1 + communication_time_2 + intra_task_execution_device_func + additional_time_1 + additional_time_2
 
-    # write the time data 
-    data = [communication_time, intra_task_execution_device_func, intra_task_execution_full_func]
-    # writer.writerow(header)
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, row, var_null, var_null, intra_task_execution_full_func, intra_task_execution_device_func, communication_time_1, communication_time_2, additional_time_1, additional_time_2, datetime.datetime.now()]
     writer.writerow(data)
     f.close()
 

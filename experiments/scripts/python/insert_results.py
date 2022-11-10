@@ -2,6 +2,7 @@ import os
 import psycopg2
 import psycopg2.extras as extras
 import pandas as pd
+import math
 from config import open_connection, close_connection
 
 def main():
@@ -21,10 +22,13 @@ def main():
 
     # Set sql query - on conflict with the database values, do nothing
     # sql_query = "INSERT INTO EXPERIMENT(%s) VALUES %%s" % (cols)
-    sql_query = "INSERT INTO EXPERIMENT(%s) VALUES %%s ON CONFLICT (%s) DO NOTHING" % (cols,cols)
-    
+    sql_query = "INSERT INTO EXPERIMENT_RAW(%s) VALUES %%s ON CONFLICT (%s) DO NOTHING" % (cols,cols)
+
+    new_tuples = [tuple(None if isinstance(i, float) and math.isnan(i) else i for i in t) for t in tuples]
+
+    # print(new_tuples)
     # Get dataframe from query
-    insert_experiment_result(sql_query, cur, conn, tuples)
+    insert_experiment_result(sql_query, cur, conn, new_tuples)
 
 # Function that takes in a PostgreSQL query and outputs a pandas dataframe 
 def insert_experiment_result(sql_query, cur, conn, tuples):

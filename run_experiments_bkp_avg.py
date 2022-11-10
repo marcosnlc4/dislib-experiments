@@ -71,11 +71,11 @@ def main():
 
     # Filtering and sorting parameters (TEST)
     # df_parameters = df_parameters[(df_parameters["id_parameter"] != 11832) & (df_parameters["id_parameter"] != 11830) & (df_parameters["id_parameter"] != 11828) & (df_parameters["id_parameter"] != 11827) & (df_parameters["id_parameter"] != 11826) & (df_parameters["id_parameter"] != 11825)].sort_values(by=["id_parameter"])
-    # df_parameters = df_parameters[(df_parameters["id_parameter"] == 7531) | (df_parameters["id_parameter"] == 7532)]
-    df_parameters = df_parameters[(df_parameters["id_parameter"] == 7531)]
+    df_parameters = df_parameters[(df_parameters["id_parameter"] == 7526)]
+    # df_parameters = df_parameters[(df_parameters["id_parameter"] == 2)]
 
     # DataFrame to store final table
-    df_experiments = pd.DataFrame(columns=["id_parameter", "vl_total_execution_time", "vl_inter_task_execution_time", "vl_intra_task_execution_time_device_func", "vl_intra_task_execution_time_full_func", "vl_additional_time_1", "vl_additional_time_2", "vl_communication_time_1", "vl_communication_time_2"])
+    df_experiments = pd.DataFrame(columns=["id_parameter", "vl_total_execution_time", "vl_inter_task_execution_time", "vl_intra_task_execution_time_device_func", "vl_intra_task_execution_time_full_func", "vl_communication_time"])
 
     # array to store temporary results
     data = []
@@ -183,10 +183,7 @@ def main():
                 dict_time = kmeans.log_time()
                 inter_task_execution_time = dict_time["inter_task_execution_time"]
                 df_log_time = pd.read_csv(log_file_path)
-                additional_time_1 = df_log_time["additional_time_1"].mean()
-                additional_time_2 = df_log_time["additional_time_2"].mean()
-                communication_time_1 = df_log_time["communication_time_1"].mean()
-                communication_time_2 = df_log_time["communication_time_2"].mean()
+                communication_time = df_log_time["communication_time"].mean()
                 intra_task_execution_device_func = df_log_time["intra_task_execution_device_func"].mean()
                 intra_task_execution_full_func = df_log_time["intra_task_execution_full_func"].mean()
 
@@ -212,20 +209,17 @@ def main():
                 print("-----------------------------------------")
                 print("-------------- RESULTS ------------------")
                 print("-----------------------------------------")
-                print("Additional time 1: %f" % (additional_time_1))
-                print("Additional time 2: %f" % (additional_time_2))
-                print("Communication time 1: %f" % (communication_time_1))
-                print("Communication time 2: %f" % (communication_time_2))
+                print("Communication time: %f" % (communication_time))
                 print("Intra task execution time (device func): %f" % (intra_task_execution_device_func))
                 print("Intra task execution time (full func): %f" % (intra_task_execution_full_func))
                 print("Inter task execution time: %f" % (inter_task_execution_time))
                 print("Total execution time: %f" % (total_execution_time))
                 print("-----------------------------------------")
 
-                data.append([id_parameter, total_execution_time, inter_task_execution_time, intra_task_execution_full_func, intra_task_execution_device_func, additional_time_1, additional_time_2, communication_time_1, communication_time_2])
+                data.append([id_parameter, total_execution_time, inter_task_execution_time, intra_task_execution_full_func, intra_task_execution_device_func, communication_time])
 
         # Saving experiments results
-        df0 = pd.DataFrame(data, columns=["id_parameter", "vl_total_execution_time", "vl_inter_task_execution_time", "vl_intra_task_execution_time_full_func", "vl_intra_task_execution_time_device_func", "vl_additional_time_1", "vl_additional_time_2", "vl_communication_time_1", "vl_communication_time_2"])
+        df0 = pd.DataFrame(data, columns=["id_parameter", "vl_total_execution_time", "vl_inter_task_execution_time", "vl_intra_task_execution_time_full_func", "vl_intra_task_execution_time_device_func", "vl_communication_time"])
         df_experiments = df0.groupby(["id_parameter"], as_index=False).mean()
         df_experiments["dt_processing"] = datetime.datetime.now()
         df_experiments.to_csv(dst_path_experiments, index=False)
