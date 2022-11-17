@@ -14,7 +14,7 @@ def main():
     # Path of the "tb_parameters" table - CSV file
     src_path_parameters = "experiments/parameters/tb_parameters.csv"
     # Path of the "tb_experiments" table - CSV file
-    dst_path_experiments = "experiments/results/tb_experiments.csv"
+    dst_path_experiments = "experiments/results/tb_experiments_raw.csv"
 
     # Reading "tb_parameters" table
     param_file = os.path.join(src_path_parameters)
@@ -46,53 +46,49 @@ def main():
 
 
     # Filtering and sorting parameters V2
-    df_parameters = df_parameters[
-                                    (df_parameters["ds_algorithm"] == "KMEANS") # FIXED VALUE
-                                    & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
-                                    # & (df_parameters["ds_dataset"].isin(["S_10MB_1","S_100MB_1","S_1GB_1","S_10GB_1"])) # FIXED VALUE
-                                    & (df_parameters["ds_dataset"] == "S_100GB_1")
-                                    & (df_parameters["ds_resource"] == "MINOTAURO_9_NODES_16_CORES")
-                                    & (df_parameters["ds_parameter_type"] == "VAR_GRID_ROW") # 1
-                                    # & (df_parameters["ds_parameter_type"] == "VAR_GRID_COLUMN") # 2
-                                ].sort_values(by=["id_parameter"])
-
-    # Filtering and sorting parameters V3
     # df_parameters = df_parameters[
     #                                 (df_parameters["ds_algorithm"] == "KMEANS") # FIXED VALUE
     #                                 & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
+    #                                 # & (df_parameters["ds_dataset"].isin(["S_10MB_1","S_100MB_1","S_1GB_1","S_10GB_1"])) # FIXED VALUE
     #                                 & (df_parameters["ds_dataset"] == "S_100GB_1")
-    #                                 & (df_parameters["ds_parameter_type"] == "VAR_CORES_CLUSTER_1") # 1
-    #                                 # & (df_parameters["ds_parameter_type"] == "VAR_CORES_SINGLE_NODE_1") # 2
-    #                                 # & (df_parameters["ds_parameter_type"] == "VAR_NODES_1") # 3
+    #                                 & (df_parameters["ds_resource"] == "MINOTAURO_9_NODES_16_CORES")
+    #                                 & (df_parameters["ds_parameter_type"] == "VAR_GRID_ROW") # 1
+    #                                 # & (df_parameters["ds_parameter_type"] == "VAR_GRID_COLUMN") # 2
     #                             ].sort_values(by=["id_parameter"])
+
+    # Filtering and sorting parameters V3
+    df_parameters = df_parameters[
+                                    (df_parameters["ds_algorithm"] == "KMEANS") # FIXED VALUE
+                                    & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
+                                    & (df_parameters["ds_dataset"] == "S_10GB_1")
+                                    & (df_parameters["ds_parameter_type"] == "VAR_CORES_CLUSTER_1") # 1
+                                    & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_16_CORES") # 1
+                                    # & (df_parameters["ds_resource"] == "MINOTAURO_3_NODES_16_CORES") # 1
+                                    # & (df_parameters["ds_resource"] == "MINOTAURO_4_NODES_16_CORES") # 1
+                                    # & (df_parameters["ds_resource"] == "MINOTAURO_5_NODES_16_CORES") # 1
+                                    # & (df_parameters["ds_resource"] == "MINOTAURO_6_NODES_16_CORES") # 1
+                                    # & (df_parameters["ds_resource"] == "MINOTAURO_7_NODES_16_CORES") # 1
+                                    # & (df_parameters["ds_resource"] == "MINOTAURO_8_NODES_16_CORES") # 1
+                                    # & (df_parameters["ds_resource"] == "MINOTAURO_9_NODES_16_CORES") # 1
+                                    # & (df_parameters["ds_parameter_type"] == "VAR_CORES_SINGLE_NODE_1") # 2
+                                    # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_2_CORES") # 2
+                                    # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_4_CORES") # 2
+                                    # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_6_CORES") # 2
+                                    # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_8_CORES") # 2
+                                    # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_10_CORES") # 2
+                                    # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_12_CORES") # 2
+                                    # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_14_CORES") # 2
+                                    # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_16_CORES") # 2
+                                ].sort_values(by=["id_parameter"])
 
     # Filtering and sorting parameters (TEST)
     # df_parameters = df_parameters[(df_parameters["id_parameter"] != 11832) & (df_parameters["id_parameter"] != 11830) & (df_parameters["id_parameter"] != 11828) & (df_parameters["id_parameter"] != 11827) & (df_parameters["id_parameter"] != 11826) & (df_parameters["id_parameter"] != 11825)].sort_values(by=["id_parameter"])
-    df_parameters = df_parameters[(df_parameters["id_parameter"] == 11841) | (df_parameters["id_parameter"] == 11842)]
-    # df_parameters = df_parameters[(df_parameters["id_parameter"] == 7531)]
-
-    # 11825
-    # 11826
-    # 11827
-    # 11828
-    # 11829
-    # 11830
-    # 11831
-    # 11832
-    # WARNING
-    # 11833
-    # 11834
-    # 11835
-    # 11836
-    # 11837
-    # 11838
-    # 11839
-    # 11840
-    # 11841
-    # 11842
+    # df_parameters = df_parameters[(df_parameters["id_parameter"] == 11841) | (df_parameters["id_parameter"] == 11842)]
+    # df_parameters = df_parameters[(df_parameters["id_parameter"] == 7531) | (df_parameters["id_parameter"] == 7532)]
 
     # defining the structure of the log file
-    header = ["id_parameter", "nr_algorithm_iteration", "nr_function_iteration", "nr_task", "vl_total_execution_time", "vl_inter_task_execution_time", "vl_intra_task_execution_time_full_func", "vl_intra_task_execution_time_device_func", "vl_communication_time_1", "vl_communication_time_2", "vl_additional_time_1", "vl_additional_time_2", "dt_processing"]
+    header = ["id_parameter", "nr_algorithm_iteration", "nr_function_iteration", "nr_task", "start_total_execution_time", "end_total_execution_time", "start_inter_time_cpu", "end_inter_time_cpu", "intra_task_execution_full_func", "vl_intra_task_execution_time_device_func", "start_communication_time_1", "end_communication_time_1", "start_communication_time_2", "end_communication_time_2", "start_additional_time_1", "end_additional_time_1", "start_additional_time_2", "end_additional_time_2", "dt_processing"]
+    # header = ["id_parameter", "nr_algorithm_iteration", "nr_function_iteration", "nr_task", "vl_total_execution_time", "vl_inter_task_execution_time", "vl_intra_task_execution_time_full_func", "vl_intra_task_execution_time_device_func", "vl_communication_time_1", "vl_communication_time_2", "vl_additional_time_1", "vl_additional_time_2", "dt_processing"]
     # open the log file in the write mode
     f = open(dst_path_experiments, "w", encoding='UTF8', newline='')
     writer = csv.writer(f)
@@ -198,14 +194,14 @@ def main():
 
                 # # execution 3 - extract total execution time for CPU (id_device = 1) and GPU (id_device = 2)
                 # compss_barrier()
-                # start = time.perf_counter()
+                # start_total_execution_time = time.perf_counter()
                 # kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=id_device, max_iter=5, tol=0, arity=48)
                 # kmeans.fit(dis_x)
                 # compss_barrier()
-                # end = time.perf_counter()
+                # end_total_execution_time = time.perf_counter()
 
                 # # log total execution time
-                # total_execution_time = end - start
+                # total_execution_time = end_total_execution_time - start_total_execution_time
 
                 # # open the log file in the append mode
                 # f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
