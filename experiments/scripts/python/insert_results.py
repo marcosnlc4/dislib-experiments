@@ -41,22 +41,7 @@ def main():
         vl_additional_time_1 = None if (math.isnan(row["start_additional_time_1"] or row["end_additional_time_1"])) else row["end_additional_time_1"] - row["start_additional_time_1"]
         vl_additional_time_2 = None if (math.isnan(row["start_additional_time_2"] or row["end_additional_time_2"])) else row["end_additional_time_2"] - row["start_additional_time_2"]
         vl_intra_task_execution_time_full_func = None if (vl_communication_time_1 is None or vl_communication_time_2 is None or vl_intra_task_execution_time_device_func is None or vl_additional_time_1 is None or vl_additional_time_2 is None) else vl_communication_time_1 + vl_communication_time_2 + vl_intra_task_execution_time_device_func + vl_additional_time_1 + vl_additional_time_2
-        # vl_intra_task_execution_time_full_func = None if math.isnan(vl_intra_task_execution_time_full_func) else vl_intra_task_execution_time_full_func
         dt_processing = row["dt_processing"]
-
-        # id_parameter = row["id_parameter"]
-        # nr_algorithm_iteration = row["nr_algorithm_iteration"]
-        # nr_function_iteration = row["nr_function_iteration"]
-        # nr_task = row["nr_task"]
-        # vl_total_execution_time = row["end_total_execution_time"] - row["start_total_execution_time"]
-        # vl_inter_task_execution_time = row["end_inter_time_cpu"] - row["start_inter_time_cpu"]
-        # vl_intra_task_execution_time_device_func = row["vl_intra_task_execution_time_device_func"]
-        # vl_communication_time_1 = row["end_communication_time_1"] - row["start_communication_time_1"]
-        # vl_communication_time_2 = row["end_communication_time_2"] - row["start_communication_time_2"]
-        # vl_additional_time_1 = row["end_additional_time_1"] - row["start_additional_time_1"]
-        # vl_additional_time_2 = row["end_additional_time_2"] - row["start_additional_time_2"]
-        # vl_intra_task_execution_time_full_func = vl_communication_time_1 + vl_communication_time_2 + vl_intra_task_execution_time_device_func + vl_additional_time_1 + vl_additional_time_2
-        # dt_processing = row["dt_processing"]
 
         # open "tb_experiments" in append mode
         f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
