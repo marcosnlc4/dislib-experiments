@@ -46,45 +46,45 @@ def main():
 
 
     # Filtering and sorting parameters V2
+    df_parameters = df_parameters[
+                                     (df_parameters["ds_algorithm"] == "KMEANS") # FIXED VALUE
+                                     & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
+                                     # & (df_parameters["ds_dataset"].isin(["S_10MB_1","S_100MB_1","S_1GB_1","S_10GB_1"])) # FIXED VALUE
+                                     & (df_parameters["ds_dataset"] == "S_1GB_1")
+                                     & (df_parameters["ds_resource"] == "MINOTAURO_9_NODES_16_CORES")
+                                     & (df_parameters["ds_parameter_type"] == "VAR_GRID_ROW") # 1
+                                     # & (df_parameters["ds_parameter_type"] == "VAR_GRID_COLUMN") # 2
+                                 ].sort_values(by=["id_parameter"])
+
+    # # Filtering and sorting parameters V3
     # df_parameters = df_parameters[
     #                                 (df_parameters["ds_algorithm"] == "KMEANS") # FIXED VALUE
     #                                 & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
-    #                                 # & (df_parameters["ds_dataset"].isin(["S_10MB_1","S_100MB_1","S_1GB_1","S_10GB_1"])) # FIXED VALUE
-    #                                 & (df_parameters["ds_dataset"] == "S_100GB_1")
-    #                                 & (df_parameters["ds_resource"] == "MINOTAURO_9_NODES_16_CORES")
-    #                                 & (df_parameters["ds_parameter_type"] == "VAR_GRID_ROW") # 1
-    #                                 # & (df_parameters["ds_parameter_type"] == "VAR_GRID_COLUMN") # 2
+    #                                 & (df_parameters["ds_dataset"] == "S_10GB_1")
+    #                                 & (df_parameters["ds_parameter_type"] == "VAR_CORES_CLUSTER_1") # 1
+    #                                 & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_16_CORES") # 1
+    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_3_NODES_16_CORES") # 1
+    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_4_NODES_16_CORES") # 1
+    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_5_NODES_16_CORES") # 1
+    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_6_NODES_16_CORES") # 1
+    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_7_NODES_16_CORES") # 1
+    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_8_NODES_16_CORES") # 1
+    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_9_NODES_16_CORES") # 1
+    #                                 # & (df_parameters["ds_parameter_type"] == "VAR_CORES_SINGLE_NODE_1") # 2
+    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_2_CORES") # 2
+    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_4_CORES") # 2
+    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_6_CORES") # 2
+    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_8_CORES") # 2
+    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_10_CORES") # 2
+    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_12_CORES") # 2
+    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_14_CORES") # 2
+    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_16_CORES") # 2
     #                             ].sort_values(by=["id_parameter"])
-
-    # Filtering and sorting parameters V3
-    df_parameters = df_parameters[
-                                    (df_parameters["ds_algorithm"] == "KMEANS") # FIXED VALUE
-                                    & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
-                                    & (df_parameters["ds_dataset"] == "S_10GB_1")
-                                    & (df_parameters["ds_parameter_type"] == "VAR_CORES_CLUSTER_1") # 1
-                                    & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_16_CORES") # 1
-                                    # & (df_parameters["ds_resource"] == "MINOTAURO_3_NODES_16_CORES") # 1
-                                    # & (df_parameters["ds_resource"] == "MINOTAURO_4_NODES_16_CORES") # 1
-                                    # & (df_parameters["ds_resource"] == "MINOTAURO_5_NODES_16_CORES") # 1
-                                    # & (df_parameters["ds_resource"] == "MINOTAURO_6_NODES_16_CORES") # 1
-                                    # & (df_parameters["ds_resource"] == "MINOTAURO_7_NODES_16_CORES") # 1
-                                    # & (df_parameters["ds_resource"] == "MINOTAURO_8_NODES_16_CORES") # 1
-                                    # & (df_parameters["ds_resource"] == "MINOTAURO_9_NODES_16_CORES") # 1
-                                    # & (df_parameters["ds_parameter_type"] == "VAR_CORES_SINGLE_NODE_1") # 2
-                                    # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_2_CORES") # 2
-                                    # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_4_CORES") # 2
-                                    # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_6_CORES") # 2
-                                    # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_8_CORES") # 2
-                                    # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_10_CORES") # 2
-                                    # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_12_CORES") # 2
-                                    # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_14_CORES") # 2
-                                    # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_16_CORES") # 2
-                                ].sort_values(by=["id_parameter"])
 
     # Filtering and sorting parameters (TEST)
     # df_parameters = df_parameters[(df_parameters["id_parameter"] != 11832) & (df_parameters["id_parameter"] != 11830) & (df_parameters["id_parameter"] != 11828) & (df_parameters["id_parameter"] != 11827) & (df_parameters["id_parameter"] != 11826) & (df_parameters["id_parameter"] != 11825)].sort_values(by=["id_parameter"])
     # df_parameters = df_parameters[(df_parameters["id_parameter"] == 11841) | (df_parameters["id_parameter"] == 11842)]
-    # df_parameters = df_parameters[(df_parameters["id_parameter"] == 7531) | (df_parameters["id_parameter"] == 7532)]
+    # df_parameters = df_parameters[(df_parameters["id_parameter"] == 7531)]
 
     # defining the structure of the log file
     header = ["id_parameter", "nr_algorithm_iteration", "nr_function_iteration", "nr_task", "start_total_execution_time", "end_total_execution_time", "start_inter_time_cpu", "end_inter_time_cpu", "intra_task_execution_full_func", "vl_intra_task_execution_time_device_func", "start_communication_time_1", "end_communication_time_1", "start_communication_time_2", "end_communication_time_2", "start_additional_time_1", "end_additional_time_1", "start_additional_time_2", "end_additional_time_2", "dt_processing"]
