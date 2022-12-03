@@ -52,8 +52,14 @@ def main():
                                      # & (df_parameters["ds_dataset"].isin(["S_10MB_1","S_100MB_1","S_1GB_1","S_10GB_1"])) # FIXED VALUE
                                      & (df_parameters["ds_dataset"] == "S_1GB_1")
                                      & (df_parameters["ds_resource"] == "MINOTAURO_9_NODES_16_CORES")
-                                     & (df_parameters["ds_parameter_type"] == "VAR_GRID_ROW") # 1
-                                     # & (df_parameters["ds_parameter_type"] == "VAR_GRID_COLUMN") # 2
+                                    #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_ROW") # 1
+                                    #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_COLUMN") # 2
+                                    #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_ROW_2") # 1.1
+                                    #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_ROW_3") # 1.2
+                                     & (df_parameters["ds_parameter_type"] == "VAR_GRID_ROW_4") # 1.3
+                                    #  & (df_parameters["ds_parameter_type"] == "VAR_CORES_CLUSTER_2") # 2.1
+                                    #  & (df_parameters["ds_parameter_type"] == "VAR_CORES_CLUSTER_3") # 2.2
+                                    #  & (df_parameters["ds_parameter_type"] == "VAR_CORES_CLUSTER_4") # 2.3
                                  ].sort_values(by=["id_parameter"])
 
     # # Filtering and sorting parameters V3
@@ -118,6 +124,10 @@ def main():
         id_parameter_type = row["id_parameter_type"]
         ds_parameter_type = row["ds_parameter_type"]
         ds_parameter_attribute = row["ds_parameter_attribute"]
+        ds_compss_version = row["ds_compss_version"]
+        ds_dislib_version = row["ds_dislib_version"]
+        ds_schdeuler = row["ds_schdeuler"]
+        nr_cluster = row["nr_cluster"]
         nr_iterations = row["nr_iterations"]
         vl_grid_row_dimension = row["vl_grid_row_dimension"]
         vl_grid_column_dimension = row["vl_grid_column_dimension"]
@@ -140,7 +150,6 @@ def main():
         vl_dataset_row_dimension = row["vl_dataset_row_dimension"]
         vl_dataset_column_dimension = row["vl_dataset_column_dimension"]
         nr_random_state = row["nr_random_state"]
-        n_clusters = 10
 
         execution_progress = round((current_execution/df_parameters.shape[0])*100,2)
         print("\n@@@@@@ EXECUTION PROGRESS:",str(execution_progress),"%\n")
@@ -175,27 +184,27 @@ def main():
                 if ds_device == "GPU":
 
                     # execution 1 - extract intra execution times with CUDA events
-                    kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=4, id_parameter=id_parameter, nr_algorithm_iteration=i, max_iter=5, tol=0, arity=48)
+                    kmeans = KMeans(n_clusters=nr_cluster, random_state=nr_random_state, id_device=4, id_parameter=id_parameter, nr_algorithm_iteration=i, max_iter=5, tol=0, arity=48)
                     kmeans.fit(dis_x)
 
                     # execution 2 - extract total and inter execution times with synchornized function calls
-                    kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=6, id_parameter=id_parameter, nr_algorithm_iteration=i, max_iter=5, tol=0, arity=48)
+                    kmeans = KMeans(n_clusters=nr_cluster, random_state=nr_random_state, id_device=6, id_parameter=id_parameter, nr_algorithm_iteration=i, max_iter=5, tol=0, arity=48)
                     kmeans.fit(dis_x)
 
                 else:
 
                     # execution 1 - extract intra execution times with synchornized function calls
-                    kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=3, id_parameter=id_parameter, nr_algorithm_iteration=i, max_iter=5, tol=0, arity=48)
+                    kmeans = KMeans(n_clusters=nr_cluster, random_state=nr_random_state, id_device=3, id_parameter=id_parameter, nr_algorithm_iteration=i, max_iter=5, tol=0, arity=48)
                     kmeans.fit(dis_x)
 
                     # execution 2 - extract total and inter execution times with synchornized function calls
-                    kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=5, id_parameter=id_parameter, nr_algorithm_iteration=i, max_iter=5, tol=0, arity=48)
+                    kmeans = KMeans(n_clusters=nr_cluster, random_state=nr_random_state, id_device=5, id_parameter=id_parameter, nr_algorithm_iteration=i, max_iter=5, tol=0, arity=48)
                     kmeans.fit(dis_x)
 
                 # # execution 3 - extract total execution time for CPU (id_device = 1) and GPU (id_device = 2)
                 # compss_barrier()
                 # start_total_execution_time = time.perf_counter()
-                # kmeans = KMeans(n_clusters=n_clusters, random_state=nr_random_state, id_device=id_device, max_iter=5, tol=0, arity=48)
+                # kmeans = KMeans(n_clusters=nr_cluster, random_state=nr_random_state, id_device=id_device, max_iter=5, tol=0, arity=48)
                 # kmeans.fit(dis_x)
                 # compss_barrier()
                 # end_total_execution_time = time.perf_counter()
