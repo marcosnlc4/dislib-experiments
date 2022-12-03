@@ -88,16 +88,22 @@ DECLARE
 	-- VAR_CORES_CLUSTER_1: grid_row_dimension__grid_column_dimension
 	-- VAR_CORES_SINGLE_NODE_1: grid_row_dimension__grid_column_dimension
 	arr_parameter_type_data text[] := '{
-									{VAR_BLOCK_CAPACITY_SIZE,0.25},
-									{VAR_BLOCK_CAPACITY_SIZE,0.50},
-									{VAR_BLOCK_CAPACITY_SIZE,0.75},
-									{VAR_BLOCK_CAPACITY_SIZE,1.00},
-									{VAR_PARALLELISM_LEVEL,MIN_INTER_MAX_INTRA},
-									{VAR_PARALLELISM_LEVEL,MAX_INTER_MIN_INTRA},
-									{VAR_GRID_ROW,2MAXCORES_1},
-									{VAR_GRID_COLUMN,MAXCORES_0.1},
-									{VAR_CORES_CLUSTER_1,MAXCORES_1},
-									{VAR_CORES_SINGLE_NODE_1,SINGLEMAXCORES_1}							
+									{VAR_BLOCK_CAPACITY_SIZE,0.25,TrunkCT,0.6.4,default,10},
+									{VAR_BLOCK_CAPACITY_SIZE,0.50,TrunkCT,0.6.4,default,10},
+									{VAR_BLOCK_CAPACITY_SIZE,0.75,TrunkCT,0.6.4,default,10},
+									{VAR_BLOCK_CAPACITY_SIZE,1.00,TrunkCT,0.6.4,default,10},
+									{VAR_PARALLELISM_LEVEL,MIN_INTER_MAX_INTRA,TrunkCT,0.6.4,default,10},
+									{VAR_PARALLELISM_LEVEL,MAX_INTER_MIN_INTRA,TrunkCT,0.6.4,default,10},
+									{VAR_GRID_ROW,2MAXCORES_1,TrunkCT,0.6.4,default,10},
+									{VAR_GRID_COLUMN,MAXCORES_0.1,TrunkCT,0.6.4,default,10},
+									{VAR_CORES_CLUSTER_1,MAXCORES_1,TrunkCT,0.6.4,default,10},
+									{VAR_CORES_SINGLE_NODE_1,SINGLEMAXCORES_1,TrunkCT,0.6.4,default,10},
+									{VAR_GRID_ROW_2,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10},
+									{VAR_GRID_ROW_3,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100},
+									{VAR_GRID_ROW_4,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000},
+									{VAR_CORES_CLUSTER_2,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10},
+									{VAR_CORES_CLUSTER_3,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100},
+									{VAR_CORES_CLUSTER_4,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000}					
 								}';
 								
 	arr_id_resource bigint[];
@@ -304,7 +310,11 @@ BEGIN
 	LOOP
 		IF EXISTS(SELECT FROM PARAMETER_TYPE
 				  WHERE DS_PARAMETER_TYPE = arr_text_iterator[1]
-				  AND DS_PARAMETER_ATTRIBUTE = arr_text_iterator[2]			
+				  AND DS_PARAMETER_ATTRIBUTE = arr_text_iterator[2]
+				  AND DS_COMPSS_VERSION = arr_text_iterator[3]
+				  AND DS_DISLIB_VERSION = arr_text_iterator[4]
+				  AND DS_SCHDEULER = arr_text_iterator[5]
+				  AND NR_CLUSTER = CAST(arr_text_iterator[6] AS BIGINT)			
 				 )
 		THEN
 			
@@ -314,11 +324,19 @@ BEGIN
 		
 			INSERT INTO PARAMETER_TYPE(ID_PARAMETER_TYPE,
 										DS_PARAMETER_TYPE,
-										DS_PARAMETER_ATTRIBUTE)
+										DS_PARAMETER_ATTRIBUTE,
+										DS_COMPSS_VERSION,
+										DS_DISLIB_VERSION,
+										DS_SCHDEULER,
+										NR_CLUSTER)
 			VALUES
 			(DEFAULT,
 			 arr_text_iterator[1],
-			 arr_text_iterator[2]);
+			 arr_text_iterator[2],
+			 arr_text_iterator[3],
+			 arr_text_iterator[4],
+			 arr_text_iterator[5],
+			 CAST(arr_text_iterator[6] AS BIGINT));
 			 
 		END IF;
 		
@@ -462,7 +480,11 @@ BEGIN
 	(
 		ID_PARAMETER_TYPE BIGSERIAL PRIMARY KEY,
 		DS_PARAMETER_TYPE VARCHAR,
-		DS_PARAMETER_ATTRIBUTE VARCHAR
+		DS_PARAMETER_ATTRIBUTE VARCHAR,
+		DS_COMPSS_VERSION VARCHAR,
+		DS_DISLIB_VERSION VARCHAR,
+		DS_SCHDEULER VARCHAR,
+		NR_CLUSTER BIGINT
 	);
 	
 	CREATE TABLE PARAMETER
@@ -672,7 +694,7 @@ BEGIN
 	-- SET INITIAL VALUE FOR CD_PARAMETER
 	var_cd_parameter := (SELECT COALESCE(MAX(CD_PARAMETER),0) FROM PARAMETER);
 
-	IF (var_ds_parameter_type = 'VAR_BLOCK_CAPACITY_SIZE')
+	IF (var_ds_parameter_type = 'VAR_BLOCK_CAPACITY_SIZE' and false)
 	THEN
 
 		arr_id_resource := ARRAY(SELECT DISTINCT ID_RESOURCE FROM RESOURCE WHERE ID_RESOURCE <= 10 ORDER BY ID_RESOURCE);
@@ -781,7 +803,7 @@ BEGIN
 			
 		END LOOP;
 
-	ELSIF (var_ds_parameter_type = 'VAR_PARALLELISM_LEVEL')
+	ELSIF (var_ds_parameter_type = 'VAR_PARALLELISM_LEVEL' and false)
 	THEN
 
 		arr_id_resource := ARRAY(SELECT DISTINCT ID_RESOURCE FROM RESOURCE WHERE ID_RESOURCE <= 10 ORDER BY ID_RESOURCE);
@@ -887,7 +909,7 @@ BEGIN
 
 			END LOOP;
 
-		ELSIF (var_ds_parameter_attribute = 'MAX_INTER_MIN_INTRA')
+		ELSIF (var_ds_parameter_attribute = 'MAX_INTER_MIN_INTRA' and false)
 		THEN
 			-- FOR EACH RESOURCE
 			FOREACH id_resource_iterator IN ARRAY arr_id_resource
@@ -990,10 +1012,10 @@ BEGIN
 
 		END IF;
 		
-	ELSIF (var_ds_parameter_type = 'VAR_GRID_ROW')
+	ELSIF (var_ds_parameter_type = 'VAR_GRID_ROW' or var_ds_parameter_type = 'VAR_GRID_ROW_2' or var_ds_parameter_type = 'VAR_GRID_ROW_3' or var_ds_parameter_type = 'VAR_GRID_ROW_4')
 	THEN
 
-		arr_id_resource := ARRAY(SELECT DISTINCT ID_RESOURCE FROM RESOURCE WHERE ID_RESOURCE <= 10 ORDER BY ID_RESOURCE);
+		arr_id_resource := ARRAY(SELECT DISTINCT ID_RESOURCE FROM RESOURCE WHERE ID_RESOURCE = 10 ORDER BY ID_RESOURCE);
 		
 		param_grid_row_dimension := split_part(var_ds_parameter_attribute,'_',1);
 		param_grid_column_dimension := split_part(var_ds_parameter_attribute,'_',2);
@@ -1200,7 +1222,7 @@ BEGIN
 		END LOOP;
 
 
-	ELSIF (var_ds_parameter_type = 'VAR_GRID_COLUMN')
+	ELSIF (var_ds_parameter_type = 'VAR_GRID_COLUMN' and false)
 	THEN
 
 		arr_id_resource := ARRAY(SELECT DISTINCT ID_RESOURCE FROM RESOURCE WHERE ID_RESOURCE <= 10 ORDER BY ID_RESOURCE);
@@ -1410,7 +1432,7 @@ BEGIN
 		END LOOP;
 
 
-	ELSIF (var_ds_parameter_type = 'VAR_CORES_CLUSTER_1')
+	ELSIF (var_ds_parameter_type = 'VAR_CORES_CLUSTER_1' or var_ds_parameter_type = 'VAR_CORES_CLUSTER_2' or var_ds_parameter_type = 'VAR_CORES_CLUSTER_3' or var_ds_parameter_type = 'VAR_CORES_CLUSTER_4')
 	THEN
 
 		-- SELECT AVAILABLE RESOURCES
@@ -1601,7 +1623,7 @@ BEGIN
 		END LOOP;
 
 
-	ELSIF (var_ds_parameter_type = 'VAR_CORES_SINGLE_NODE_1')
+	ELSIF (var_ds_parameter_type = 'VAR_CORES_SINGLE_NODE_1' and false)
 	THEN
 
 		-- SELECT AVAILABLE RESOURCES
