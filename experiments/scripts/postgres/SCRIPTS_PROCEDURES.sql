@@ -40,7 +40,8 @@ DECLARE
 									{MINOTAURO_2_NODES_8_CORES,2,8,1,128000000000,12000000000},
 									{MINOTAURO_2_NODES_10_CORES,2,10,1,128000000000,12000000000},
 									{MINOTAURO_2_NODES_12_CORES,2,12,1,128000000000,12000000000},
-									{MINOTAURO_2_NODES_14_CORES,2,14,1,128000000000,12000000000}
+									{MINOTAURO_2_NODES_14_CORES,2,14,1,128000000000,12000000000},
+									{MINOTAURO_9_NODES_1_CORE,9,1,1,128000000000,12000000000}
 								 }';
 	-- Data set parameters (DS_DATASET, VL_DATASET_MEMORY_SIZE, DS_DATA_TYPE, VL_DATA_TYPE_MEMORY_SIZE, VL_DATASET_DIMENSION, VL_DATASET_ROW_DIMENSION, VL_DATASET_COLUMN_DIMENSION, NR_RANDOM_STATE)
 	arr_dataset_data text[] := '{
@@ -88,22 +89,28 @@ DECLARE
 	-- VAR_CORES_CLUSTER_1: grid_row_dimension__grid_column_dimension
 	-- VAR_CORES_SINGLE_NODE_1: grid_row_dimension__grid_column_dimension
 	arr_parameter_type_data text[] := '{
-									{VAR_BLOCK_CAPACITY_SIZE,0.25,TrunkCT,0.6.4,default,10},
-									{VAR_BLOCK_CAPACITY_SIZE,0.50,TrunkCT,0.6.4,default,10},
-									{VAR_BLOCK_CAPACITY_SIZE,0.75,TrunkCT,0.6.4,default,10},
-									{VAR_BLOCK_CAPACITY_SIZE,1.00,TrunkCT,0.6.4,default,10},
-									{VAR_PARALLELISM_LEVEL,MIN_INTER_MAX_INTRA,TrunkCT,0.6.4,default,10},
-									{VAR_PARALLELISM_LEVEL,MAX_INTER_MIN_INTRA,TrunkCT,0.6.4,default,10},
-									{VAR_GRID_ROW,2MAXCORES_1,TrunkCT,0.6.4,default,10},
-									{VAR_GRID_COLUMN,MAXCORES_0.1,TrunkCT,0.6.4,default,10},
-									{VAR_CORES_CLUSTER_1,MAXCORES_1,TrunkCT,0.6.4,default,10},
-									{VAR_CORES_SINGLE_NODE_1,SINGLEMAXCORES_1,TrunkCT,0.6.4,default,10},
-									{VAR_GRID_ROW_2,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10},
-									{VAR_GRID_ROW_3,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100},
-									{VAR_GRID_ROW_4,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000},
-									{VAR_CORES_CLUSTER_2,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10},
-									{VAR_CORES_CLUSTER_3,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100},
-									{VAR_CORES_CLUSTER_4,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000}					
+									{VAR_BLOCK_CAPACITY_SIZE,0.25,TrunkCT,0.6.4,default,10,GPFS},
+									{VAR_BLOCK_CAPACITY_SIZE,0.50,TrunkCT,0.6.4,default,10,GPFS},
+									{VAR_BLOCK_CAPACITY_SIZE,0.75,TrunkCT,0.6.4,default,10,GPFS},
+									{VAR_BLOCK_CAPACITY_SIZE,1.00,TrunkCT,0.6.4,default,10,GPFS},
+									{VAR_PARALLELISM_LEVEL,MIN_INTER_MAX_INTRA,TrunkCT,0.6.4,default,10,GPFS},
+									{VAR_PARALLELISM_LEVEL,MAX_INTER_MIN_INTRA,TrunkCT,0.6.4,default,10,GPFS},
+									{VAR_GRID_ROW,2MAXCORES_1,TrunkCT,0.6.4,default,10,GPFS},
+									{VAR_GRID_COLUMN,MAXCORES_0.1,TrunkCT,0.6.4,default,10,GPFS},
+									{VAR_CORES_CLUSTER_1,MAXCORES_1,TrunkCT,0.6.4,default,10,GPFS},
+									{VAR_CORES_SINGLE_NODE_1,SINGLEMAXCORES_1,TrunkCT,0.6.4,default,10,GPFS},
+									{VAR_GRID_ROW_2,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS},
+									{VAR_GRID_ROW_3,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS},
+									{VAR_GRID_ROW_4,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS},
+									{VAR_CORES_CLUSTER_2,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS},
+									{VAR_CORES_CLUSTER_3,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS},
+									{VAR_CORES_CLUSTER_4,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS},
+									{VAR_GRID_ROW_5,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS},
+									{VAR_GRID_ROW_6,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS},
+									{VAR_GRID_ROW_7,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS},
+									{VAR_GRID_ROW_8,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,10,LOCAL_DISK},
+									{VAR_GRID_ROW_9,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,100,LOCAL_DISK},
+									{VAR_GRID_ROW_10,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,1000,LOCAL_DISK}
 								}';
 								
 	arr_id_resource bigint[];
@@ -314,7 +321,8 @@ BEGIN
 				  AND DS_COMPSS_VERSION = arr_text_iterator[3]
 				  AND DS_DISLIB_VERSION = arr_text_iterator[4]
 				  AND DS_SCHDEULER = arr_text_iterator[5]
-				  AND NR_CLUSTER = CAST(arr_text_iterator[6] AS BIGINT)			
+				  AND NR_CLUSTER = CAST(arr_text_iterator[6] AS BIGINT)
+				  AND DS_STORAGE = arr_text_iterator[7]
 				 )
 		THEN
 			
@@ -328,7 +336,8 @@ BEGIN
 										DS_COMPSS_VERSION,
 										DS_DISLIB_VERSION,
 										DS_SCHDEULER,
-										NR_CLUSTER)
+										NR_CLUSTER,
+										DS_STORAGE)
 			VALUES
 			(DEFAULT,
 			 arr_text_iterator[1],
@@ -336,7 +345,8 @@ BEGIN
 			 arr_text_iterator[3],
 			 arr_text_iterator[4],
 			 arr_text_iterator[5],
-			 CAST(arr_text_iterator[6] AS BIGINT));
+			 CAST(arr_text_iterator[6] AS BIGINT),
+			 arr_text_iterator[7]);
 			 
 		END IF;
 		
@@ -484,7 +494,8 @@ BEGIN
 		DS_COMPSS_VERSION VARCHAR,
 		DS_DISLIB_VERSION VARCHAR,
 		DS_SCHDEULER VARCHAR,
-		NR_CLUSTER BIGINT
+		NR_CLUSTER BIGINT,
+		DS_STORAGE VARCHAR
 	);
 	
 	CREATE TABLE PARAMETER
@@ -1012,11 +1023,14 @@ BEGIN
 
 		END IF;
 		
-	ELSIF (var_ds_parameter_type = 'VAR_GRID_ROW' or var_ds_parameter_type = 'VAR_GRID_ROW_2' or var_ds_parameter_type = 'VAR_GRID_ROW_3' or var_ds_parameter_type = 'VAR_GRID_ROW_4')
+	-- ELSIF (var_ds_parameter_type = 'VAR_GRID_ROW' or var_ds_parameter_type = 'VAR_GRID_ROW_2' or var_ds_parameter_type = 'VAR_GRID_ROW_3' or var_ds_parameter_type = 'VAR_GRID_ROW_4')
+	--ELSIF (var_ds_parameter_type = 'VAR_GRID_ROW_5' or var_ds_parameter_type = 'VAR_GRID_ROW_6' or var_ds_parameter_type = 'VAR_GRID_ROW_7')
+	ELSIF (var_ds_parameter_type = 'VAR_GRID_ROW_8' or var_ds_parameter_type = 'VAR_GRID_ROW_9' or var_ds_parameter_type = 'VAR_GRID_ROW_10')
 	THEN
 
-		arr_id_resource := ARRAY(SELECT DISTINCT ID_RESOURCE FROM RESOURCE WHERE ID_RESOURCE = 10 ORDER BY ID_RESOURCE);
-		
+		arr_id_resource := ARRAY(SELECT DISTINCT ID_RESOURCE FROM RESOURCE WHERE ID_RESOURCE = 18 ORDER BY ID_RESOURCE);
+		arr_id_dataset := ARRAY(SELECT DISTINCT ID_DATASET FROM DATASET WHERE DS_DATASET IN ('S_1MB_1','S_10MB_1','S_100MB_1','S_1GB_1','S_10GB_1','S_100GB_1') ORDER BY ID_DATASET);
+
 		param_grid_row_dimension := split_part(var_ds_parameter_attribute,'_',1);
 		param_grid_column_dimension := split_part(var_ds_parameter_attribute,'_',2);
 
@@ -1047,6 +1061,26 @@ BEGIN
 					arr_grid_row_dimension := '{}';
 					
 					max_grid_row_dimension := (SELECT 2*MAX((NR_NODES-1) * NR_COMPUTING_UNITS_CPU) AS NR_TOTAL_CORES FROM RESOURCE WHERE ID_RESOURCE = id_resource_iterator);
+
+					WHILE grid_row_dimension < max_grid_row_dimension
+					LOOP
+						grid_row_dimension := CAST(POWER(2,increment_exp_grid_row_dimension) AS BIGINT);
+						arr_grid_row_dimension := array_append(arr_grid_row_dimension, grid_row_dimension);
+						
+						increment_exp_grid_row_dimension := increment_exp_grid_row_dimension + 1;
+					END LOOP;
+
+				END IF;
+
+				-- GRID ROW PARAMETERS
+				IF (param_grid_row_dimension = '32MAXCORES')
+				THEN
+
+					increment_exp_grid_row_dimension := 0;
+					grid_row_dimension = 1;
+					arr_grid_row_dimension := '{}';
+					
+					max_grid_row_dimension := (SELECT 32*MAX((NR_NODES-1) * NR_COMPUTING_UNITS_CPU) AS NR_TOTAL_CORES FROM RESOURCE WHERE ID_RESOURCE = id_resource_iterator);
 
 					WHILE grid_row_dimension < max_grid_row_dimension
 					LOOP
@@ -1432,7 +1466,7 @@ BEGIN
 		END LOOP;
 
 
-	ELSIF (var_ds_parameter_type = 'VAR_CORES_CLUSTER_1' or var_ds_parameter_type = 'VAR_CORES_CLUSTER_2' or var_ds_parameter_type = 'VAR_CORES_CLUSTER_3' or var_ds_parameter_type = 'VAR_CORES_CLUSTER_4')
+	ELSIF ((var_ds_parameter_type = 'VAR_CORES_CLUSTER_1' or var_ds_parameter_type = 'VAR_CORES_CLUSTER_2' or var_ds_parameter_type = 'VAR_CORES_CLUSTER_3' or var_ds_parameter_type = 'VAR_CORES_CLUSTER_4') and false)
 	THEN
 
 		-- SELECT AVAILABLE RESOURCES
