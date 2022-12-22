@@ -2,8 +2,9 @@ import operator
 from collections import defaultdict, deque
 from math import ceil
 import dislib
+import cupy as cp
 import numpy as np
-from pycompss.api.api import compss_wait_on, compss_delete_object
+from pycompss.api.api import compss_barrier, compss_wait_on, compss_delete_object
 from pycompss.api.constraint import constraint
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth, \
     COLLECTION_OUT, INOUT
@@ -12,6 +13,16 @@ from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
 from sklearn.utils import check_random_state
 import math
+import time
+import csv
+import os
+import datetime
+
+
+# location of the csv log file
+dst_path_experiments = os.path.dirname(os.path.abspath(__file__))
+dst_path_experiments = dst_path_experiments.replace("/dislib/cluster/kmeans", "/experiments/results/tb_experiments_raw.csv")
+var_null = "NULL"
 
 class Array(object):
     """ A distributed 2-dimensional array divided in blocks.
@@ -1394,7 +1405,7 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
                  shape=out_shape, sparse=x._sparse)
 
 
-def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False):
+def matmul(a: Array, b: Array, id_device=1, id_parameter=0, nr_algorithm_iteration=0, transpose_a=False, transpose_b=False):
     """ Matrix multiplication with a possible transpose of the input.
 
         Parameters
@@ -1407,6 +1418,12 @@ def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False):
             Transpose of the first matrix before multiplication.
         transpose_b : any
             Transpose of the second matrix before multiplication.
+        id_device: int (default=1)
+            Flag to define the device function implementation according to resource (CPU: 1, GPU: 2, GPU intra: 3)
+        id_parameter: int (default=0)
+            Variable to identify the parameter id
+        nr_algorithm_iteration: int (default=0)
+            Variable to identify the number of the execution of the algorithm
 
         Returns
         -------
@@ -1461,6 +1478,7 @@ def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False):
             vblock = [b_blocks[k][j] for k in range(len(b_blocks))]
 
             blocks[i][j] = _multiply_block_groups(hblock, vblock,
+                                                  id_device, id_parameter, nr_algorithm_iteration,
                                                   transpose_a, transpose_b)
 
     new_block_size = (
@@ -1476,38 +1494,126 @@ def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False):
                  reg_shape=new_block_size, shape=new_shape, sparse=a._sparse)
 
 
-@constraint(computing_units="${ComputingUnits}")
+@constraint(computing_units="${ComputingUnitsCPU}")
 @task(returns=np.array)
 def _matmul_with_transpose(a, b, transpose_a, transpose_b):
-    return (a.T if transpose_a else a) @ (b.T if transpose_b else b)
+    res = (a.T if transpose_a else a) @ (b.T if transpose_b else b)
+    return res
+
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(returns=np.array)
+def _matmul_with_transpose_intra_time(a, b, id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, transpose_a, transpose_b):
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    start_intra_device = time.perf_counter()
+    res = (a.T if transpose_a else a) @ (b.T if transpose_b else b)
+    end_intra_device = time.perf_counter()
+    intra_task_execution_device_func = end_intra_device - start_intra_device
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, start_additional_time_1, end_additional_time_1, start_additional_time_2, end_additional_time_2, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+
+    return res
 
 @constraint(processors=[
-                {"processorType": "CPU", "computingUnits": "1"},
-                {"processorType": "GPU", "computingUnits": "1"},
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ]
 )
 @task(returns=np.array)
-def _add_gpu(block1, block2):
-    import cupy as cp
+def _add_gpu(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func):
 
     block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
     res = cp.asnumpy(cp.add(block1_gpu, block2_gpu))
     block1_gpu, block2_gpu = None, None
     return res
 
-@constraint(computing_units="${ComputingUnits}")
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ]
+)
+@task(returns=np.array)
+def _add_gpu_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func):
+
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    # creating CUDA events for intra device time measurement
+    start_gpu_intra_device = cp.cuda.Event()
+    end_gpu_intra_device = cp.cuda.Event()
+
+    # Measure communication time 1
+    start_communication_time_1 = time.perf_counter()
+    block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
+    end_communication_time_1 = time.perf_counter()
+
+    # Measure intra task execution time (device function) 
+    start_gpu_intra_device.record()
+    res = cp.add(block1_gpu, block2_gpu)
+    end_gpu_intra_device.record()
+    end_gpu_intra_device.synchronize()
+    intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+
+    # Measure communication time 2
+    start_communication_time_2 = time.perf_counter()
+    res = cp.asnumpy(res)
+    end_communication_time_2 = time.perf_counter()
+
+    block1_gpu, block2_gpu = None, None
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, start_additional_time_1, end_additional_time_1, start_additional_time_2, end_additional_time_2, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+
+    return res
+
+@constraint(computing_units="${ComputingUnitsCPU}")
 @task(returns=np.array)
 def _add_cpu(block1, block2):
-    return block1 + block2
+
+    res = block1 + block2
+
+    return res
+
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(returns=np.array)
+def _add_cpu_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func):
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    start_intra_device = time.perf_counter()
+    res = block1 + block2
+    end_intra_device = time.perf_counter()
+    intra_task_execution_device_func = end_intra_device - start_intra_device
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, start_additional_time_1, end_additional_time_1, start_additional_time_2, end_additional_time_2, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+
+    return res
 
 @constraint(processors=[
-                {"processorType": "CPU", "computingUnits": "1"},
-                {"processorType": "GPU", "computingUnits": "1"},
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ]
 )
 @task(returns=np.array)
 def _matmul_gpu(a, b, transpose_a, transpose_b):
-    import cupy as cp
 
     a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
     if transpose_a:
@@ -1518,31 +1624,165 @@ def _matmul_gpu(a, b, transpose_a, transpose_b):
     a_gpu, b_gpu = None, None
     return res
 
-def _multiply_block_groups(hblock, vblock, transpose_a=False,
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ]
+)
+@task(returns=np.array)
+def _matmul_gpu_intra_time(a, b, id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, transpose_a, transpose_b):
+
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    # creating CUDA events for intra device time measurement
+    start_gpu_intra_device = cp.cuda.Event()
+    end_gpu_intra_device = cp.cuda.Event()
+
+    # Measure communication time 1
+    start_communication_time_1 = time.perf_counter()
+    a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
+    end_communication_time_1 = time.perf_counter()
+
+    # Measure intra task execution time (device function) 
+    start_gpu_intra_device.record()
+    if transpose_a:
+        a_gpu = cp.transpose(a_gpu)
+    if transpose_b:
+        b_gpu = cp.transpose(b_gpu)
+    res = cp.matmul(a_gpu, b_gpu)
+    end_gpu_intra_device.record()
+    end_gpu_intra_device.synchronize()
+    intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+
+    # Measure communication time 2
+    start_communication_time_2 = time.perf_counter()
+    res = cp.asnumpy(res)
+    end_communication_time_2 = time.perf_counter()
+
+    a_gpu, b_gpu = None, None
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, start_additional_time_1, end_additional_time_1, start_additional_time_2, end_additional_time_2, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+
+    return res
+
+def _multiply_block_groups(hblock, vblock, id_device, id_parameter, nr_algorithm_iteration, transpose_a=False,
                            transpose_b=False):
+    iteration = 0
+    
     blocks = deque()
 
-    if dislib.__gpu_available__:
-        matmul_func = _matmul_gpu
-        add_func = _add_gpu
-    else:
+    if id_device == 1 or id_device == 5:
         matmul_func = _matmul_with_transpose
         add_func = _add_cpu
+    elif id_device == 2 or id_device == 6:
+        matmul_func = _matmul_gpu
+        add_func = _add_gpu
+    elif id_device == 3:
+        matmul_func = _matmul_with_transpose_intra_time
+        add_func = _add_cpu_intra_time
+    elif id_device == 4:
+        matmul_func = _matmul_gpu_intra_time
+        add_func = _add_gpu_intra_time
+    else:
+        raise ValueError("Invalid id_device")
 
-    for blocki, blockj in zip(hblock, vblock):
-        blocks.append(
-            matmul_func(blocki, blockj,
-                         transpose_a, transpose_b)
-        )
+    if id_device == 3 or id_device == 4:
+        nr_task_matmul_func = 0
+        for blocki, blockj in zip(hblock, vblock):
+            blocks.append(
+                matmul_func(blocki, blockj, id_parameter, nr_algorithm_iteration, nr_task_matmul_func,
+                            transpose_a, transpose_b)
+            )
+            nr_task_matmul_func += 1
 
-    while len(blocks) > 1:
-        block1 = blocks.popleft()
-        block2 = blocks.popleft()
-        blocks.append(add_func(block1, block2))
+        # Read and use the next id_parameter with the same cd_configuration
 
-        compss_delete_object(block1)
-        compss_delete_object(block2)
+        nr_task_add_func = 0
+        while len(blocks) > 1:
+            block1 = blocks.popleft()
+            block2 = blocks.popleft()
+            blocks.append(add_func(block1, block2, id_parameter, nr_algorithm_iteration, nr_task_matmul_func))
 
+            compss_delete_object(block1)
+            compss_delete_object(block2)
+
+            nr_task_add_func += 1
+
+    
+    elif id_device == 5 or id_device == 6:
+        compss_barrier()
+        start_inter_time_matmul_func_cpu = time.perf_counter()
+
+        for blocki, blockj in zip(hblock, vblock):
+            blocks.append(
+                matmul_func(blocki, blockj,
+                            transpose_a, transpose_b)
+            )
+
+        compss_barrier()
+        end_inter_time_matmul_func_cpu = time.perf_counter()
+
+        # open the log file in the append mode
+        f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+        # create a csv writer
+        writer = csv.writer(f)
+
+        # write the time data 
+        data = [id_parameter, nr_algorithm_iteration, iteration, var_null, var_null, var_null, start_inter_time_matmul_func_cpu, end_inter_time_matmul_func_cpu, start_inter_time_add_func_cpu, end_inter_time_add_func_cpu, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
+        writer.writerow(data)
+        f.close()
+
+        # Read and use the next id_parameter with the same id_configuration
+
+        compss_barrier()
+        start_inter_time_add_func_cpu = time.perf_counter()
+
+        while len(blocks) > 1:
+            block1 = blocks.popleft()
+            block2 = blocks.popleft()
+            blocks.append(add_func(block1, block2))
+
+            compss_delete_object(block1)
+            compss_delete_object(block2)
+
+        compss_barrier()
+        end_inter_time_add_func_cpu = time.perf_counter()
+
+        # open the log file in the append mode
+        f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+        # create a csv writer
+        writer = csv.writer(f)
+
+        # write the time data 
+        data = [id_parameter, nr_algorithm_iteration, iteration, var_null, var_null, var_null, start_inter_time_matmul_func_cpu, end_inter_time_matmul_func_cpu, start_inter_time_add_func_cpu, end_inter_time_add_func_cpu, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
+        writer.writerow(data)
+        f.close()
+
+    else:
+        for blocki, blockj in zip(hblock, vblock):
+            blocks.append(
+                matmul_func(blocki, blockj,
+                            transpose_a, transpose_b)
+            )
+
+        while len(blocks) > 1:
+            block1 = blocks.popleft()
+            block2 = blocks.popleft()
+            blocks.append(add_func(block1, block2))
+
+            compss_delete_object(block1)
+            compss_delete_object(block2)
+
+    iteration += 1
     return blocks[0]
 
 
