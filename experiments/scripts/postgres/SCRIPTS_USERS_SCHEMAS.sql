@@ -23,5 +23,6 @@ GRANT ALL ON DATABASE project_dev TO user_dev;
 
 
 -- SET SCHEMA SEARCH PATH TO USER
-SET search_path = user_dev,schema_dev;
+SET search_path = user_dev,schema_dev; --KMEANS
+SET search_path = user_dev,schema_dev_matmul; --MATMUL
 SHOW search_path;

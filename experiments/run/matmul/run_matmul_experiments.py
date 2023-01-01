@@ -20,34 +20,9 @@ def main():
     param_file = os.path.join(src_path_parameters)
     df_parameters = pd.read_csv(param_file)
 
-    # # Filtering and sorting parameters
-    # df_parameters = df_parameters[
-    #                                 (df_parameters["ds_algorithm"] == "KMEANS") # FIXED VALUE
-    #                                 & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
-    #                                 & (df_parameters["ds_resource"] == "MINOTAURO_2") # FIXED VALUE
-    #                                 # & (df_parameters["ds_dataset"] == "S_AA_1" | df_parameters["ds_dataset"] == "S_AA_2" | df_parameters["ds_dataset"] == "S_AA_3" | df_parameters["ds_dataset"] == "S_AA_4" | df_parameters["ds_dataset"] == "S_BB_1" | df_parameters["ds_dataset"] == "S_BB_2" | df_parameters["ds_dataset"] == "S_BB_3" | df_parameters["ds_dataset"] == "S_BB_4" | df_parameters["ds_dataset"] == "S_CC_1" | df_parameters["ds_dataset"] == "S_CC_2" | df_parameters["ds_dataset"] == "S_CC_3" | df_parameters["ds_dataset"] == "S_CC_4") # FIXED VALUE
-    #                                 # & (df_parameters["ds_dataset"].isin(["S_A_1","S_A_2","S_A_3","S_A_4","S_B_1","S_B_2","S_B_3","S_B_4","S_C_1","S_C_2","S_C_3","S_C_4"])) # FIXED VALUE
-    #                                 & (df_parameters["ds_dataset"].isin(["S_AA_1","S_AA_2","S_AA_3","S_AA_4","S_BB_1","S_BB_2","S_BB_3","S_BB_4","S_CC_1","S_CC_2","S_CC_3","S_CC_4"])) # FIXED VALUE
-    #                                 & (df_parameters["ds_parameter_type"] == "VAR_BLOCK_CAPACITY_SIZE") # 1.1, 1.2, 1.3, 1.4
-    #                                 # & (df_parameters["ds_parameter_type"] == "VAR_PARALLELISM_LEVEL") # 2.1, 2.2
-    #                                 # & (df_parameters["ds_parameter_attribute"] == "0.25") # 1.1
-    #                                 # & (df_parameters["ds_parameter_attribute"] == "0.50") # 1.2
-    #                                 # & (df_parameters["ds_parameter_attribute"] == "0.75") # 1.3
-    #                                 # & (df_parameters["ds_parameter_attribute"] == "1.00") # 1.4
-    #                                 # & (df_parameters["ds_parameter_attribute"] == "MIN_INTER_MAX_INTRA") # 2.1
-    #                                 # & (df_parameters["ds_parameter_attribute"] == "MAX_INTER_MIN_INTRA") # 2.2
-    #                                 # & (df_parameters["vl_dataset_memory_size"] == 400) # 2.2.1
-    #                                 # & (df_parameters["vl_dataset_memory_size"] == 400000) # 2.2.2
-    #                                 # & (df_parameters["vl_dataset_memory_size"] == 400000000) # 2.2.3
-    #                                 # & (df_parameters["vl_dataset_memory_size"] == 640) # 2.2.1
-    #                                 # & (df_parameters["vl_dataset_memory_size"] == 640000) # 2.2.2
-    #                                 & (df_parameters["vl_dataset_memory_size"] != 640000000) # 2.2.3
-    #                             ].sort_values(by=["id_parameter"])
-
-
-    # Filtering and sorting parameters V2
+    # Filtering and sorting parameters
     df_parameters = df_parameters[
-                                     (df_parameters["ds_algorithm"] == "KMEANS") # FIXED VALUE
+                                     (df_parameters["ds_algorithm"] == "MATMUL") # FIXED VALUE
                                      & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
                                      # & (df_parameters["ds_dataset"].isin(["S_10MB_1","S_100MB_1","S_1GB_1","S_10GB_1"])) # FIXED VALUE
                                      & (df_parameters["ds_dataset"] == "S_1GB_1")
@@ -62,35 +37,6 @@ def main():
                                     #  & (df_parameters["ds_parameter_type"] == "VAR_CORES_CLUSTER_4") # 2.3
                                  ].sort_values(by=["id_parameter"])
 
-    # # Filtering and sorting parameters V3
-    # df_parameters = df_parameters[
-    #                                 (df_parameters["ds_algorithm"] == "KMEANS") # FIXED VALUE
-    #                                 & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
-    #                                 & (df_parameters["ds_dataset"] == "S_10GB_1")
-    #                                 & (df_parameters["ds_parameter_type"] == "VAR_CORES_CLUSTER_1") # 1
-    #                                 & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_16_CORES") # 1
-    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_3_NODES_16_CORES") # 1
-    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_4_NODES_16_CORES") # 1
-    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_5_NODES_16_CORES") # 1
-    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_6_NODES_16_CORES") # 1
-    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_7_NODES_16_CORES") # 1
-    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_8_NODES_16_CORES") # 1
-    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_9_NODES_16_CORES") # 1
-    #                                 # & (df_parameters["ds_parameter_type"] == "VAR_CORES_SINGLE_NODE_1") # 2
-    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_2_CORES") # 2
-    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_4_CORES") # 2
-    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_6_CORES") # 2
-    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_8_CORES") # 2
-    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_10_CORES") # 2
-    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_12_CORES") # 2
-    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_14_CORES") # 2
-    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_16_CORES") # 2
-    #                             ].sort_values(by=["id_parameter"])
-
-    # Filtering and sorting parameters (TEST)
-    # df_parameters = df_parameters[(df_parameters["id_parameter"] != 11832) & (df_parameters["id_parameter"] != 11830) & (df_parameters["id_parameter"] != 11828) & (df_parameters["id_parameter"] != 11827) & (df_parameters["id_parameter"] != 11826) & (df_parameters["id_parameter"] != 11825)].sort_values(by=["id_parameter"])
-    # df_parameters = df_parameters[(df_parameters["id_parameter"] == 11841) | (df_parameters["id_parameter"] == 11842)]
-    # df_parameters = df_parameters[(df_parameters["id_parameter"] == 7531)]
 
     # defining the structure of the log file
     header = ["id_parameter", "nr_algorithm_iteration", "nr_function_iteration", "nr_task", "start_total_execution_time", "end_total_execution_time", "start_inter_time_cpu", "end_inter_time_cpu", "intra_task_execution_full_func", "vl_intra_task_execution_time_device_func", "start_communication_time_1", "end_communication_time_1", "start_communication_time_2", "end_communication_time_2", "start_additional_time_1", "end_additional_time_1", "start_additional_time_2", "end_additional_time_2", "dt_processing"]
@@ -128,7 +74,6 @@ def main():
         ds_dislib_version = row["ds_dislib_version"]
         ds_schdeuler = row["ds_schdeuler"]
         nr_cluster = row["nr_cluster"]
-        bl_transpose = row["bl_transpose"]
         nr_iterations = row["nr_iterations"]
         vl_grid_row_dimension = row["vl_grid_row_dimension"]
         vl_grid_column_dimension = row["vl_grid_column_dimension"]
@@ -177,56 +122,7 @@ def main():
 
             print("\nEXPERIMENT ", id_parameter,"-------------- ITERATION ", i, " STARTED AT "+str(iteration_experiment_time_start)+"------------------\n")
 
-            if ds_algorithm == "KMEANS":
-
-                # generate and load data into a ds-array
-                dis_x = ds.random_array((vl_dataset_row_dimension, vl_dataset_column_dimension), (vl_block_row_dimension, vl_block_column_dimension), random_state=nr_random_state)
-
-                if ds_device == "GPU":
-
-                    # execution 1 - extract intra execution times with CUDA events
-                    kmeans = KMeans(n_clusters=nr_cluster, random_state=nr_random_state, id_device=4, id_parameter=id_parameter, nr_algorithm_iteration=i, max_iter=5, tol=0, arity=48)
-                    kmeans.fit(dis_x)
-
-                    # execution 2 - extract total and inter execution times with synchornized function calls
-                    kmeans = KMeans(n_clusters=nr_cluster, random_state=nr_random_state, id_device=6, id_parameter=id_parameter, nr_algorithm_iteration=i, max_iter=5, tol=0, arity=48)
-                    kmeans.fit(dis_x)
-
-                else:
-
-                    # execution 1 - extract intra execution times with synchornized function calls
-                    kmeans = KMeans(n_clusters=nr_cluster, random_state=nr_random_state, id_device=3, id_parameter=id_parameter, nr_algorithm_iteration=i, max_iter=5, tol=0, arity=48)
-                    kmeans.fit(dis_x)
-
-                    # execution 2 - extract total and inter execution times with synchornized function calls
-                    kmeans = KMeans(n_clusters=nr_cluster, random_state=nr_random_state, id_device=5, id_parameter=id_parameter, nr_algorithm_iteration=i, max_iter=5, tol=0, arity=48)
-                    kmeans.fit(dis_x)
-
-                # execution 3 - extract total execution time for CPU (id_device = 1) and GPU (id_device = 2)
-                compss_barrier()
-                start_total_execution_time = time.perf_counter()
-                kmeans = KMeans(n_clusters=nr_cluster, random_state=nr_random_state, id_device=id_device, max_iter=5, tol=0, arity=48)
-                kmeans.fit(dis_x)
-                compss_barrier()
-                end_total_execution_time = time.perf_counter()
-
-                # # log total execution time
-                # total_execution_time = end_total_execution_time - start_total_execution_time
-
-                # # open the log file in the append mode
-                # f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
-
-                # # create a csv writer
-                # writer = csv.writer(f)
-
-                # # write the time data 
-                # var_null = 'NULL'
-                # data = [id_parameter, i, var_null, var_null, total_execution_time, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
-                # writer.writerow(data)
-                # f.close()
-
-
-            elif ds_algorithm == "MATMUL_DISLIB":
+            if ds_algorithm == "MATMUL":
 
                 # generate and load data into a ds-array
                 dis_x = ds.random_array((vl_dataset_row_dimension, vl_dataset_column_dimension), (vl_block_row_dimension, vl_block_column_dimension), random_state=nr_random_state)
@@ -274,8 +170,6 @@ def main():
                 # writer.writerow(data)
                 # f.close()
 
-            else:
-                print("Invalid Algorithm!")
             
             iteration_experiment_time_end = datetime.datetime.now()
             iteration_experiment_time = (iteration_experiment_time_end - iteration_experiment_time_start).total_seconds()

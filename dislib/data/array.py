@@ -21,7 +21,7 @@ import datetime
 
 # location of the csv log file
 dst_path_experiments = os.path.dirname(os.path.abspath(__file__))
-dst_path_experiments = dst_path_experiments.replace("/dislib/cluster/kmeans", "/experiments/results/tb_experiments_raw.csv")
+dst_path_experiments = dst_path_experiments.replace("/dislib/data", "/experiments/results/tb_experiments_raw.csv")
 var_null = "NULL"
 
 class Array(object):
@@ -1405,7 +1405,7 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
                  shape=out_shape, sparse=x._sparse)
 
 
-def matmul(a: Array, b: Array, id_device=1, id_parameter=0, nr_algorithm_iteration=0, transpose_a=False, transpose_b=False):
+def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False, id_device=1, id_parameter=0, nr_algorithm_iteration=0):
     """ Matrix multiplication with a possible transpose of the input.
 
         Parameters
@@ -1472,14 +1472,49 @@ def matmul(a: Array, b: Array, id_device=1, id_parameter=0, nr_algorithm_iterati
     n_blocks = (len(a_blocks), len(b_blocks[0]))
     blocks = Array._get_out_blocks(n_blocks)
 
-    for i in range(n_blocks[0]):
-        for j in range(n_blocks[1]):
-            hblock = a_blocks[i]
-            vblock = [b_blocks[k][j] for k in range(len(b_blocks))]
+    if id_device == 1 or id_device == 2:
+        nr_task_matmul_func = 0
+        nr_task_add_func = 0
 
-            blocks[i][j] = _multiply_block_groups(hblock, vblock,
-                                                  id_device, id_parameter, nr_algorithm_iteration,
-                                                  transpose_a, transpose_b)
+        compss_barrier()
+        start_total_execution_time = time.perf_counter()
+        for i in range(n_blocks[0]):
+            for j in range(n_blocks[1]):
+                hblock = a_blocks[i]
+                vblock = [b_blocks[k][j] for k in range(len(b_blocks))]
+
+                blocks[i][j], nr_task_matmul_func, nr_task_add_func = _multiply_block_groups(hblock, vblock,
+                                                    id_device, id_parameter, nr_algorithm_iteration,
+                                                    nr_task_matmul_func, nr_task_add_func,
+                                                    transpose_a, transpose_b)
+
+        compss_barrier()
+        end_total_execution_time = time.perf_counter()
+
+        # open the log file in the append mode
+        f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+        # create a csv writer
+        writer = csv.writer(f)
+
+        # write the time data 
+        data = [id_parameter, nr_algorithm_iteration, var_null, var_null, start_total_execution_time, end_total_execution_time, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
+        writer.writerow(data)
+        f.close()
+        
+    else:
+        nr_task_matmul_func = 0
+        nr_task_add_func = 0
+
+        for i in range(n_blocks[0]):
+            for j in range(n_blocks[1]):
+                hblock = a_blocks[i]
+                vblock = [b_blocks[k][j] for k in range(len(b_blocks))]
+
+                blocks[i][j], nr_task_matmul_func, nr_task_add_func = _multiply_block_groups(hblock, vblock,
+                                                    id_device, id_parameter, nr_algorithm_iteration,
+                                                    nr_task_matmul_func, nr_task_add_func,
+                                                    transpose_a, transpose_b)
 
     new_block_size = (
         a._reg_shape[1] if transpose_a else a._reg_shape[0],
@@ -1515,7 +1550,7 @@ def _matmul_with_transpose_intra_time(a, b, id_parameter, nr_algorithm_iteration
     intra_task_execution_device_func = end_intra_device - start_intra_device
 
     # write the time data
-    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, start_additional_time_1, end_additional_time_1, start_additional_time_2, end_additional_time_2, datetime.datetime.now()]
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
     writer.writerow(data)
     f.close()
 
@@ -1527,7 +1562,7 @@ def _matmul_with_transpose_intra_time(a, b, id_parameter, nr_algorithm_iteration
             ]
 )
 @task(returns=np.array)
-def _add_gpu(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func):
+def _add_gpu(block1, block2):
 
     block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
     res = cp.asnumpy(cp.add(block1_gpu, block2_gpu))
@@ -1572,7 +1607,7 @@ def _add_gpu_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, it
     block1_gpu, block2_gpu = None, None
 
     # write the time data
-    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, start_additional_time_1, end_additional_time_1, start_additional_time_2, end_additional_time_2, datetime.datetime.now()]
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, 0, 0, 0, 0, datetime.datetime.now()]
     writer.writerow(data)
     f.close()
 
@@ -1601,7 +1636,7 @@ def _add_cpu_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, it
     intra_task_execution_device_func = end_intra_device - start_intra_device
 
     # write the time data
-    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, start_additional_time_1, end_additional_time_1, start_additional_time_2, end_additional_time_2, datetime.datetime.now()]
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
     writer.writerow(data)
     f.close()
 
@@ -1666,14 +1701,15 @@ def _matmul_gpu_intra_time(a, b, id_parameter, nr_algorithm_iteration, iteration
     a_gpu, b_gpu = None, None
 
     # write the time data
-    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, start_additional_time_1, end_additional_time_1, start_additional_time_2, end_additional_time_2, datetime.datetime.now()]
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, 0, 0, 0, 0, datetime.datetime.now()]
     writer.writerow(data)
     f.close()
 
     return res
 
-def _multiply_block_groups(hblock, vblock, id_device, id_parameter, nr_algorithm_iteration, transpose_a=False,
-                           transpose_b=False):
+def _multiply_block_groups(hblock, vblock, id_device, id_parameter, nr_algorithm_iteration,
+                           nr_task_matmul_func, nr_task_add_func,
+                           transpose_a=False, transpose_b=False):
     iteration = 0
     
     blocks = deque()
@@ -1694,27 +1730,26 @@ def _multiply_block_groups(hblock, vblock, id_device, id_parameter, nr_algorithm
         raise ValueError("Invalid id_device")
 
     if id_device == 3 or id_device == 4:
-        nr_task_matmul_func = 0
+        # nr_task_matmul_func = 0
         for blocki, blockj in zip(hblock, vblock):
             blocks.append(
-                matmul_func(blocki, blockj, id_parameter, nr_algorithm_iteration, nr_task_matmul_func,
-                            transpose_a, transpose_b)
+                matmul_func(blocki, blockj, id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, transpose_a, transpose_b)
             )
             nr_task_matmul_func += 1
 
-        # Read and use the next id_parameter with the same cd_configuration
+        # Use the next id_parameter with the same cd_configuration
+        id_parameter += 1
 
-        nr_task_add_func = 0
+        # nr_task_add_func = 0
         while len(blocks) > 1:
             block1 = blocks.popleft()
             block2 = blocks.popleft()
-            blocks.append(add_func(block1, block2, id_parameter, nr_algorithm_iteration, nr_task_matmul_func))
+            blocks.append(add_func(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func))
 
             compss_delete_object(block1)
             compss_delete_object(block2)
 
             nr_task_add_func += 1
-
     
     elif id_device == 5 or id_device == 6:
         compss_barrier()
@@ -1736,36 +1771,38 @@ def _multiply_block_groups(hblock, vblock, id_device, id_parameter, nr_algorithm
         writer = csv.writer(f)
 
         # write the time data 
-        data = [id_parameter, nr_algorithm_iteration, iteration, var_null, var_null, var_null, start_inter_time_matmul_func_cpu, end_inter_time_matmul_func_cpu, start_inter_time_add_func_cpu, end_inter_time_add_func_cpu, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
+        data = [id_parameter, nr_algorithm_iteration, iteration, var_null, var_null, var_null, start_inter_time_matmul_func_cpu, end_inter_time_matmul_func_cpu, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
         writer.writerow(data)
         f.close()
 
-        # Read and use the next id_parameter with the same id_configuration
+        if len(blocks) > 1:
+            # Use the next id_parameter with the same cd_configuration
+            id_parameter += 1
 
-        compss_barrier()
-        start_inter_time_add_func_cpu = time.perf_counter()
+            compss_barrier()
+            start_inter_time_add_func_cpu = time.perf_counter()
 
-        while len(blocks) > 1:
-            block1 = blocks.popleft()
-            block2 = blocks.popleft()
-            blocks.append(add_func(block1, block2))
+            while len(blocks) > 1:
+                block1 = blocks.popleft()
+                block2 = blocks.popleft()
+                blocks.append(add_func(block1, block2))
 
-            compss_delete_object(block1)
-            compss_delete_object(block2)
+                compss_delete_object(block1)
+                compss_delete_object(block2)
 
-        compss_barrier()
-        end_inter_time_add_func_cpu = time.perf_counter()
+            compss_barrier()
+            end_inter_time_add_func_cpu = time.perf_counter()
 
-        # open the log file in the append mode
-        f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+            # open the log file in the append mode
+            f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
 
-        # create a csv writer
-        writer = csv.writer(f)
+            # create a csv writer
+            writer = csv.writer(f)
 
-        # write the time data 
-        data = [id_parameter, nr_algorithm_iteration, iteration, var_null, var_null, var_null, start_inter_time_matmul_func_cpu, end_inter_time_matmul_func_cpu, start_inter_time_add_func_cpu, end_inter_time_add_func_cpu, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
-        writer.writerow(data)
-        f.close()
+            # write the time data 
+            data = [id_parameter, nr_algorithm_iteration, iteration, var_null, var_null, var_null, start_inter_time_add_func_cpu, end_inter_time_add_func_cpu, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
+            writer.writerow(data)
+            f.close()
 
     else:
         for blocki, blockj in zip(hblock, vblock):
@@ -1783,7 +1820,7 @@ def _multiply_block_groups(hblock, vblock, id_device, id_parameter, nr_algorithm
             compss_delete_object(block2)
 
     iteration += 1
-    return blocks[0]
+    return blocks[0], nr_task_matmul_func, nr_task_add_func
 
 
 def matsubtract(a: Array, b: Array):

@@ -184,3 +184,4 @@ compss_commands
 *.png
 *.csv
 launch_minotauro.sh
+launch_minotauro_local_disk.sh

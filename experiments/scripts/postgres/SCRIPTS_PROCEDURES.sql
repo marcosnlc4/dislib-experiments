@@ -13,11 +13,14 @@ DECLARE
 							 }'; -- Device description
 	-- Algorithm parameters (DS_ALGORITHM)
 	arr_algorithm_data text[] := '{
-										{KMEANS}
+										{KMEANS,
+										MATMUL_DISLIB}
 								  }';
 	-- Function parameters (CD_FUNCTION, DS_FUNCTION, ID_ALGORITHM)
 	arr_function_data text[] := '{
-									{1,_PARTIAL_SUM,1}
+									{1,_PARTIAL_SUM,1},
+									{1,MATMUL_FUNC,2},
+									{2,ADD_FUNC,2}
 								 }';
 	arr_id_device bigint[];
 	arr_id_algorithm bigint[];
@@ -74,7 +77,12 @@ DECLARE
 									{S_1GB_1,1000000000,FLOAT64,8,125000000,1250000,100,170},
 									{S_10GB_1,10000000000,FLOAT64,8,1250000000,12500000,100,170},
 									{S_100GB_1,100000000000,FLOAT64,8,12500000000,125000000,100,170},
-									{S_1MB_1,1000000,FLOAT64,8,125000,1250,100,170}
+									{S_1MB_1,1000000,FLOAT64,8,125000,1250,100,170},
+									{S_128MB_1,128000000,FLOAT64,8,16000000,4000,4000,170},
+									{S_512MB_1,512000000,FLOAT64,8,64000000,8000,8000,170},
+									{S_2GB_1,2048000000,FLOAT64,8,256000000,16000,16000,170},
+									{S_8GB_1,8192000000,FLOAT64,8,1024000000,32000,32000,170},
+									{S_32GB_1,32768000000,FLOAT64,8,4096000000,64000,64000,170}
 								}';
 	-- Number of repetitions for each parameter set
 	arr_nr_iteration bigint[] := '{
@@ -89,28 +97,32 @@ DECLARE
 	-- VAR_CORES_CLUSTER_1: grid_row_dimension__grid_column_dimension
 	-- VAR_CORES_SINGLE_NODE_1: grid_row_dimension__grid_column_dimension
 	arr_parameter_type_data text[] := '{
-									{VAR_BLOCK_CAPACITY_SIZE,0.25,TrunkCT,0.6.4,default,10,GPFS},
-									{VAR_BLOCK_CAPACITY_SIZE,0.50,TrunkCT,0.6.4,default,10,GPFS},
-									{VAR_BLOCK_CAPACITY_SIZE,0.75,TrunkCT,0.6.4,default,10,GPFS},
-									{VAR_BLOCK_CAPACITY_SIZE,1.00,TrunkCT,0.6.4,default,10,GPFS},
-									{VAR_PARALLELISM_LEVEL,MIN_INTER_MAX_INTRA,TrunkCT,0.6.4,default,10,GPFS},
-									{VAR_PARALLELISM_LEVEL,MAX_INTER_MIN_INTRA,TrunkCT,0.6.4,default,10,GPFS},
-									{VAR_GRID_ROW,2MAXCORES_1,TrunkCT,0.6.4,default,10,GPFS},
-									{VAR_GRID_COLUMN,MAXCORES_0.1,TrunkCT,0.6.4,default,10,GPFS},
-									{VAR_CORES_CLUSTER_1,MAXCORES_1,TrunkCT,0.6.4,default,10,GPFS},
-									{VAR_CORES_SINGLE_NODE_1,SINGLEMAXCORES_1,TrunkCT,0.6.4,default,10,GPFS},
-									{VAR_GRID_ROW_2,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS},
-									{VAR_GRID_ROW_3,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS},
-									{VAR_GRID_ROW_4,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS},
-									{VAR_CORES_CLUSTER_2,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS},
-									{VAR_CORES_CLUSTER_3,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS},
-									{VAR_CORES_CLUSTER_4,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS},
-									{VAR_GRID_ROW_5,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS},
-									{VAR_GRID_ROW_6,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS},
-									{VAR_GRID_ROW_7,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS},
-									{VAR_GRID_ROW_8,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,10,LOCAL_DISK},
-									{VAR_GRID_ROW_9,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,100,LOCAL_DISK},
-									{VAR_GRID_ROW_10,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,1000,LOCAL_DISK}
+									{VAR_BLOCK_CAPACITY_SIZE,0.25,TrunkCT,0.6.4,default,10,GPFS,FALSE},
+									{VAR_BLOCK_CAPACITY_SIZE,0.50,TrunkCT,0.6.4,default,10,GPFS,FALSE},
+									{VAR_BLOCK_CAPACITY_SIZE,0.75,TrunkCT,0.6.4,default,10,GPFS,FALSE},
+									{VAR_BLOCK_CAPACITY_SIZE,1.00,TrunkCT,0.6.4,default,10,GPFS,FALSE},
+									{VAR_PARALLELISM_LEVEL,MIN_INTER_MAX_INTRA,TrunkCT,0.6.4,default,10,GPFS,FALSE},
+									{VAR_PARALLELISM_LEVEL,MAX_INTER_MIN_INTRA,TrunkCT,0.6.4,default,10,GPFS,FALSE},
+									{VAR_GRID_ROW,2MAXCORES_1,TrunkCT,0.6.4,default,10,GPFS,FALSE},
+									{VAR_GRID_COLUMN,MAXCORES_0.1,TrunkCT,0.6.4,default,10,GPFS,FALSE},
+									{VAR_CORES_CLUSTER_1,MAXCORES_1,TrunkCT,0.6.4,default,10,GPFS,FALSE},
+									{VAR_CORES_SINGLE_NODE_1,SINGLEMAXCORES_1,TrunkCT,0.6.4,default,10,GPFS,FALSE},
+									{VAR_GRID_ROW_2,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS,FALSE},
+									{VAR_GRID_ROW_3,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS,FALSE},
+									{VAR_GRID_ROW_4,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS,FALSE},
+									{VAR_CORES_CLUSTER_2,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS,FALSE},
+									{VAR_CORES_CLUSTER_3,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS,FALSE},
+									{VAR_CORES_CLUSTER_4,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS,FALSE},
+									{VAR_GRID_ROW_5,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS,FALSE},
+									{VAR_GRID_ROW_6,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS,FALSE},
+									{VAR_GRID_ROW_7,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS,FALSE},
+									{VAR_GRID_ROW_8,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,10,LOCAL_DISK,FALSE},
+									{VAR_GRID_ROW_9,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,100,LOCAL_DISK,FALSE},
+									{VAR_GRID_ROW_10,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,1000,LOCAL_DISK,FALSE},
+									{VAR_GRID_ROW_MATMUL_1,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,NULL,GPFS,FALSE},
+									{VAR_GRID_ROW_MATMUL_2,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,NULL,LOCAL_DISK,FALSE},
+									{VAR_GRID_ROW_MATMUL_3,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,NULL,GPFS,TRUE},
+									{VAR_GRID_ROW_MATMUL_4,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,NULL,LOCAL_DISK,TRUE}
 								}';
 								
 	arr_id_resource bigint[];
@@ -323,6 +335,7 @@ BEGIN
 				  AND DS_SCHDEULER = arr_text_iterator[5]
 				  AND NR_CLUSTER = CAST(arr_text_iterator[6] AS BIGINT)
 				  AND DS_STORAGE = arr_text_iterator[7]
+				  AND BL_TRANSPOSE_MATRIX = CAST(arr_text_iterator[8] AS BOOLEAN)
 				 )
 		THEN
 			
@@ -337,7 +350,8 @@ BEGIN
 										DS_DISLIB_VERSION,
 										DS_SCHDEULER,
 										NR_CLUSTER,
-										DS_STORAGE)
+										DS_STORAGE,
+										BL_TRANSPOSE_MATRIX)
 			VALUES
 			(DEFAULT,
 			 arr_text_iterator[1],
@@ -346,7 +360,8 @@ BEGIN
 			 arr_text_iterator[4],
 			 arr_text_iterator[5],
 			 CAST(arr_text_iterator[6] AS BIGINT),
-			 arr_text_iterator[7]);
+			 arr_text_iterator[7],
+			 CAST(arr_text_iterator[8] AS BOOLEAN));
 			 
 		END IF;
 		
@@ -410,7 +425,7 @@ BEGIN
 	DELETE FROM DEVICE;
 
 	-- RESET SEQUENCES
-	ALTER SEQUENCE experiment_id_experiment_raw_seq RESTART WITH 1;
+	ALTER SEQUENCE experiment_raw_id_experiment_seq RESTART WITH 1;
 	ALTER SEQUENCE experiment_id_experiment_seq RESTART WITH 1;
 	ALTER SEQUENCE parameter_id_parameter_seq RESTART WITH 1;
 	ALTER SEQUENCE parameter_type_id_parameter_type_seq RESTART WITH 1;
@@ -495,7 +510,8 @@ BEGIN
 		DS_DISLIB_VERSION VARCHAR,
 		DS_SCHDEULER VARCHAR,
 		NR_CLUSTER BIGINT,
-		DS_STORAGE VARCHAR
+		DS_STORAGE VARCHAR,
+		BL_TRANSPOSE_MATRIX BOOLEAN
 	);
 	
 	CREATE TABLE PARAMETER
@@ -1025,7 +1041,8 @@ BEGIN
 		
 	-- ELSIF (var_ds_parameter_type = 'VAR_GRID_ROW' or var_ds_parameter_type = 'VAR_GRID_ROW_2' or var_ds_parameter_type = 'VAR_GRID_ROW_3' or var_ds_parameter_type = 'VAR_GRID_ROW_4')
 	--ELSIF (var_ds_parameter_type = 'VAR_GRID_ROW_5' or var_ds_parameter_type = 'VAR_GRID_ROW_6' or var_ds_parameter_type = 'VAR_GRID_ROW_7')
-	ELSIF (var_ds_parameter_type = 'VAR_GRID_ROW_8' or var_ds_parameter_type = 'VAR_GRID_ROW_9' or var_ds_parameter_type = 'VAR_GRID_ROW_10')
+	-- ELSIF (var_ds_parameter_type = 'VAR_GRID_ROW_8' or var_ds_parameter_type = 'VAR_GRID_ROW_9' or var_ds_parameter_type = 'VAR_GRID_ROW_10')
+	ELSIF (false)
 	THEN
 
 		arr_id_resource := ARRAY(SELECT DISTINCT ID_RESOURCE FROM RESOURCE WHERE ID_RESOURCE = 18 ORDER BY ID_RESOURCE);
@@ -1255,6 +1272,231 @@ BEGIN
 
 		END LOOP;
 
+	ELSIF (var_ds_parameter_type = 'VAR_GRID_ROW_MATMUL_1' or var_ds_parameter_type = 'VAR_GRID_ROW_MATMUL_2' or var_ds_parameter_type = 'VAR_GRID_ROW_MATMUL_3' or var_ds_parameter_type = 'VAR_GRID_ROW_MATMUL_4')
+	THEN
+
+		arr_id_resource := ARRAY(SELECT DISTINCT ID_RESOURCE FROM RESOURCE WHERE ID_RESOURCE = 18 ORDER BY ID_RESOURCE);
+		arr_id_dataset := ARRAY(SELECT DISTINCT ID_DATASET FROM DATASET WHERE DS_DATASET IN ('S_128MB_1','S_512MB_1','S_2GB_1','S_8GB_1','S_32GB_1') ORDER BY ID_DATASET);
+
+		param_grid_row_dimension := split_part(var_ds_parameter_attribute,'_',1);
+
+		-- FOR EACH RESOURCE
+		FOREACH id_resource_iterator IN ARRAY arr_id_resource
+		LOOP
+
+			-- FOR EACH DATASET
+			FOREACH id_dataset_iterator IN ARRAY arr_id_dataset
+			LOOP
+			
+				IF (flag_increment_cd_parameter = TRUE)
+				THEN
+
+					var_cd_parameter := var_cd_parameter + 1;
+
+				END IF;
+
+				-- GRID ROW PARAMETERS
+				IF (param_grid_row_dimension = '2MAXCORES')
+				THEN
+
+					increment_exp_grid_row_dimension := 0;
+					grid_row_dimension = 1;
+					arr_grid_row_dimension := '{}';
+					
+					max_grid_row_dimension := (SELECT 2*MAX((NR_NODES-1) * NR_COMPUTING_UNITS_CPU) AS NR_TOTAL_CORES FROM RESOURCE WHERE ID_RESOURCE = id_resource_iterator);
+
+					WHILE grid_row_dimension < max_grid_row_dimension
+					LOOP
+						grid_row_dimension := CAST(POWER(2,increment_exp_grid_row_dimension) AS BIGINT);
+						arr_grid_row_dimension := array_append(arr_grid_row_dimension, grid_row_dimension);
+						
+						increment_exp_grid_row_dimension := increment_exp_grid_row_dimension + 1;
+					END LOOP;
+
+				END IF;
+
+				-- GRID ROW PARAMETERS
+				IF (param_grid_row_dimension = '32MAXCORES')
+				THEN
+
+					increment_exp_grid_row_dimension := 0;
+					grid_row_dimension = 1;
+					arr_grid_row_dimension := '{}';
+					
+					max_grid_row_dimension := (SELECT 32*MAX((NR_NODES-1) * NR_COMPUTING_UNITS_CPU) AS NR_TOTAL_CORES FROM RESOURCE WHERE ID_RESOURCE = id_resource_iterator);
+
+					WHILE grid_row_dimension < max_grid_row_dimension
+					LOOP
+						grid_row_dimension := CAST(POWER(2,increment_exp_grid_row_dimension) AS BIGINT);
+						arr_grid_row_dimension := array_append(arr_grid_row_dimension, grid_row_dimension);
+						
+						increment_exp_grid_row_dimension := increment_exp_grid_row_dimension + 1;
+					END LOOP;
+
+				END IF;
+
+				-- FOR EACH GRID ROW
+				FOREACH i_grid_row_dimension IN ARRAY arr_grid_row_dimension
+				LOOP
+		
+					-- FOR EACH CONFIGURATION
+					FOREACH cd_configuration_iterator IN ARRAY arr_cd_configuration
+					LOOP
+						
+						arr_id_configuration := ARRAY(SELECT C.ID_CONFIGURATION FROM CONFIGURATION C WHERE C.CD_CONFIGURATION = cd_configuration_iterator AND C.ID_ALGORITHM = id_algorithm_iterator);
+						flag_insert := CHECK_PARAMETER_EXISTENCE(arr_id_configuration, var_ds_parameter_type, var_ds_parameter_attribute, var_cd_parameter, cd_configuration_iterator, id_algorithm_iterator, id_resource_iterator, id_dataset_iterator, var_id_parameter_type, bigint_iterator, var_ds_parameter_attribute_numeric);
+						
+						
+						-- COMBINE ALL ELEMENTS FROM "CONFIGURATION", "RESOURCE" AND "DATASET" TABLES AND INSERT INTO "PARAMETER" TABLE
+						--IF (flag_insert = TRUE)
+						IF EXISTS(
+								WITH T_CONFIGURATION AS (
+												SELECT
+												var_cd_parameter AS CD_PARAMETER,
+												A.CD_CONFIGURATION,
+												A.ID_ALGORITHM,
+												A.CD_FUNCTION,
+												A.ID_DEVICE
+												FROM CONFIGURATION  A
+												WHERE
+												A.CD_CONFIGURATION IN (1,4)--= cd_configuration_iterator
+												AND A.ID_ALGORITHM = 2--id_algorithm_iterator
+												),
+								T_RESOURCE AS (
+												SELECT
+												var_cd_parameter AS CD_PARAMETER,
+												A.ID_RESOURCE,
+												VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+												VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT
+												FROM RESOURCE A
+												WHERE A.ID_RESOURCE = id_resource_iterator
+												),
+								T_DATASET AS (
+												SELECT
+												var_cd_parameter AS CD_PARAMETER,
+												A.ID_DATASET,
+												A.VL_DATASET_DIMENSION,
+												A.VL_DATASET_ROW_DIMENSION,
+												A.VL_DATASET_COLUMN_DIMENSION,
+												A.VL_DATA_TYPE_MEMORY_SIZE
+												FROM DATASET A
+												WHERE A.ID_DATASET = id_dataset_iterator
+												)
+							
+								SELECT
+								CD_CONFIGURATION,
+								ID_ALGORITHM,
+								ID_FUNCTION,
+								ID_DATASET,
+								ID_RESOURCE,
+								ID_PARAMETER_TYPE,
+								NR_ITERATIONS,
+								VL_GRID_ROW_DIMENSION,
+								VL_GRID_COLUMN_DIMENSION,
+								VL_BLOCK_ROW_DIMENSION,
+								VL_BLOCK_COLUMN_DIMENSION,
+								VL_BLOCK_MEMORY_SIZE,
+								VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+								VL_BLOCK_MEMORY_SIZE_PERCENT_GPU
+								FROM PARAMETER
+
+							
+									INTERSECT
+							
+							
+								SELECT
+								A.CD_CONFIGURATION,
+								A.ID_ALGORITHM,
+								(SELECT DISTINCT ID_FUNCTION FROM FUNCTION Z WHERE Z.ID_ALGORITHM = A.ID_ALGORITHM AND Z.CD_FUNCTION = A.CD_FUNCTION AND Z.ID_DEVICE = A.ID_DEVICE) AS ID_FUNCTION,
+								B.ID_DATASET,
+								C.ID_RESOURCE,
+								var_id_parameter_type AS ID_PARAMETER_TYPE,
+								bigint_iterator AS NR_ITERATIONS,
+								i_grid_row_dimension AS VL_GRID_ROW_DIMENSION,
+								i_grid_row_dimension AS VL_GRID_COLUMN_DIMENSION,
+								CEIL(B.VL_DATASET_ROW_DIMENSION/i_grid_row_dimension) AS VL_BLOCK_ROW_DIMENSION,
+								CEIL(B.VL_DATASET_COLUMN_DIMENSION/i_grid_row_dimension) AS VL_BLOCK_COLUMN_DIMENSION,
+								CEIL(B.VL_DATASET_ROW_DIMENSION/i_grid_row_dimension) * CEIL(B.VL_DATASET_COLUMN_DIMENSION/i_grid_row_dimension) * B.VL_DATA_TYPE_MEMORY_SIZE AS VL_BLOCK_MEMORY_SIZE,
+								(CEIL(B.VL_DATASET_ROW_DIMENSION/i_grid_row_dimension) * CEIL(B.VL_DATASET_COLUMN_DIMENSION/i_grid_row_dimension) * B.VL_DATA_TYPE_MEMORY_SIZE) / VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT AS VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+								(CEIL(B.VL_DATASET_ROW_DIMENSION/i_grid_row_dimension) * CEIL(B.VL_DATASET_COLUMN_DIMENSION/i_grid_row_dimension) * B.VL_DATA_TYPE_MEMORY_SIZE) / VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT AS VL_BLOCK_MEMORY_SIZE_PERCENT_GPU
+								FROM T_CONFIGURATION A
+								INNER JOIN T_DATASET B ON (A.CD_PARAMETER = B.CD_PARAMETER)
+								INNER JOIN T_RESOURCE C ON (A.CD_PARAMETER = C.CD_PARAMETER)
+						)
+						THEN
+
+							flag_increment_cd_parameter := FALSE;
+
+							CONTINUE;
+
+						ELSE
+
+							flag_increment_cd_parameter := TRUE;
+
+							INSERT INTO PARAMETER(CD_PARAMETER,CD_CONFIGURATION,ID_ALGORITHM,ID_FUNCTION,ID_DATASET,ID_RESOURCE,ID_PARAMETER_TYPE,NR_ITERATIONS,VL_GRID_ROW_DIMENSION,VL_GRID_COLUMN_DIMENSION,VL_BLOCK_ROW_DIMENSION,VL_BLOCK_COLUMN_DIMENSION,VL_BLOCK_MEMORY_SIZE,VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,VL_BLOCK_MEMORY_SIZE_PERCENT_GPU)
+							(
+									WITH T_CONFIGURATION AS (
+													SELECT
+													var_cd_parameter AS CD_PARAMETER,
+													A.CD_CONFIGURATION,
+													A.ID_ALGORITHM,
+													A.CD_FUNCTION,
+													A.ID_DEVICE
+													FROM CONFIGURATION  A
+													WHERE
+													A.CD_CONFIGURATION IN (1,4)--= cd_configuration_iterator
+													AND A.ID_ALGORITHM = 2--id_algorithm_iterator
+													),
+									T_RESOURCE AS (
+													SELECT
+													var_cd_parameter AS CD_PARAMETER,
+													A.ID_RESOURCE,
+													VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+													VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT
+													FROM RESOURCE A
+													WHERE A.ID_RESOURCE = id_resource_iterator
+													),
+									T_DATASET AS (
+													SELECT
+													var_cd_parameter AS CD_PARAMETER,
+													A.ID_DATASET,
+													A.VL_DATASET_DIMENSION,
+													A.VL_DATASET_ROW_DIMENSION,
+													A.VL_DATASET_COLUMN_DIMENSION,
+													A.VL_DATA_TYPE_MEMORY_SIZE
+													FROM DATASET A
+													WHERE A.ID_DATASET = id_dataset_iterator
+													)
+									SELECT
+									A.CD_PARAMETER,
+									A.CD_CONFIGURATION,
+									A.ID_ALGORITHM,
+									(SELECT DISTINCT ID_FUNCTION FROM FUNCTION Z WHERE Z.ID_ALGORITHM = A.ID_ALGORITHM AND Z.CD_FUNCTION = A.CD_FUNCTION AND Z.ID_DEVICE = A.ID_DEVICE) AS ID_FUNCTION,
+									B.ID_DATASET,
+									C.ID_RESOURCE,
+									var_id_parameter_type AS ID_PARAMETER_TYPE,
+									bigint_iterator AS NR_ITERATIONS,
+									i_grid_row_dimension AS VL_GRID_ROW_DIMENSION,
+									i_grid_row_dimension AS VL_GRID_COLUMN_DIMENSION,
+									CEIL(B.VL_DATASET_ROW_DIMENSION/i_grid_row_dimension) AS VL_BLOCK_ROW_DIMENSION,
+									CEIL(B.VL_DATASET_COLUMN_DIMENSION/i_grid_row_dimension) AS VL_BLOCK_COLUMN_DIMENSION,
+									CEIL(B.VL_DATASET_ROW_DIMENSION/i_grid_row_dimension) * CEIL(B.VL_DATASET_COLUMN_DIMENSION/i_grid_row_dimension) * B.VL_DATA_TYPE_MEMORY_SIZE AS VL_BLOCK_MEMORY_SIZE,
+									(CEIL(B.VL_DATASET_ROW_DIMENSION/i_grid_row_dimension) * CEIL(B.VL_DATASET_COLUMN_DIMENSION/i_grid_row_dimension) * B.VL_DATA_TYPE_MEMORY_SIZE) / VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT AS VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+									(CEIL(B.VL_DATASET_ROW_DIMENSION/i_grid_row_dimension) * CEIL(B.VL_DATASET_COLUMN_DIMENSION/i_grid_row_dimension) * B.VL_DATA_TYPE_MEMORY_SIZE) / VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT AS VL_BLOCK_MEMORY_SIZE_PERCENT_GPU
+									FROM T_CONFIGURATION A
+									INNER JOIN T_DATASET B ON (A.CD_PARAMETER = B.CD_PARAMETER)
+									INNER JOIN T_RESOURCE C ON (A.CD_PARAMETER = C.CD_PARAMETER)
+							);
+
+						END IF;
+						
+					END LOOP;
+
+				END LOOP;
+
+			END LOOP;
+
+		END LOOP;
 
 	ELSIF (var_ds_parameter_type = 'VAR_GRID_COLUMN' and false)
 	THEN
