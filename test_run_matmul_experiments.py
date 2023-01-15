@@ -1,6 +1,9 @@
 import time
 import csv
 import dislib as ds
+import numpy as np
+from scipy import sparse as sp
+from scipy.sparse import csr_matrix
 
 from pycompss.api.api import compss_barrier
 
@@ -19,23 +22,41 @@ if __name__ == '__main__':
     input_matrix_rows = 4
     input_matrix_columns = 4
     start_random_state = 170
-    block_row_size = 2
-    block_column_size = 2
-    transpose_a = transpose_b = bl_transpose = True
+    block_row_size = 1
+    block_column_size = 1
+    transpose_a = transpose_b = bl_transpose = False
     start = time.perf_counter()
     x = ds.random_array((input_matrix_rows, input_matrix_columns), (block_row_size, block_column_size), random_state=start_random_state)
     
+    shape = (input_matrix_rows, input_matrix_columns)
+    block_size = (block_row_size, block_column_size)
+
+    # #DENSE
+    # x_np = np.random.random(shape)
+    # x = ds.array(x_np, block_size=block_size)
+
+    # #SPARSE
+    # x_sp = sp.csr_matrix(np.random.random(shape))
+    # # x_sp = csr_matrix(shape)
+    # x = ds.array(x_sp, block_size=block_size)
+
     # print(x.collect())
 
     print("==== TIME DATA GENERATION ==== ", time.perf_counter()-start)
 
-    # Run KMeans using dislib - CPU (Warm up)
+    # Run Matmul using dislib - CPU (Warm up)
     print("\nSTART CPU\n")
     # compss_barrier()
     start = time.perf_counter()
     result = ds.matmul(x, x, transpose_a, transpose_b, id_device=1, id_parameter=0, nr_algorithm_iteration=0)
     # compss_barrier()
     print("==== TIME CPU ==== ", time.perf_counter()-start)
+
+
+
+
+
+
 
     # print(result.collect())
 
@@ -47,13 +68,13 @@ if __name__ == '__main__':
     # # compss_barrier()
     # print("==== TIME CPU ==== ", time.perf_counter()-start)
 
-    # Run KMeans using dislib - GPU (Warm up)
-    print("\nSTART GPU\n")
-    # compss_barrier()
-    start = time.perf_counter()
-    result = ds.matmul(x, x, transpose_a, transpose_b, id_device=2, id_parameter=0, nr_algorithm_iteration=0)
-    # compss_barrier()
-    print("==== TIME GPU ==== ", time.perf_counter()-start)
+    # # Run KMeans using dislib - GPU (Warm up)
+    # print("\nSTART GPU\n")
+    # # compss_barrier()
+    # start = time.perf_counter()
+    # result = ds.matmul(x, x, transpose_a, transpose_b, id_device=2, id_parameter=0, nr_algorithm_iteration=0)
+    # # compss_barrier()
+    # print("==== TIME GPU ==== ", time.perf_counter()-start)
 
     # # Run KMeans using dislib - GPU - 4 (intra) - 6 (inter)
     # print("\nSTART GPU\n")
