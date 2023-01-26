@@ -19,26 +19,29 @@ if __name__ == '__main__':
     writer.writerow(header)
     f.close()
 
-    input_matrix_rows = 4
-    input_matrix_columns = 4
+    input_matrix_rows = 4000
+    input_matrix_columns = 4000
     start_random_state = 170
-    block_row_size = 1
-    block_column_size = 1
+    block_row_size = 2000
+    block_column_size = 2000
     transpose_a = transpose_b = bl_transpose = False
     start = time.perf_counter()
-    x = ds.random_array((input_matrix_rows, input_matrix_columns), (block_row_size, block_column_size), random_state=start_random_state)
+    # x = ds.random_array((input_matrix_rows, input_matrix_columns), (block_row_size, block_column_size), random_state=start_random_state)
     
     shape = (input_matrix_rows, input_matrix_columns)
     block_size = (block_row_size, block_column_size)
 
-    # #DENSE
+    # # #DENSE
     # x_np = np.random.random(shape)
     # x = ds.array(x_np, block_size=block_size)
 
-    # #SPARSE
+    #SPARSE
     # x_sp = sp.csr_matrix(np.random.random(shape))
-    # # x_sp = csr_matrix(shape)
-    # x = ds.array(x_sp, block_size=block_size)
+    x_sp = csr_matrix(shape,dtype=np.float64).toarray()
+    print(x_sp[0][0])
+    print(type(x_sp[0][0]))
+    x = ds.array(x_sp, block_size=block_size)
+
 
     # print(x.collect())
 
@@ -48,7 +51,7 @@ if __name__ == '__main__':
     print("\nSTART CPU\n")
     # compss_barrier()
     start = time.perf_counter()
-    result = ds.matmul(x, x, transpose_a, transpose_b, id_device=1, id_parameter=0, nr_algorithm_iteration=0)
+    result = ds.matmul(x, x, transpose_a, transpose_b, id_device=2, id_parameter=0, nr_algorithm_iteration=0)
     # compss_barrier()
     print("==== TIME CPU ==== ", time.perf_counter()-start)
 

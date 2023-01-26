@@ -52,7 +52,8 @@ def main():
                         C.VL_DATASET_DIMENSION,
                         C.VL_DATASET_ROW_DIMENSION,
                         C.VL_DATASET_COLUMN_DIMENSION,
-                        C.NR_RANDOM_STATE
+                        C.NR_RANDOM_STATE,
+			            C.VL_DATA_SPARSITY
                     FROM PARAMETER A
                     INNER JOIN RESOURCE B ON (A.ID_RESOURCE = B.ID_RESOURCE)
                     INNER JOIN DATASET C ON (A.ID_DATASET = C.ID_DATASET)

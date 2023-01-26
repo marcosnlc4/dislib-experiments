@@ -4,6 +4,8 @@ import time
 import datetime
 import pandas as pd
 from sklearn.datasets import make_blobs
+from scipy.sparse import csr_matrix
+import numpy as np
 
 import dislib as ds
 from dislib.cluster import KMeans
@@ -100,18 +102,18 @@ def main():
                                      & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
                                      & ((df_parameters["id_function"] == 1) | (df_parameters["id_function"] == 2)) # FIXED VALUE (gpu version is called inside task, as matmul has two device functions (matmul and add))  
                                     #  & (df_parameters["ds_dataset"].isin(["S_128MB_1","S_512MB_1","S_2GB_1","S_8GB_1","S_32GB_1"])) # FIXED VALUE
-                                     & (df_parameters["ds_dataset"] == "S_128MB_1") #1
-                                    #  & (df_parameters["ds_dataset"] == "S_512MB_1") #2
-                                    #  & (df_parameters["ds_dataset"] == "S_2GB_1") #3
-                                    #  & (df_parameters["ds_dataset"] == "S_8GB_1") #4
-                                    #  & (df_parameters["ds_dataset"] == "S_32GB_1") #5
+                                    #  & (df_parameters["ds_dataset"] == "S_128MB_2") #1
+                                    #  & (df_parameters["ds_dataset"] == "S_512MB_2") #2
+                                     & (df_parameters["ds_dataset"] == "S_2GB_2") #3
+                                    #  & (df_parameters["ds_dataset"] == "S_8GB_2") #4
+                                    #  & (df_parameters["ds_dataset"] == "S_32GB_2") #5
                                      & (df_parameters["ds_resource"] == "MINOTAURO_9_NODES_1_CORE")
                                      & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_1") # 1 (NO TRANSPOSE - GPFS - es.bsc.compss.scheduler.orderstrict.fifo.FifoTS)
                                     #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_2") # 2 (NO TRANSPOSE - LOCAL DISK - es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS)
                                     #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_3") # 3 (TRANSPOSE - GPFS - es.bsc.compss.scheduler.orderstrict.fifo.FifoTS)
                                     #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_4") # 4 (TRANSPOSE - LOCAL DISK - es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS)
                                  ].sort_values(by=["id_parameter"])
-    # df_parameters = df_parameters[(df_parameters["id_parameter"] == 5) | (df_parameters["id_parameter"] == 7)]
+    df_parameters = df_parameters[(df_parameters["id_parameter"] == 793) | (df_parameters["id_parameter"] == 795) | (df_parameters["id_parameter"] == 797) | (df_parameters["id_parameter"] == 799) | (df_parameters["id_parameter"] == 801) | (df_parameters["id_parameter"] == 803) | (df_parameters["id_parameter"] == 805) | (df_parameters["id_parameter"] == 807)]
 
 
     # defining the structure of the log file
@@ -175,6 +177,7 @@ def main():
         vl_dataset_row_dimension = row["vl_dataset_row_dimension"]
         vl_dataset_column_dimension = row["vl_dataset_column_dimension"]
         nr_random_state = row["nr_random_state"]
+        vl_data_sparsity = row["vl_data_sparsity"]
 
         execution_progress = round((current_execution/df_parameters.shape[0])*100,2)
         print("\n@@@@@@ EXECUTION PROGRESS:",str(execution_progress),"%\n")
@@ -253,8 +256,13 @@ def main():
             elif ds_algorithm == "MATMUL_DISLIB":
 
                 # generate and load data into a ds-array
-                x = ds.random_array((vl_dataset_row_dimension, vl_dataset_column_dimension), (vl_block_row_dimension, vl_block_column_dimension), random_state=nr_random_state)
-
+                if vl_data_sparsity == 0.0:
+                    x = ds.random_array((vl_dataset_row_dimension, vl_dataset_column_dimension), (vl_block_row_dimension, vl_block_column_dimension), random_state=nr_random_state)
+                elif (vl_data_sparsity == 1.0) & (ds_data_type == 'FLOAT64'):
+                    x = ds.array(csr_matrix((vl_dataset_row_dimension, vl_dataset_column_dimension), dtype = np.float64).toarray(), block_size=(vl_block_row_dimension, vl_block_column_dimension))
+                else:
+                    print("Invalid value for data sparsity!")
+                
                 transpose_a = transpose_b = bl_transpose_matrix
 
                 if ds_device == "GPU":
@@ -265,8 +273,8 @@ def main():
                     # execution 2 - extract total and inter execution times with synchornized function calls
                     result = ds.matmul(x, x, transpose_a, transpose_b, id_device=6, id_parameter=id_parameter, nr_algorithm_iteration=i)
 
-                    # # execution 3 - extract total execution time for GPU (id_device = 2)
-                    # result = ds.matmul(x, x, transpose_a, transpose_b, id_device=2, id_parameter=id_parameter, nr_algorithm_iteration=i)
+                    # execution 3 - extract total execution time for GPU (id_device = 2)
+                    result = ds.matmul(x, x, transpose_a, transpose_b, id_device=2, id_parameter=id_parameter, nr_algorithm_iteration=i)
                 else:
 
                     # execution 1 - extract intra execution times with synchornized function calls
@@ -275,8 +283,8 @@ def main():
                     # execution 2 - extract total and inter execution times with synchornized function calls
                     result = ds.matmul(x, x, transpose_a, transpose_b, id_device=5, id_parameter=id_parameter, nr_algorithm_iteration=i)
 
-                    # # execution 3 - extract total execution time for CPU (id_device = 1)
-                    # result = ds.matmul(x, x, transpose_a, transpose_b, id_device=1, id_parameter=id_parameter, nr_algorithm_iteration=i)
+                    # execution 3 - extract total execution time for CPU (id_device = 1)
+                    result = ds.matmul(x, x, transpose_a, transpose_b, id_device=1, id_parameter=id_parameter, nr_algorithm_iteration=i)
 
             else:
                 print("Invalid Algorithm!")
