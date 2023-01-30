@@ -56,7 +56,9 @@ DECLARE
 									{VAR_GRID_SHAPE_MATMUL_1,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,NULL,GPFS,FALSE},
 									{VAR_GRID_SHAPE_MATMUL_2,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,NULL,LOCAL_DISK,FALSE},
 									{VAR_GRID_SHAPE_MATMUL_3,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,NULL,GPFS,TRUE},
-									{VAR_GRID_SHAPE_MATMUL_4,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,NULL,LOCAL_DISK,TRUE}
+									{VAR_GRID_SHAPE_MATMUL_4,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,NULL,LOCAL_DISK,TRUE},
+									{VAR_GRID_SHAPE_MATMUL_5,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,NULL,GPFS,FALSE},
+									{VAR_GRID_SHAPE_MATMUL_6,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,NULL,LOCAL_DISK,FALSE}
 								}';
 								
 	arr_id_resource bigint[];
@@ -270,7 +272,7 @@ BEGIN
 				  AND DS_COMPSS_VERSION = arr_text_iterator[3]
 				  AND DS_DISLIB_VERSION = arr_text_iterator[4]
 				  AND DS_SCHDEULER = arr_text_iterator[5]
-				  AND NR_CLUSTER = CAST(arr_text_iterator[6] AS BIGINT)
+				  --AND NR_CLUSTER = CAST(arr_text_iterator[6] AS BIGINT) --ONLY FOR KMEANS VERSION
 				  AND DS_STORAGE = arr_text_iterator[7]
 				  AND BL_TRANSPOSE_MATRIX = CAST(arr_text_iterator[8] AS BOOLEAN)
 				 )
@@ -659,12 +661,12 @@ BEGIN
 	-- SET INITIAL VALUE FOR CD_PARAMETER
 	var_cd_parameter := (SELECT COALESCE(MAX(CD_PARAMETER),0) FROM PARAMETER);
 
-	IF (var_ds_parameter_type = 'VAR_GRID_SHAPE_MATMUL_1' or var_ds_parameter_type = 'VAR_GRID_SHAPE_MATMUL_2' or var_ds_parameter_type = 'VAR_GRID_SHAPE_MATMUL_3' or var_ds_parameter_type = 'VAR_GRID_SHAPE_MATMUL_4')
+	IF (var_ds_parameter_type = 'VAR_GRID_SHAPE_MATMUL_1' or var_ds_parameter_type = 'VAR_GRID_SHAPE_MATMUL_2' or var_ds_parameter_type = 'VAR_GRID_SHAPE_MATMUL_3' or var_ds_parameter_type = 'VAR_GRID_SHAPE_MATMUL_4' or var_ds_parameter_type = 'VAR_GRID_SHAPE_MATMUL_5' or var_ds_parameter_type = 'VAR_GRID_SHAPE_MATMUL_6')
 	THEN
 
 		arr_id_resource := ARRAY(SELECT DISTINCT ID_RESOURCE FROM RESOURCE ORDER BY ID_RESOURCE);
-		--arr_id_dataset := ARRAY(SELECT DISTINCT ID_DATASET FROM DATASET WHERE DS_DATASET IN ('S_128MB_1','S_512MB_1','S_2GB_1','S_8GB_1','S_32GB_1') ORDER BY ID_DATASET);
-		arr_id_dataset := ARRAY(SELECT DISTINCT ID_DATASET FROM DATASET WHERE DS_DATASET IN ('S_128MB_2','S_512MB_2','S_2GB_2','S_8GB_2','S_32GB_2') ORDER BY ID_DATASET);
+		arr_id_dataset := ARRAY(SELECT DISTINCT ID_DATASET FROM DATASET WHERE DS_DATASET IN ('S_128MB_1','S_512MB_1','S_2GB_1','S_8GB_1','S_32GB_1') ORDER BY ID_DATASET);
+		--arr_id_dataset := ARRAY(SELECT DISTINCT ID_DATASET FROM DATASET WHERE DS_DATASET IN ('S_128MB_2','S_512MB_2','S_2GB_2','S_8GB_2','S_32GB_2') ORDER BY ID_DATASET);
 		param_grid_row_dimension := split_part(var_ds_parameter_attribute,'_',1);
 
 		-- FOR EACH RESOURCE
