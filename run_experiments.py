@@ -102,18 +102,20 @@ def main():
                                      & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
                                      & ((df_parameters["id_function"] == 1) | (df_parameters["id_function"] == 2)) # FIXED VALUE (gpu version is called inside task, as matmul has two device functions (matmul and add))  
                                     #  & (df_parameters["ds_dataset"].isin(["S_128MB_1","S_512MB_1","S_2GB_1","S_8GB_1","S_32GB_1"])) # FIXED VALUE
-                                    #  & (df_parameters["ds_dataset"] == "S_128MB_2") #1
-                                    #  & (df_parameters["ds_dataset"] == "S_512MB_2") #2
-                                     & (df_parameters["ds_dataset"] == "S_2GB_2") #3
-                                    #  & (df_parameters["ds_dataset"] == "S_8GB_2") #4
-                                    #  & (df_parameters["ds_dataset"] == "S_32GB_2") #5
+                                    #  & (df_parameters["ds_dataset"] == "S_128MB_1") #1
+                                    #  & (df_parameters["ds_dataset"] == "S_512MB_1") #2
+                                     & (df_parameters["ds_dataset"] == "S_2GB_1") #3
+                                    #  & (df_parameters["ds_dataset"] == "S_8GB_1") #4
+                                    #  & (df_parameters["ds_dataset"] == "S_32GB_1") #5
                                      & (df_parameters["ds_resource"] == "MINOTAURO_9_NODES_1_CORE")
-                                     & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_1") # 1 (NO TRANSPOSE - GPFS - es.bsc.compss.scheduler.orderstrict.fifo.FifoTS)
+                                    #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_1") # 1 (NO TRANSPOSE - GPFS - es.bsc.compss.scheduler.orderstrict.fifo.FifoTS)
                                     #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_2") # 2 (NO TRANSPOSE - LOCAL DISK - es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS)
                                     #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_3") # 3 (TRANSPOSE - GPFS - es.bsc.compss.scheduler.orderstrict.fifo.FifoTS)
                                     #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_4") # 4 (TRANSPOSE - LOCAL DISK - es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS)
+                                     & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_5") # 1 (NO TRANSPOSE - GPFS - es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS)
+                                    #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_6") # 1 (NO TRANSPOSE - LOCAL DISK - es.bsc.compss.scheduler.orderstrict.fifo.FifoTS)
                                  ].sort_values(by=["id_parameter"])
-    df_parameters = df_parameters[(df_parameters["id_parameter"] == 793) | (df_parameters["id_parameter"] == 795) | (df_parameters["id_parameter"] == 797) | (df_parameters["id_parameter"] == 799) | (df_parameters["id_parameter"] == 801) | (df_parameters["id_parameter"] == 803) | (df_parameters["id_parameter"] == 805) | (df_parameters["id_parameter"] == 807)]
+    df_parameters = df_parameters[(df_parameters["id_parameter"] == 1873) | (df_parameters["id_parameter"] == 1875) | (df_parameters["id_parameter"] == 1877) | (df_parameters["id_parameter"] == 1879) | (df_parameters["id_parameter"] == 1881) | (df_parameters["id_parameter"] == 1883) | (df_parameters["id_parameter"] == 1885) | (df_parameters["id_parameter"] == 1887)]
 
 
     # defining the structure of the log file
