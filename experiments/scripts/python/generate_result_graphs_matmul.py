@@ -30,6 +30,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                         Y.VL_STD_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
                         Y.VL_STD_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
                         Y.VL_STD_COMMUNICATION_TIME,
+                        ROUND(((Y.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC)/(Y.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC-Y.VL_COMMUNICATION_TIME))::numeric,2) AS P_FRACTION,
                         Y.ID_PARAMETER,
                         Y.CD_PARAMETER,
                         Y.CD_CONFIGURATION,
