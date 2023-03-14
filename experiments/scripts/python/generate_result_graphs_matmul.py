@@ -469,12 +469,12 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
             for frame in [df_filtered_mean_cpu, df_filtered_mean_gpu]:
                 if frame.name == 'df_filtered_mean_cpu':
                     # plt.xticks(frame[x_value], frame['vl_grid_row_x_column_dimension'])
-                    plt.plot(frame[x_value], frame['vl_total_execution_time'], color='C0', linestyle = 'dotted', label='$T_{w\_inter}$ CPU', zorder=3)
+                    plt.plot(frame[x_value], frame['vl_total_execution_time'], color='C0', linestyle = 'dotted', label='$T_{w\_total}$ CPU', zorder=3)
                     # plt.plot(frame[x_value], frame['vl_inter_task_overhead_time'], color='C9', linestyle = 'dotted', label='$T_{o\_inter}$ CPU', zorder=3)
                     # plt.plot(frame[x_value], frame['vl_intra_task_execution_time_full_func'], color='C2', linestyle = 'dotted', label='$T_{w\_intra}$  CPU', zorder=3)
                 if frame.name == 'df_filtered_mean_gpu':
                     # plt.xticks(frame[x_value], frame['vl_grid_row_x_column_dimension'])
-                    plt.plot(frame[x_value], frame['vl_total_execution_time'], color='C0', linestyle = 'solid', label='$T_{w\_inter}$ GPU', zorder=3)
+                    plt.plot(frame[x_value], frame['vl_total_execution_time'], color='C0', linestyle = 'solid', label='$T_{w\_total}$ GPU', zorder=3)
                     # plt.plot(frame[x_value], frame['vl_inter_task_overhead_time'], color='C9', linestyle = 'solid', label='$T_{o\_inter}$  GPU', zorder=3)
                     # plt.plot(frame[x_value], frame['vl_intra_task_execution_time_full_func'], color='C2', linestyle = 'solid', label='$T_{w\_intra}$ GPU', zorder=3)
             plt.legend(loc='best')
