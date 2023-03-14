@@ -504,7 +504,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                             INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
                                             WHERE
                                             (SELECT DISTINCT Z.DS_DEVICE FROM FUNCTION W INNER JOIN DEVICE Z ON (W.ID_DEVICE = Z.ID_DEVICE) WHERE W.ID_FUNCTION = B.ID_FUNCTION) = 'CPU'
-                                            A.NR_ALGORITHM_ITERATION <> 0
+                                            AND A.NR_ALGORITHM_ITERATION <> 0
                                         ) X
                                         GROUP BY
                                         X.ID_PARAMETER,
@@ -771,7 +771,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                             INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
                                             WHERE
                                             (SELECT DISTINCT Z.DS_DEVICE FROM FUNCTION W INNER JOIN DEVICE Z ON (W.ID_DEVICE = Z.ID_DEVICE) WHERE W.ID_FUNCTION = B.ID_FUNCTION) = 'GPU'
-                                            A.NR_ALGORITHM_ITERATION <> 0
+                                            AND A.NR_ALGORITHM_ITERATION <> 0
                                         ) X
                                         GROUP BY
                                         X.ID_PARAMETER,
@@ -1107,7 +1107,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                             STDDEV(ZZ.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC) AS VL_STD_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
                             STDDEV(ZZ.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC) AS VL_STD_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
                             STDDEV(ZZ.VL_COMMUNICATION_TIME) AS VL_STD_COMMUNICATION_TIME,
-                            ROUND(((ZZ.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC)/(ZZ.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC-ZZ.VL_COMMUNICATION_TIME))::numeric,2) AS P_FRACTION,
+                            --ROUND(((ZZ.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC)/(ZZ.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC-ZZ.VL_COMMUNICATION_TIME))::numeric,2) AS P_FRACTION,
                             ZZ.ID_PARAMETER,
                             ZZ.CD_PARAMETER,
                             ZZ.CD_CONFIGURATION,
