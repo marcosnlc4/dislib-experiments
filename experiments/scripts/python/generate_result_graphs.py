@@ -2034,8 +2034,8 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                     & (df["nr_iterations"] == int(nr_iterations)) # FIXED VALUE
                     & (df["ds_resource"] == ds_resource.upper()) # FIXED VALUE
                     # & (df["ds_dataset"].isin(["S_1MB_1","S_10MB_1","S_100MB_1","S_1GB_1","S_10GB_1","S_100GB_1"])) # FIXED VALUE
-                    & (df["ds_dataset"] == "S_10GB_1")
-                    & (df["ds_parameter_type"] == "VAR_GRID_ROW_7")
+                    # & (df["ds_dataset"] == "S_10GB_1")
+                    & (df["ds_parameter_type"] == "VAR_GRID_ROW_10")
                     ]
 
     # # # General filtering and sorting parameters - V3 (VAR_CORES_CLUSTER_1 and VAR_CORES_SINGLE_NODE_1)
@@ -3964,41 +3964,41 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
 
     elif mode == 18:
-        
+
         print("\nMode ",mode,": Ploting an CPU and GPU speedups per block memory size '%' data set memory size (vl_block_memory_size_percent_dataset) and data set memory size (vl_dataset_memory_size)")
 
-        # speedup_list = ["speedup_cpu_total_execution_time","speedup_cpu_inter_task_execution_time","speedup_cpu_intra_task_execution_time_full_func","speedup_cpu_intra_task_execution_time_device_func","speedup_gpu_total_execution_time","speedup_gpu_inter_task_execution_time","speedup_gpu_intra_task_execution_time_full_func","speedup_gpu_intra_task_execution_time_device_func","speedup_cpu_intra_task_execution_time_free_additional","speedup_gpu_intra_task_execution_time_free_additional"]
+        speedup_list = ["speedup_cpu_total_execution_time","speedup_cpu_inter_task_execution_time","speedup_cpu_intra_task_execution_time_full_func","speedup_cpu_intra_task_execution_time_device_func","speedup_gpu_total_execution_time","speedup_gpu_inter_task_execution_time","speedup_gpu_intra_task_execution_time_full_func","speedup_gpu_intra_task_execution_time_device_func","speedup_cpu_intra_task_execution_time_free_additional","speedup_gpu_intra_task_execution_time_free_additional"]
 
-        speedup_list = ["speedup_cpu_intra_task_execution_time_free_additional","speedup_gpu_intra_task_execution_time_free_additional"]
+        # speedup_list = ["speedup_cpu_intra_task_execution_time_free_additional","speedup_gpu_intra_task_execution_time_free_additional"]
 
         for speedup in speedup_list:
 
             if speedup == "speedup_cpu_total_execution_time":
-                speedup_title = "Total Execution Time Speedup CPU over GPU"
-                vmax=2.30
+                speedup_title = "$T_{w\_total}$ Speedup CPU over GPU"
+                vmax=14.00
             elif speedup == "speedup_cpu_inter_task_execution_time":
-                speedup_title = "Inter Task Execution Time Speedup CPU over GPU"
+                speedup_title = "$T_{w\_inter}$ Speedup CPU over GPU"
                 vmax=2.80
             elif speedup == "speedup_cpu_intra_task_execution_time_full_func":
-                speedup_title = "Intra Task Execution Time (Full Function) Speedup CPU over GPU"
+                speedup_title = "$T_{w\_intra}$ Speedup CPU over GPU"
                 vmax=2.70
             elif speedup == "speedup_cpu_intra_task_execution_time_device_func":
-                speedup_title = "Intra Task Execution Time (Device Function) Speedup CPU over GPU"
+                speedup_title = "$T_{p\_intra}$ Speedup CPU over GPU"
                 vmax=9.50
             elif speedup == "speedup_cpu_intra_task_execution_time_free_additional":
                 speedup_title = "$T_{p\_intra}$ + $T_{c\_intra}$ Times Speedup CPU over GPU"
                 vmax=4.90
             elif speedup == "speedup_gpu_total_execution_time":
-                speedup_title = "Total Execution Time Speedup GPU over CPU"
-                vmax=2.30
+                speedup_title = "$T_{w\_total}$ Speedup GPU over CPU"
+                vmax=14.00
             elif speedup == "speedup_gpu_inter_task_execution_time":
-                speedup_title = "Inter Task Execution Time Speedup GPU over CPU"
+                speedup_title = "$T_{w\_inter}$ Speedup GPU over CPU"
                 vmax=2.80
             elif speedup == "speedup_gpu_intra_task_execution_time_full_func":
-                speedup_title = "Intra Task Execution Time (Full Function) Speedup GPU over CPU"
+                speedup_title = "$T_{w\_intra}$ Speedup GPU over CPU"
                 vmax=2.70
             elif speedup == "speedup_gpu_intra_task_execution_time_device_func":
-                speedup_title = "Intra Task Execution Time (Device Function) Speedup GPU over CPU"
+                speedup_title = "$T_{p\_intra}$ Speedup GPU over CPU"
                 vmax=9.50
             elif speedup == "speedup_gpu_intra_task_execution_time_free_additional":
                 speedup_title = "$T_{p\_intra}$ + $T_{c\_intra}$ Times Speedup GPU over CPU"
