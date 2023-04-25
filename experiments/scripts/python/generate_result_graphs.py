@@ -284,7 +284,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                         ORDER BY T_CPU.VL_TOTAL_EXECUTION_TIME/T_GPU.VL_TOTAL_EXECUTION_TIME DESC;"""
 
     # CPU AND GPU SPEEDUPS
-    elif mode == 18:
+    elif (mode == 18 or mode == 188 or mode == 1888):
         sql_query = """
                         WITH T_CPU AS (
                                     SELECT
@@ -323,6 +323,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                     C.NR_COMPUTING_UNITS_GPU,
                                     C.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
                                     C.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+									(C.NR_NODES-1) || ' (' || (C.NR_NODES-1)*C.NR_COMPUTING_UNITS_CPU || ';' || (C.NR_NODES-1)*4 || ')' AS NR_CONCAT_NODES_TOTAL_COMPUTING_UNITS_CPU_GPU,
                                     D.DS_DATASET,
                                     D.VL_DATASET_MEMORY_SIZE,
                                     D.DS_DATA_TYPE,
@@ -376,6 +377,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                     Y.NR_COMPUTING_UNITS_GPU,
                                     Y.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
                                     Y.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+									Y.NR_CONCAT_NODES_TOTAL_COMPUTING_UNITS_CPU_GPU,
                                     Y.DS_DATASET,
                                     Y.VL_DATASET_MEMORY_SIZE,
                                     Y.DS_DATA_TYPE,
@@ -431,6 +433,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                         X.NR_COMPUTING_UNITS_GPU,
                                         X.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
                                         X.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+										X.NR_CONCAT_NODES_TOTAL_COMPUTING_UNITS_CPU_GPU,
                                         X.DS_DATASET,
                                         X.VL_DATASET_MEMORY_SIZE,
                                         X.DS_DATA_TYPE,
@@ -489,6 +492,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                                 C.NR_COMPUTING_UNITS_GPU,
                                                 C.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
                                                 C.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+												(C.NR_NODES-1) || ' (' || (C.NR_NODES-1)*C.NR_COMPUTING_UNITS_CPU || ';' || (C.NR_NODES-1)*4 || ')' AS NR_CONCAT_NODES_TOTAL_COMPUTING_UNITS_CPU_GPU,
                                                 D.DS_DATASET,
                                                 D.VL_DATASET_MEMORY_SIZE,
                                                 D.DS_DATA_TYPE,
@@ -541,6 +545,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                         X.NR_COMPUTING_UNITS_GPU,
                                         X.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
                                         X.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+										X.NR_CONCAT_NODES_TOTAL_COMPUTING_UNITS_CPU_GPU,
                                         X.DS_DATASET,
                                         X.VL_DATASET_MEMORY_SIZE,
                                         X.DS_DATA_TYPE,
@@ -590,6 +595,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                     C.NR_COMPUTING_UNITS_GPU,
                                     C.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
                                     C.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+									(C.NR_NODES-1) || ' (' || (C.NR_NODES-1)*C.NR_COMPUTING_UNITS_CPU || ';' || (C.NR_NODES-1)*4 || ')' AS NR_CONCAT_NODES_TOTAL_COMPUTING_UNITS_CPU_GPU,
                                     D.DS_DATASET,
                                     D.VL_DATASET_MEMORY_SIZE,
                                     D.DS_DATA_TYPE,
@@ -643,6 +649,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                     Y.NR_COMPUTING_UNITS_GPU,
                                     Y.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
                                     Y.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+									Y.NR_CONCAT_NODES_TOTAL_COMPUTING_UNITS_CPU_GPU,
                                     Y.DS_DATASET,
                                     Y.VL_DATASET_MEMORY_SIZE,
                                     Y.DS_DATA_TYPE,
@@ -698,6 +705,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                         X.NR_COMPUTING_UNITS_GPU,
                                         X.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
                                         X.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+										X.NR_CONCAT_NODES_TOTAL_COMPUTING_UNITS_CPU_GPU,
                                         X.DS_DATASET,
                                         X.VL_DATASET_MEMORY_SIZE,
                                         X.DS_DATA_TYPE,
@@ -756,6 +764,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                                 C.NR_COMPUTING_UNITS_GPU,
                                                 C.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
                                                 C.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+												(C.NR_NODES-1) || ' (' || (C.NR_NODES-1)*C.NR_COMPUTING_UNITS_CPU || ';' || (C.NR_NODES-1)*4 || ')' AS NR_CONCAT_NODES_TOTAL_COMPUTING_UNITS_CPU_GPU,
                                                 D.DS_DATASET,
                                                 D.VL_DATASET_MEMORY_SIZE,
                                                 D.DS_DATA_TYPE,
@@ -808,6 +817,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                         X.NR_COMPUTING_UNITS_GPU,
                                         X.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
                                         X.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+										X.NR_CONCAT_NODES_TOTAL_COMPUTING_UNITS_CPU_GPU,
                                         X.DS_DATASET,
                                         X.VL_DATASET_MEMORY_SIZE,
                                         X.DS_DATA_TYPE,
@@ -830,7 +840,16 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                     WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 1.5 THEN 1.6
                     WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 3.0 THEN 3.1
                     WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 6.2 THEN 6.3
-                    ELSE ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) END AS VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                    ELSE ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1)
+					END AS VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                    CASE
+                    WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 0.3 THEN 0.4 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION || ' x ' || T_CPU.VL_GRID_COLUMN_DIMENSION  || ')'
+                    WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 0.7 THEN 0.8 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION || ' x ' || T_CPU.VL_GRID_COLUMN_DIMENSION  || ')'
+                    WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 1.5 THEN 1.6 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION || ' x ' || T_CPU.VL_GRID_COLUMN_DIMENSION  || ')'
+                    WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 3.0 THEN 3.1 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION || ' x ' || T_CPU.VL_GRID_COLUMN_DIMENSION  || ')'
+                    WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 6.2 THEN 6.3 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION || ' x ' || T_CPU.VL_GRID_COLUMN_DIMENSION  || ')'
+                    ELSE ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) || ' (' || T_CPU.VL_GRID_ROW_DIMENSION || ' x ' || T_CPU.VL_GRID_COLUMN_DIMENSION  || ')'
+					END AS CONCAT_BLOCK_PERCENT_DATASET_GRID_DIMENSION,
                     --ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) AS VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
                     T_CPU.DS_RESOURCE,
                     T_CPU.DS_PARAMETER_TYPE,
@@ -844,45 +863,80 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                     T_CPU.VL_GRID_COLUMN_DIMENSION,
                     T_CPU.VL_BLOCK_ROW_DIMENSION,
                     T_CPU.VL_BLOCK_COLUMN_DIMENSION,
+                    T_CPU.VL_BLOCK_MEMORY_SIZE,
+                    ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ' (' || T_CPU.VL_GRID_ROW_DIMENSION || ' x ' || T_CPU.VL_GRID_COLUMN_DIMENSION  || ')' AS VL_CONCAT_BLOCK_SIZE_MB_GRID_ROW_X_COLUMN_DIMENSION,
+					T_CPU.NR_CONCAT_NODES_TOTAL_COMPUTING_UNITS_CPU_GPU,
+					CASE
+						WHEN T_CPU.DS_ALGORITHM = 'KMEANS'
+							THEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE*1e-6,0) || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*5 || ')'
+						WHEN T_CPU.DS_ALGORITHM = 'MATMUL_DISLIB'
+							THEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE*1e-6,0) || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION + T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*(T_CPU.VL_GRID_ROW_DIMENSION-1)  || ')'
+						ELSE
+							'999999999999'
+					END AS VL_CONCAT_BLOCK_SIZE_MB_NR_TASKS,
+					CASE
+						WHEN T_CPU.DS_ALGORITHM = 'KMEANS'
+							THEN
+								CASE
+									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 0.3 THEN 0.4 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*5  || ')'
+									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 0.7 THEN 0.8 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*5  || ')'
+									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 1.5 THEN 1.6 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*5  || ')'
+									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 3.0 THEN 3.1 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*5  || ')'
+									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 6.2 THEN 6.3 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*5  || ')'
+									ELSE ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*5  || ')'
+								END
+						WHEN T_CPU.DS_ALGORITHM = 'MATMUL_DISLIB'
+							THEN
+								CASE
+									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 0.3 THEN 0.4 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION + T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*(T_CPU.VL_GRID_ROW_DIMENSION-1)  || ')'
+									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 0.7 THEN 0.8 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION + T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*(T_CPU.VL_GRID_ROW_DIMENSION-1)  || ')'
+									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 1.5 THEN 1.6 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION + T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*(T_CPU.VL_GRID_ROW_DIMENSION-1)  || ')'
+									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 3.0 THEN 3.1 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION + T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*(T_CPU.VL_GRID_ROW_DIMENSION-1)  || ')'
+									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 6.2 THEN 6.3 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION + T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*(T_CPU.VL_GRID_ROW_DIMENSION-1)  || ')'
+									ELSE ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*5  || ')'
+								END
+						ELSE
+							'999999999999'
+					END AS CONCAT_BLOCK_PERCENT_DATASET_NR_TASKS,
                     CASE
                     WHEN (T_GPU.VL_TOTAL_EXECUTION_TIME/T_CPU.VL_TOTAL_EXECUTION_TIME) > 1.00 THEN (T_GPU.VL_TOTAL_EXECUTION_TIME/T_CPU.VL_TOTAL_EXECUTION_TIME)
-                    ELSE 0
+                    ELSE -(T_CPU.VL_TOTAL_EXECUTION_TIME/T_GPU.VL_TOTAL_EXECUTION_TIME)
                     END AS SPEEDUP_CPU_TOTAL_EXECUTION_TIME,
                     CASE
                     WHEN (T_GPU.VL_INTER_TASK_EXECUTION_TIME/T_CPU.VL_INTER_TASK_EXECUTION_TIME) > 1.00 THEN (T_GPU.VL_INTER_TASK_EXECUTION_TIME/T_CPU.VL_INTER_TASK_EXECUTION_TIME)
-                    ELSE 0
+                    ELSE -(T_CPU.VL_INTER_TASK_EXECUTION_TIME/T_GPU.VL_INTER_TASK_EXECUTION_TIME)
                     END AS SPEEDUP_CPU_INTER_TASK_EXECUTION_TIME,
                     CASE
                     WHEN (T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC/T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC) > 1.00 THEN (T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC/T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC)
-                    ELSE 0
+                    ELSE -(T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC/T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC)
                     END AS SPEEDUP_CPU_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
                     CASE
                     WHEN (T_GPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC/T_CPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC) > 1.00 THEN (T_GPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC/T_CPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC)
-                    ELSE 0
+                    ELSE -(T_CPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC/T_GPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC)
                     END AS SPEEDUP_CPU_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
                     CASE
                     WHEN (T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FREE_ADDITIONAL/T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FREE_ADDITIONAL) > 1.00 THEN (T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FREE_ADDITIONAL/T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FREE_ADDITIONAL)
-                    ELSE 0
+                    ELSE -(T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FREE_ADDITIONAL/T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FREE_ADDITIONAL)
                     END AS SPEEDUP_CPU_INTRA_TASK_EXECUTION_TIME_FREE_ADDITIONAL,
                     CASE
                     WHEN (T_CPU.VL_TOTAL_EXECUTION_TIME/T_GPU.VL_TOTAL_EXECUTION_TIME) > 1.00 THEN (T_CPU.VL_TOTAL_EXECUTION_TIME/T_GPU.VL_TOTAL_EXECUTION_TIME)
-                    ELSE 0
+                    ELSE -(T_GPU.VL_TOTAL_EXECUTION_TIME/T_CPU.VL_TOTAL_EXECUTION_TIME)
                     END AS SPEEDUP_GPU_TOTAL_EXECUTION_TIME,
                     CASE
                     WHEN (T_CPU.VL_INTER_TASK_EXECUTION_TIME/T_GPU.VL_INTER_TASK_EXECUTION_TIME) > 1.00 THEN (T_CPU.VL_INTER_TASK_EXECUTION_TIME/T_GPU.VL_INTER_TASK_EXECUTION_TIME)
-                    ELSE 0
+                    ELSE -(T_GPU.VL_INTER_TASK_EXECUTION_TIME/T_CPU.VL_INTER_TASK_EXECUTION_TIME)
                     END AS SPEEDUP_GPU_INTER_TASK_EXECUTION_TIME,
                     CASE
                     WHEN (T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC/T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC) > 1.00 THEN (T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC/T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC)
-                    ELSE 0
+                    ELSE -(T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC/T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC)
                     END AS SPEEDUP_GPU_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
                     CASE
                     WHEN (T_CPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC/T_GPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC) > 1.00 THEN (T_CPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC/T_GPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC)
-                    ELSE 0
+                    ELSE -(T_GPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC/T_CPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC)
                     END AS SPEEDUP_GPU_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
                     CASE
                     WHEN (T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FREE_ADDITIONAL/T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FREE_ADDITIONAL) > 1.00 THEN (T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FREE_ADDITIONAL/T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FREE_ADDITIONAL)
-                    ELSE 0
+                    ELSE -(T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FREE_ADDITIONAL/T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FREE_ADDITIONAL)
                     END AS SPEEDUP_GPU_INTRA_TASK_EXECUTION_TIME_FREE_ADDITIONAL
                     FROM T_CPU INNER JOIN T_GPU ON (T_CPU.CD_PARAMETER = T_GPU.CD_PARAMETER)
                     WHERE
@@ -1688,13 +1742,22 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                             B.VL_GRID_COLUMN_DIMENSION,
                             B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION AS VL_GRID_ROW_X_COLUMN_DIMENSION,
 							B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION || '(' || ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ')' AS VL_CONCAT_GRID_ROW_X_COLUMN_DIMENSION_BLOCK_SIZE_MB,
-                            ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ' (' || B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION  || ')' AS VL_CONCAT_BLOCK_SIZE_MB_GRID_ROW_X_COLUMN_DIMENSION,
+                            ROUND(D.VL_DATASET_MEMORY_SIZE*1e-6,0) || ' (' || ROUND((CAST(B.VL_BLOCK_MEMORY_SIZE AS NUMERIC)/CAST(D.VL_DATASET_MEMORY_SIZE AS NUMERIC))*100,2) || '%)' AS VL_CONCAT_DATASET_MB_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                            CASE
+								WHEN (SELECT DISTINCT X.DS_ALGORITHM FROM ALGORITHM X WHERE X.ID_ALGORITHM = B.ID_ALGORITHM) = 'KMEANS'
+									THEN ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ' (' || B.VL_GRID_ROW_DIMENSION*5  || ')'
+								WHEN (SELECT DISTINCT X.DS_ALGORITHM FROM ALGORITHM X WHERE X.ID_ALGORITHM = B.ID_ALGORITHM) = 'MATMUL_DISLIB'
+									THEN ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ' (' || B.VL_GRID_ROW_DIMENSION*B.VL_GRID_ROW_DIMENSION*B.VL_GRID_ROW_DIMENSION + B.VL_GRID_ROW_DIMENSION*B.VL_GRID_ROW_DIMENSION*(B.VL_GRID_ROW_DIMENSION-1)  || ')'
+								ELSE
+									'999999999999'
+							END AS VL_CONCAT_BLOCK_SIZE_MB_NR_TASKS,
+							ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ' (' || B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION  || ')' AS VL_CONCAT_BLOCK_SIZE_MB_GRID_ROW_X_COLUMN_DIMENSION,
                             ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) AS VL_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
                             B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION || ' (' || ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) || '%)' AS VL_CONCAT_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
                             B.VL_BLOCK_ROW_DIMENSION,
                             B.VL_BLOCK_COLUMN_DIMENSION,
                             B.VL_BLOCK_ROW_DIMENSION || ' x ' || B.VL_BLOCK_COLUMN_DIMENSION AS VL_BLOCK_ROW_X_COLUMN_DIMENSION,
-                            B.VL_BLOCK_MEMORY_SIZE,
+                            ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) AS VL_BLOCK_MEMORY_SIZE,
                             B.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
                             B.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
                             ROUND((CAST(B.VL_BLOCK_MEMORY_SIZE AS NUMERIC)/CAST(D.VL_DATASET_MEMORY_SIZE AS NUMERIC))*100,2) AS VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
@@ -1763,13 +1826,15 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                         Y.VL_GRID_COLUMN_DIMENSION,
                         Y.VL_GRID_ROW_X_COLUMN_DIMENSION,
 						Y.VL_CONCAT_GRID_ROW_X_COLUMN_DIMENSION_BLOCK_SIZE_MB,
+                        Y.VL_CONCAT_DATASET_MB_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+						Y.VL_CONCAT_BLOCK_SIZE_MB_NR_TASKS,
                         Y.VL_CONCAT_BLOCK_SIZE_MB_GRID_ROW_X_COLUMN_DIMENSION,
                         Y.VL_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
                         Y.VL_CONCAT_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
                         Y.VL_BLOCK_ROW_DIMENSION,
                         Y.VL_BLOCK_COLUMN_DIMENSION,
                         Y.VL_BLOCK_ROW_X_COLUMN_DIMENSION,
-                        Y.VL_BLOCK_MEMORY_SIZE,
+						ROUND(Y.VL_BLOCK_MEMORY_SIZE*1e-6,2) AS VL_BLOCK_MEMORY_SIZE,
                         Y.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
                         Y.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
                         Y.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
@@ -1832,13 +1897,15 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                             X.VL_GRID_COLUMN_DIMENSION,
                             X.VL_GRID_ROW_X_COLUMN_DIMENSION,
 							X.VL_CONCAT_GRID_ROW_X_COLUMN_DIMENSION_BLOCK_SIZE_MB,
+                            X.VL_CONCAT_DATASET_MB_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+							X.VL_CONCAT_BLOCK_SIZE_MB_NR_TASKS,
                             X.VL_CONCAT_BLOCK_SIZE_MB_GRID_ROW_X_COLUMN_DIMENSION,
                             X.VL_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
                             X.VL_CONCAT_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
                             X.VL_BLOCK_ROW_DIMENSION,
                             X.VL_BLOCK_COLUMN_DIMENSION,
                             X.VL_BLOCK_ROW_X_COLUMN_DIMENSION,
-                            X.VL_BLOCK_MEMORY_SIZE,
+							ROUND(X.VL_BLOCK_MEMORY_SIZE*1e-6,2) AS VL_BLOCK_MEMORY_SIZE,
                             X.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
                             X.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
                             X.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
@@ -1893,13 +1960,22 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                     B.VL_GRID_COLUMN_DIMENSION,
                                     B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION AS VL_GRID_ROW_X_COLUMN_DIMENSION,
 									B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION || '(' || ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ')' AS VL_CONCAT_GRID_ROW_X_COLUMN_DIMENSION_BLOCK_SIZE_MB,
-                                    ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ' (' || B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION  || ')' AS VL_CONCAT_BLOCK_SIZE_MB_GRID_ROW_X_COLUMN_DIMENSION,
+                                    ROUND(D.VL_DATASET_MEMORY_SIZE*1e-6,0) || ' (' || ROUND((CAST(B.VL_BLOCK_MEMORY_SIZE AS NUMERIC)/CAST(D.VL_DATASET_MEMORY_SIZE AS NUMERIC))*100,2) || '%)' AS VL_CONCAT_DATASET_MB_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+									CASE
+										WHEN (SELECT DISTINCT X.DS_ALGORITHM FROM ALGORITHM X WHERE X.ID_ALGORITHM = B.ID_ALGORITHM) = 'KMEANS'
+											THEN ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ' (' || B.VL_GRID_ROW_DIMENSION*5  || ')'
+										WHEN (SELECT DISTINCT X.DS_ALGORITHM FROM ALGORITHM X WHERE X.ID_ALGORITHM = B.ID_ALGORITHM) = 'MATMUL_DISLIB'
+											THEN ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ' (' || B.VL_GRID_ROW_DIMENSION*B.VL_GRID_ROW_DIMENSION*B.VL_GRID_ROW_DIMENSION + B.VL_GRID_ROW_DIMENSION*B.VL_GRID_ROW_DIMENSION*(B.VL_GRID_ROW_DIMENSION-1)  || ')'
+										ELSE
+											'999999999999'
+									END AS VL_CONCAT_BLOCK_SIZE_MB_NR_TASKS,
+									ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ' (' || B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION  || ')' AS VL_CONCAT_BLOCK_SIZE_MB_GRID_ROW_X_COLUMN_DIMENSION,
                                     ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) AS VL_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
                                     B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION || ' (' || ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) || '%)' AS VL_CONCAT_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
                                     B.VL_BLOCK_ROW_DIMENSION,
                                     B.VL_BLOCK_COLUMN_DIMENSION,
                                     B.VL_BLOCK_ROW_DIMENSION || ' x ' || B.VL_BLOCK_COLUMN_DIMENSION AS VL_BLOCK_ROW_X_COLUMN_DIMENSION,
-                                    B.VL_BLOCK_MEMORY_SIZE,
+                                    ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) AS VL_BLOCK_MEMORY_SIZE,
                                     B.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
                                     B.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
                                     ROUND((CAST(B.VL_BLOCK_MEMORY_SIZE AS NUMERIC)/CAST(D.VL_DATASET_MEMORY_SIZE AS NUMERIC))*100,2) AS VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
@@ -1947,13 +2023,15 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                             X.VL_GRID_COLUMN_DIMENSION,
                             X.VL_GRID_ROW_X_COLUMN_DIMENSION,
 							X.VL_CONCAT_GRID_ROW_X_COLUMN_DIMENSION_BLOCK_SIZE_MB,
+                            X.VL_CONCAT_DATASET_MB_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+							X.VL_CONCAT_BLOCK_SIZE_MB_NR_TASKS,
                             X.VL_CONCAT_BLOCK_SIZE_MB_GRID_ROW_X_COLUMN_DIMENSION,
                             X.VL_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
                             X.VL_CONCAT_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
                             X.VL_BLOCK_ROW_DIMENSION,
                             X.VL_BLOCK_COLUMN_DIMENSION,
                             X.VL_BLOCK_ROW_X_COLUMN_DIMENSION,
-                            X.VL_BLOCK_MEMORY_SIZE,
+							X.VL_BLOCK_MEMORY_SIZE,
                             X.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
                             X.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
                             X.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
@@ -2034,10 +2112,12 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                     & (df["nr_iterations"] == int(nr_iterations)) # FIXED VALUE
                     & (df["ds_resource"] == ds_resource.upper()) # FIXED VALUE
                     # & (df["ds_dataset"].isin(["S_1MB_1","S_10MB_1","S_100MB_1","S_1GB_1","S_10GB_1","S_100GB_1"])) # FIXED VALUE
-                    # & (df["ds_dataset"] == "S_10GB_1")
-                    & (df["ds_parameter_type"] == "VAR_GRID_ROW_10")
+                    & (df["ds_dataset"] == "S_100MB_1")
+                    # & (df["vl_grid_row_dimension"] == 2)
+                    # & (df["ds_dataset"].isin(["S_10GB_1"]))
+                    & (df["ds_parameter_type"] == "VAR_GRID_ROW_5")
                     ]
-
+    print(df_filtered)
     # # # General filtering and sorting parameters - V3 (VAR_CORES_CLUSTER_1 and VAR_CORES_SINGLE_NODE_1)
     # df_filtered = df[
     #                 (df["ds_algorithm"] == ds_algorithm.upper()) # FIXED VALUE
@@ -2055,6 +2135,8 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         print("\nMode ",mode,": Ploting an overview of all execution times, without parameter filters")
 
         df_filtered_mean = df_filtered.groupby(["ds_device"], as_index=False).mean()
+
+        print(df_filtered_mean)
 
         df_filtered_mean = df_filtered_mean[["ds_device","vl_total_execution_time","vl_inter_task_execution_time","vl_intra_task_execution_time_full_func","vl_intra_task_execution_time_device_func"]]
 
@@ -3327,7 +3409,13 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
         # x_value_list = ['vl_grid_row_dimension','vl_block_row_dimension']
 
-        x_value_list = ['vl_concat_block_size_mb_grid_row_x_column_dimension']
+        # x_value_list = ['vl_concat_block_size_mb_grid_row_x_column_dimension']
+
+        # x_value_list = ['vl_concat_dataset_mb_block_memory_size_percent_dataset']
+
+        x_value_list = ['vl_block_memory_size','vl_concat_block_size_mb_grid_row_x_column_dimension']
+
+        # x_value_list = ['vl_block_memory_size','vl_concat_block_size_mb_grid_row_x_column_dimension','vl_concat_block_size_mb_nr_tasks']
 
 
         for x_value in x_value_list:
@@ -3341,6 +3429,9 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
             elif x_value == 'vl_concat_block_size_mb_grid_row_x_column_dimension':
                 x_value_title = 'Block Size MB (Grid Shape)'
 
+            elif x_value == 'vl_concat_dataset_mb_block_memory_size_percent_dataset':
+                x_value_title = 'Dataset MB (Block Size % Dataset)'
+
             elif x_value == 'vl_block_row_x_column_dimension':
                 x_value_title = 'Block Shape'
 
@@ -3349,6 +3440,9 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
             elif x_value == 'vl_block_row_dimension':
                 x_value_title = 'Block Row'
+
+            elif x_value == 'vl_block_memory_size':
+                x_value_title = 'Block Size B'
 
         
             df_filtered_mean = df_filtered.groupby(['ds_device', x_value], as_index=False).mean()
@@ -3365,11 +3459,15 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                 # df_filtered_mean_cpu.sort_values(by=['vl_grid_row_dimension'])
                 # df_filtered_mean_gpu.sort_values(by=['vl_grid_row_dimension'])
 
-            if (x_value == 'vl_block_row_x_column_dimension') | (x_value == 'vl_concat_block_size_mb_grid_row_x_column_dimension'):
+            if (x_value == 'vl_block_row_x_column_dimension') | (x_value == 'vl_concat_block_size_mb_grid_row_x_column_dimension') | (x_value == 'vl_block_memory_size'):
                 df_filtered_mean_cpu.sort_values('vl_block_row_dimension', inplace=True)
                 df_filtered_mean_gpu.sort_values('vl_block_row_dimension', inplace=True)
                 # df_filtered_mean_cpu.sort_values(by=['vl_block_row_dimension'])
                 # df_filtered_mean_gpu.sort_values(by=['vl_block_row_dimension'])
+
+            if (x_value == 'vl_concat_dataset_mb_block_memory_size_percent_dataset'):
+                df_filtered_mean_cpu.sort_values(['vl_dataset_memory_size','vl_block_row_dimension'], inplace=True)
+                df_filtered_mean_gpu.sort_values(['vl_dataset_memory_size','vl_block_row_dimension'], inplace=True)
 
 
             # # VL_TOTAL_EXECUTION_TIME
@@ -3494,17 +3592,22 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
             # for frame in [df_filtered_mean_cpu, df_filtered_mean_gpu]:
             #     if frame.name == 'df_filtered_mean_cpu':
             #         # plt.xticks(frame[x_value], frame['vl_grid_row_x_column_dimension'])
-            #         plt.plot(frame[x_value], frame['vl_std_inter_task_execution_time'], color='C1', linestyle = 'dotted', label='$T_{w\_inter}$ CPU', zorder=3)
+            #         plt.plot(frame[x_value], frame['vl_std_inter_task_execution_time'], color='C1', linestyle = 'dotted', label='Std. dev. CPU', zorder=3)
+            #         # plt.errorbar(frame[x_value],frame['vl_inter_task_execution_time'],frame['vl_std_inter_task_execution_time'], linestyle='None', marker='v', color='C1', label='$T_{w\_inter}$ CPU')
+            #         # ax.bar(frame[x_value],frame['vl_inter_task_execution_time'],yerr=frame['vl_std_inter_task_execution_time'], label='$T_{w\_inter}$ CPU', color='C1', hatch='.', zorder=3)
             #     if frame.name == 'df_filtered_mean_gpu':
             #         # plt.xticks(frame[x_value], frame['vl_grid_row_x_column_dimension'])
-            #         plt.plot(frame[x_value], frame['vl_std_inter_task_execution_time'], color='C1', linestyle = 'solid', label='$T_{w\_inter}$ GPU', zorder=3)
-            
+            #         plt.plot(frame[x_value], frame['vl_std_inter_task_execution_time'], color='C1', linestyle = 'solid', label='Std. dev. GPU', zorder=3)
+            #         # plt.errorbar(frame[x_value],frame['vl_inter_task_execution_time'],frame['vl_std_inter_task_execution_time'], linestyle='None', marker='^', color='C1', label='$T_{w\_inter}$ GPU')
+            #         # ax.bar(frame[x_value],frame['vl_inter_task_execution_time'],yerr=frame['vl_std_inter_task_execution_time'], label='$T_{w\_inter}$ GPU', color='C1', hatch='x', zorder=3)
             # plt.legend(loc='best')
             # plt.xlabel(x_value_title)
             # plt.ylabel('Time (s)')
             # plt.title('$T_{w\_inter}$ Std. dev. x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
             # plt.grid(zorder=0)
             # ax.tick_params(axis='x', labelrotation = 90)
+            # # NORMAL SCALE
+            # plt.ylim([0.0, 10.0])
             # # # # NORMAL SCALE
             # # # plt.ylim([0.0000, 265.0000])
             # # if x_value == 'vl_grid_row_dimension' or x_value == 'vl_block_row_dimension':
@@ -3515,35 +3618,39 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
             # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_stddev_inter_task_composition_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
 
-            # BREAKING VL_INTER_TASK_EXECUTION_TIME = VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC + VL_INTER_TASK_OVERHEAD_TIME
-            fig = plt.figure()
-            ax = plt.gca()
-            for frame in [df_filtered_mean_cpu, df_filtered_mean_gpu]:
-                if frame.name == 'df_filtered_mean_cpu':
-                    # plt.xticks(frame[x_value], frame['vl_grid_row_x_column_dimension'])
-                    plt.plot(frame[x_value], frame['vl_inter_task_execution_time'], color='C1', linestyle = 'dotted', label='$T_{w\_inter}$ CPU', zorder=3)
-                    plt.plot(frame[x_value], frame['vl_inter_task_overhead_time'], color='C9', linestyle = 'dotted', label='$T_{o\_intra}$ CPU', zorder=3)
-                    plt.plot(frame[x_value], frame['vl_intra_task_execution_time_full_func'], color='C2', linestyle = 'dotted', label='$T_{w\_intra}$ CPU', zorder=3)
-                if frame.name == 'df_filtered_mean_gpu':
-                    # plt.xticks(frame[x_value], frame['vl_grid_row_x_column_dimension'])
-                    plt.plot(frame[x_value], frame['vl_inter_task_execution_time'], color='C1', linestyle = 'solid', label='$T_{w\_inter}$ GPU', zorder=3)
-                    plt.plot(frame[x_value], frame['vl_inter_task_overhead_time'], color='C9', linestyle = 'solid', label='$T_{o\_intra}$ GPU', zorder=3)
-                    plt.plot(frame[x_value], frame['vl_intra_task_execution_time_full_func'], color='C2', linestyle = 'solid', label='$T_{w\_intra}$ GPU', zorder=3)
+            # # BREAKING VL_INTER_TASK_EXECUTION_TIME = VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC + VL_INTER_TASK_OVERHEAD_TIME
+            # fig = plt.figure()
+            # ax = plt.gca()
+            # for frame in [df_filtered_mean_cpu, df_filtered_mean_gpu]:
+            #     if frame.name == 'df_filtered_mean_cpu':
+            #         # plt.xticks(frame[x_value], frame['vl_grid_row_x_column_dimension'])
+            #         # plt.plot(frame[x_value], frame['vl_total_execution_time'], color='C0', linestyle = 'dotted', label='$T_{w\_total}$ CPU', zorder=3)
+            #         plt.plot(frame[x_value], frame['vl_inter_task_execution_time'], color='C1', linestyle = 'dotted', label='$T_{w\_inter}$ CPU', zorder=3)
+            #         # plt.plot(frame[x_value], frame['vl_inter_task_overhead_time'], color='C9', linestyle = 'dotted', label='$T_{o\_intra}$ CPU', zorder=3)
+            #         # plt.plot(frame[x_value], frame['vl_intra_task_execution_time_full_func'], color='C2', linestyle = 'dotted', label='$T_{w\_intra}$ CPU', zorder=3)
+            #     if frame.name == 'df_filtered_mean_gpu':
+            #         # plt.xticks(frame[x_value], frame['vl_grid_row_x_column_dimension'])
+            #         # plt.plot(frame[x_value], frame['vl_total_execution_time'], color='C0', linestyle = 'solid', label='$T_{w\_total}$ GPU', zorder=3)
+            #         plt.plot(frame[x_value], frame['vl_inter_task_execution_time'], color='C1', linestyle = 'solid', label='$T_{w\_inter}$ GPU', zorder=3)
+            #         # plt.plot(frame[x_value], frame['vl_inter_task_overhead_time'], color='C9', linestyle = 'solid', label='$T_{o\_intra}$ GPU', zorder=3)
+            #         # plt.plot(frame[x_value], frame['vl_intra_task_execution_time_full_func'], color='C2', linestyle = 'solid', label='$T_{w\_intra}$ GPU', zorder=3)
             
-            plt.legend(loc='best')
-            plt.xlabel(x_value_title)
-            plt.ylabel('Time (s)')
-            plt.title('$T_{w\_inter}$ Time Composition x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
-            plt.grid(zorder=0)
-            ax.tick_params(axis='x', labelrotation = 90)
-            # # # NORMAL SCALE
-            # # plt.ylim([0.0000, 265.0000])
-            # if x_value == 'vl_grid_row_dimension' or x_value == 'vl_block_row_dimension':
-            #     ax.ticklabel_format(scilimits=(-5, 1))
-            # # LOG SCALE
-            plt.ylim([1e-3, 1e3])
-            plt.yscale("log")
-            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_inter_task_composition_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            # plt.legend(loc='best')
+            # plt.xlabel(x_value_title)
+            # plt.ylabel('Time (s)')
+            # plt.title('$T_{w\_inter}$ Time Composition x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
+            # plt.grid(zorder=0)
+            # ax.tick_params(axis='x', labelrotation = 90)
+            # # # # NORMAL SCALE
+            # # # plt.ylim([0.0000, 265.0000])
+            # # if x_value == 'vl_grid_row_dimension' or x_value == 'vl_block_row_dimension':
+            # #     ax.ticklabel_format(scilimits=(-5, 1))
+            # # # LOG SCALE
+            # # plt.ylim([1e-3, 1e1])
+            # # plt.yscale("log")
+            # # plt.yscale("log")
+            # # plt.xscale("log")
+            # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_inter_task_composition_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
             # # BREAKING VL_INTER_TASK_EXECUTION_TIME = VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC + VL_INTER_TASK_OVERHEAD_TIME
             # # fig = plt.figure()
@@ -3570,19 +3677,19 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
 
 
-            # # BREAKING VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC = VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC + VL_COMMUNICATION_TIME + VL_ADDITIONAL_TIME
+            # BREAKING VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC = VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC + VL_COMMUNICATION_TIME + VL_ADDITIONAL_TIME
             fig = plt.figure()
             ax = plt.gca()
             for frame in [df_filtered_mean_cpu, df_filtered_mean_gpu]:
                 if frame.name == 'df_filtered_mean_cpu':
                     # plt.xticks(frame[x_value], frame['vl_grid_row_x_column_dimension'])
-                    plt.plot(frame[x_value], frame['vl_intra_task_execution_time_full_func'], color='C2', linestyle = 'dotted', label='$T_{w\_intra}$ CPU', zorder=3)
+                    # plt.plot(frame[x_value], frame['vl_intra_task_execution_time_full_func'], color='C2', linestyle = 'dotted', label='$T_{w\_intra}$ CPU', zorder=3)
                     plt.plot(frame[x_value], frame['vl_intra_task_execution_time_device_func'], color='C3', linestyle = 'dotted', label='$T_{p\_intra}$ CPU', zorder=3)
                     # plt.plot(frame[x_value], frame['vl_communication_time'], color='C4', linestyle = 'dotted', label='$T_{c\_intra}$ CPU', zorder=3)
                     plt.plot(frame[x_value], frame['vl_additional_time'], color='C8', linestyle = 'dotted', label='$T_{s\_intra}$ CPU', zorder=3)
                 if frame.name == 'df_filtered_mean_gpu':
                     # plt.xticks(frame[x_value], frame['vl_grid_row_x_column_dimension'])
-                    plt.plot(frame[x_value], frame['vl_intra_task_execution_time_full_func'], color='C2', linestyle = 'solid', label='$T_{w\_intra}$ GPU', zorder=3)
+                    # plt.plot(frame[x_value], frame['vl_intra_task_execution_time_full_func'], color='C2', linestyle = 'solid', label='$T_{w\_intra}$ GPU', zorder=3)
                     plt.plot(frame[x_value], frame['vl_intra_task_execution_time_device_func'], color='C3', linestyle = 'solid', label='$T_{p\_intra}$ GPU', zorder=3)
                     plt.plot(frame[x_value], frame['vl_communication_time'], color='C4', linestyle = 'solid', label='$T_{c\_intra}$ GPU', zorder=3)
                     plt.plot(frame[x_value], frame['vl_additional_time'], color='C8', linestyle = 'solid', label='$T_{s\_intra}$ GPU', zorder=3)
@@ -3598,7 +3705,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
             # if x_value == 'vl_grid_row_dimension' or x_value == 'vl_block_row_dimension':
             #     ax.ticklabel_format(scilimits=(-5, 1))
             # # LOG SCALE
-            plt.ylim([1e-4, 1e3])
+            plt.ylim([1e-4, 1e1])
             plt.yscale("log")
             plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_intra_task_composition_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
@@ -4025,6 +4132,134 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
             plt.title(speedup_title,fontstyle='italic',fontweight="bold")
             plt.savefig(dst_path_figs+'mode_'+str(mode)+'_heatmap_'+speedup+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
+    #BLOCK SIZE PERCENT DATA SET
+    # elif mode == 188:
+
+    #     print("\nMode ",mode,": Ploting CPU and GPU speedups per block size")
+
+    #     ds_dataset = df_filtered["ds_dataset"].unique()
+    #     ds_dataset = '(' + ', '.join(ds_dataset) + ')'
+
+    #     df_filtered_mean = df_filtered[["vl_block_memory_size_percent_dataset","speedup_gpu_intra_task_execution_time_device_func","speedup_gpu_intra_task_execution_time_full_func","speedup_gpu_inter_task_execution_time"]]
+
+    #     print(df_filtered_mean)
+
+    #     x_value = 'vl_block_memory_size_percent_dataset'
+    #     x_value_title = 'Block Size (% Data Set Size)'
+    #     speedup_title = 'Speedups GPU over CPU x Worker Nodes ' + ds_dataset
+
+    #     df_filtered_mean.sort_values('vl_block_memory_size_percent_dataset', inplace=True)
+
+    #     # OVERVIEW OF ALL EXECUTION TIMES
+    #     plt.figure(1)
+    #     ax = plt.gca()
+    #     df_filtered_mean.set_index(x_value).plot(kind = 'line',color=['C3','C2','C1'],zorder=3,linewidth=4)
+    #     # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True)
+    #     # plt.legend(['$T_{w\_inter}$', '$T_{w\_intra}$', '$T_{p\_intra}$'])
+    #     plt.legend(['$T_{p\_intra}$ (No overhead)', '$T_{w\_intra}$ (Intra overhead)', '$T_{w\_inter}$ (Inter+Intra overhead)'])
+    #     # plt.legend(['Inter+Intra overheads', 'Intra overhead', 'No overhead'])
+    #     plt.xlabel(x_value_title)
+    #     plt.ylabel('Speedup')
+    #     plt.title('Speedups GPU over CPU x Device',fontstyle='italic',fontweight="bold")
+    #     plt.title(speedup_title,fontstyle='italic',fontweight="bold")
+    #     plt.grid(zorder=0)
+    #     plt.ylim([0, 35])
+    #     # plt.xscale("log")
+    #     plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_gpu_speedup_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+
+    elif mode == 188:
+
+        print("\nMode ",mode,": Ploting CPU and GPU speedups per block size")
+
+        ds_dataset = df_filtered["ds_dataset"].unique()
+        ds_dataset = '(' + ', '.join(ds_dataset) + ')'
+
+        # df_filtered.sort_values('vl_block_memory_size', inplace=True)
+
+        # df_filtered_mean = df_filtered[["vl_concat_block_size_mb_grid_row_x_column_dimension","speedup_gpu_intra_task_execution_time_device_func","speedup_gpu_intra_task_execution_time_full_func","speedup_gpu_inter_task_execution_time"]]
+
+        # x_value = 'vl_concat_block_size_mb_grid_row_x_column_dimension'
+        # x_value_title = 'Block Size MB (Grid Dimension)'
+        # speedup_title = 'Speedups GPU over CPU x Worker Nodes ' + ds_dataset
+
+        # df_filtered.sort_values('vl_block_memory_size_percent_dataset', inplace=True)
+
+        # df_filtered_mean = df_filtered[["concat_block_percent_dataset_grid_dimension","speedup_gpu_intra_task_execution_time_device_func","speedup_gpu_intra_task_execution_time_full_func","speedup_gpu_inter_task_execution_time"]]
+
+        # x_value = 'concat_block_percent_dataset_grid_dimension'
+        # x_value_title = 'Block Size % Data Set (Grid Shape)'
+        # speedup_title = 'Speedups GPU over CPU x Block Size '
+
+        # df_filtered.sort_values('vl_block_memory_size', inplace=True)
+
+        # df_filtered_mean = df_filtered[["vl_concat_block_size_mb_nr_tasks","speedup_gpu_intra_task_execution_time_device_func","speedup_gpu_intra_task_execution_time_full_func","speedup_gpu_inter_task_execution_time"]]
+
+        # x_value = 'vl_concat_block_size_mb_nr_tasks'
+        # x_value_title = 'Block Size MB (#tasks)'
+        # speedup_title = 'Speedups GPU over CPU x Block Size '
+
+        df_filtered.sort_values('vl_block_memory_size', inplace=True)
+
+        df_filtered_mean = df_filtered[["concat_block_percent_dataset_nr_tasks","speedup_gpu_intra_task_execution_time_device_func","speedup_gpu_intra_task_execution_time_full_func","speedup_gpu_inter_task_execution_time"]]
+
+        x_value = 'concat_block_percent_dataset_nr_tasks'
+        x_value_title = 'Block Size % Data Set Size (#tasks)'
+        speedup_title = 'Speedups GPU over CPU x Block Size '
+
+
+        # OVERVIEW OF ALL EXECUTION TIMES
+        plt.figure(1)
+        ax = plt.gca()
+        df_filtered_mean.set_index(x_value).plot(kind = 'line',color=['C3','C2','C1'],zorder=3,linewidth=4)
+        # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True)
+        # plt.legend(['$T_{w\_inter}$', '$T_{w\_intra}$', '$T_{p\_intra}$'])
+        plt.legend(['No overhead', 'Intra overhead', 'Inter+Intra overhead'])
+        # plt.legend(['Inter+Intra overheads', 'Intra overhead', 'No overhead'])
+        plt.xlabel(x_value_title)
+        plt.ylabel('Speedup')
+        plt.title(speedup_title,fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
+        plt.ylim([1, 28])
+        plt.xticks(rotation = 90)
+        plt.yticks(np.arange(1, 28, 1))
+        # plt.yscale("log")
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_gpu_speedup_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+    elif mode == 1888:
+
+        print("\nMode ",mode,": Ploting CPU and GPU speedups per nodes and total cores")
+
+        ds_dataset = df_filtered["ds_dataset"].unique()
+        ds_dataset = '(' + ', '.join(ds_dataset) + ')'
+
+        df_filtered_mean = df_filtered[["vl_block_memory_size","speedup_gpu_intra_task_execution_time_device_func","speedup_gpu_intra_task_execution_time_full_func","speedup_gpu_inter_task_execution_time"]]
+
+        print(df_filtered_mean)
+
+        x_value = 'vl_block_memory_size'
+        x_value_title = 'Block Size (B)'
+        speedup_title = 'Speedups GPU over CPU x Worker Nodes ' + ds_dataset
+
+        df_filtered_mean.sort_values('vl_block_memory_size', inplace=True)
+
+        # OVERVIEW OF ALL EXECUTION TIMES
+        plt.figure(1)
+        ax = plt.gca()
+        df_filtered_mean.set_index(x_value).plot(kind = 'line',color=['C3','C2','C1'],zorder=3,linewidth=4)
+        # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True)
+        # plt.legend(['$T_{w\_inter}$', '$T_{w\_intra}$', '$T_{p\_intra}$'])
+        plt.legend(['$T_{p\_intra}$ (No overhead)', '$T_{w\_intra}$ (Intra overhead)', '$T_{w\_inter}$ (Inter+Intra overhead)'])
+        # plt.legend(['Inter+Intra overheads', 'Intra overhead', 'No overhead'])
+        plt.xlabel(x_value_title)
+        plt.ylabel('Speedup')
+        plt.title('Speedups GPU over CPU x Device',fontstyle='italic',fontweight="bold")
+        plt.title(speedup_title,fontstyle='italic',fontweight="bold")
+        plt.grid(zorder=0)
+        # plt.ylim([0, 6.5])
+        plt.xscale("log")
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_gpu_speedup_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
 
     elif mode == 19:
 
@@ -4145,7 +4380,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         for x_value in x_value_list:
 
             if x_value == 'nr_concat_nodes_total_computing_units_cpu':
-                x_value_title = 'Worker Nodes (Total CPU Cores)'
+                x_value_title = 'Worker nodes (# CPU cores per task)'
 
         
             df_filtered_mean = df_filtered.groupby(['ds_device', x_value], as_index=False).mean()
