@@ -13,14 +13,11 @@ DECLARE
 							 }'; -- Device description
 	-- Algorithm parameters (DS_ALGORITHM)
 	arr_algorithm_data text[] := '{
-										{KMEANS,
-										MATMUL_DISLIB}
+										{KMEANS}
 								  }';
 	-- Function parameters (CD_FUNCTION, DS_FUNCTION, ID_ALGORITHM)
 	arr_function_data text[] := '{
-									{1,_PARTIAL_SUM,1},
-									{1,MATMUL_FUNC,2},
-									{2,ADD_FUNC,2}
+									{1,_PARTIAL_SUM,1}
 								 }';
 	arr_id_device bigint[];
 	arr_id_algorithm bigint[];
@@ -77,17 +74,7 @@ DECLARE
 									{S_1GB_1,1000000000,FLOAT64,8,125000000,1250000,100,170,0.0},
 									{S_10GB_1,10000000000,FLOAT64,8,1250000000,12500000,100,170,0.0},
 									{S_100GB_1,100000000000,FLOAT64,8,12500000000,125000000,100,170,0.0},
-									{S_1MB_1,1000000,FLOAT64,8,125000,1250,100,170,0.0},
-									{S_128MB_1,128000000,FLOAT64,8,16000000,4000,4000,170,0.0},
-									{S_512MB_1,512000000,FLOAT64,8,64000000,8000,8000,170,0.0},
-									{S_2GB_1,2048000000,FLOAT64,8,256000000,16000,16000,170,0.0},
-									{S_8GB_1,8192000000,FLOAT64,8,1024000000,32000,32000,170,0.0},
-									{S_32GB_1,32768000000,FLOAT64,8,4096000000,64000,64000,170,0.0},
-									{S_128MB_2,128000000,FLOAT64,8,16000000,4000,4000,170,1.0},
-									{S_512MB_2,512000000,FLOAT64,8,64000000,8000,8000,170,1.0},
-									{S_2GB_2,2048000000,FLOAT64,8,256000000,16000,16000,170,1.0},
-									{S_8GB_2,8192000000,FLOAT64,8,1024000000,32000,32000,170,1.0},
-									{S_32GB_2,32768000000,FLOAT64,8,4096000000,64000,64000,170,1.0},
+									{S_1MB_1,1000000,FLOAT64,8,125000,1250,100,170,0.0}
 								}';
 	-- Number of repetitions for each parameter set
 	arr_nr_iteration bigint[] := '{
@@ -102,32 +89,34 @@ DECLARE
 	-- VAR_CORES_CLUSTER_1: grid_row_dimension__grid_column_dimension
 	-- VAR_CORES_SINGLE_NODE_1: grid_row_dimension__grid_column_dimension
 	arr_parameter_type_data text[] := '{
-									{VAR_BLOCK_CAPACITY_SIZE,0.25,TrunkCT,0.6.4,default,10,GPFS,FALSE},
-									{VAR_BLOCK_CAPACITY_SIZE,0.50,TrunkCT,0.6.4,default,10,GPFS,FALSE},
-									{VAR_BLOCK_CAPACITY_SIZE,0.75,TrunkCT,0.6.4,default,10,GPFS,FALSE},
-									{VAR_BLOCK_CAPACITY_SIZE,1.00,TrunkCT,0.6.4,default,10,GPFS,FALSE},
-									{VAR_PARALLELISM_LEVEL,MIN_INTER_MAX_INTRA,TrunkCT,0.6.4,default,10,GPFS,FALSE},
-									{VAR_PARALLELISM_LEVEL,MAX_INTER_MIN_INTRA,TrunkCT,0.6.4,default,10,GPFS,FALSE},
-									{VAR_GRID_ROW,2MAXCORES_1,TrunkCT,0.6.4,default,10,GPFS,FALSE},
-									{VAR_GRID_COLUMN,MAXCORES_0.1,TrunkCT,0.6.4,default,10,GPFS,FALSE},
-									{VAR_CORES_CLUSTER_1,MAXCORES_1,TrunkCT,0.6.4,default,10,GPFS,FALSE},
-									{VAR_CORES_SINGLE_NODE_1,SINGLEMAXCORES_1,TrunkCT,0.6.4,default,10,GPFS,FALSE},
-									{VAR_GRID_ROW_2,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS,FALSE},
-									{VAR_GRID_ROW_3,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS,FALSE},
-									{VAR_GRID_ROW_4,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS,FALSE},
-									{VAR_CORES_CLUSTER_2,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS,FALSE},
-									{VAR_CORES_CLUSTER_3,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS,FALSE},
-									{VAR_CORES_CLUSTER_4,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS,FALSE},
-									{VAR_GRID_ROW_5,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS,FALSE},
-									{VAR_GRID_ROW_6,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS,FALSE},
-									{VAR_GRID_ROW_7,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS,FALSE},
-									{VAR_GRID_ROW_8,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,10,LOCAL_DISK,FALSE},
-									{VAR_GRID_ROW_9,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,100,LOCAL_DISK,FALSE},
-									{VAR_GRID_ROW_10,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,1000,LOCAL_DISK,FALSE},
-									{VAR_GRID_ROW_MATMUL_1,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,NULL,GPFS,FALSE},
-									{VAR_GRID_ROW_MATMUL_2,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,NULL,LOCAL_DISK,FALSE},
-									{VAR_GRID_ROW_MATMUL_3,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,NULL,GPFS,TRUE},
-									{VAR_GRID_ROW_MATMUL_4,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,NULL,LOCAL_DISK,TRUE}
+									{VAR_BLOCK_CAPACITY_SIZE,0.25,TrunkCT,0.6.4,default,10,GPFS},
+									{VAR_BLOCK_CAPACITY_SIZE,0.50,TrunkCT,0.6.4,default,10,GPFS},
+									{VAR_BLOCK_CAPACITY_SIZE,0.75,TrunkCT,0.6.4,default,10,GPFS},
+									{VAR_BLOCK_CAPACITY_SIZE,1.00,TrunkCT,0.6.4,default,10,GPFS},
+									{VAR_PARALLELISM_LEVEL,MIN_INTER_MAX_INTRA,TrunkCT,0.6.4,default,10,GPFS},
+									{VAR_PARALLELISM_LEVEL,MAX_INTER_MIN_INTRA,TrunkCT,0.6.4,default,10,GPFS},
+									{VAR_GRID_ROW,2MAXCORES_1,TrunkCT,0.6.4,default,10,GPFS},
+									{VAR_GRID_COLUMN,MAXCORES_0.1,TrunkCT,0.6.4,default,10,GPFS},
+									{VAR_CORES_CLUSTER_1,MAXCORES_1,TrunkCT,0.6.4,default,10,GPFS},
+									{VAR_CORES_SINGLE_NODE_1,SINGLEMAXCORES_1,TrunkCT,0.6.4,default,10,GPFS},
+									{VAR_GRID_ROW_2,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS},
+									{VAR_GRID_ROW_3,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS},
+									{VAR_GRID_ROW_4,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS},
+									{VAR_CORES_CLUSTER_2,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS},
+									{VAR_CORES_CLUSTER_3,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS},
+									{VAR_CORES_CLUSTER_4,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS},
+									{VAR_GRID_ROW_5,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS},
+									{VAR_GRID_ROW_6,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS},
+									{VAR_GRID_ROW_7,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS},
+									{VAR_GRID_ROW_8,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,10,LOCAL_DISK},
+									{VAR_GRID_ROW_9,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,100,LOCAL_DISK},
+									{VAR_GRID_ROW_10,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,1000,LOCAL_DISK},
+									{VAR_GRID_ROW_11,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,LOCAL_DISK},
+									{VAR_GRID_ROW_12,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,LOCAL_DISK},
+									{VAR_GRID_ROW_13,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,LOCAL_DISK},
+									{VAR_GRID_ROW_14,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,10,GPFS},
+									{VAR_GRID_ROW_15,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,100,GPFS},
+									{VAR_GRID_ROW_16,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,1000,GPFS}
 								}';
 								
 	arr_id_resource bigint[];
@@ -1050,8 +1039,8 @@ BEGIN
 		
 	-- ELSIF (var_ds_parameter_type = 'VAR_GRID_ROW' or var_ds_parameter_type = 'VAR_GRID_ROW_2' or var_ds_parameter_type = 'VAR_GRID_ROW_3' or var_ds_parameter_type = 'VAR_GRID_ROW_4')
 	--ELSIF (var_ds_parameter_type = 'VAR_GRID_ROW_5' or var_ds_parameter_type = 'VAR_GRID_ROW_6' or var_ds_parameter_type = 'VAR_GRID_ROW_7')
-	-- ELSIF (var_ds_parameter_type = 'VAR_GRID_ROW_8' or var_ds_parameter_type = 'VAR_GRID_ROW_9' or var_ds_parameter_type = 'VAR_GRID_ROW_10')
-	ELSIF (false)
+	ELSIF (var_ds_parameter_type = 'VAR_GRID_ROW_11' or var_ds_parameter_type = 'VAR_GRID_ROW_12' or var_ds_parameter_type = 'VAR_GRID_ROW_13' or var_ds_parameter_type = 'VAR_GRID_ROW_14' or var_ds_parameter_type = 'VAR_GRID_ROW_15' or var_ds_parameter_type = 'VAR_GRID_ROW_16')
+	-- ELSIF (false)
 	THEN
 
 		arr_id_resource := ARRAY(SELECT DISTINCT ID_RESOURCE FROM RESOURCE WHERE ID_RESOURCE = 18 ORDER BY ID_RESOURCE);
