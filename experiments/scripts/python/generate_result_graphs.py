@@ -5,6 +5,9 @@ import seaborn as sns
 from pathlib import Path
 from config import open_connection, close_connection
 import numpy as np
+import csv
+import os
+import math
 
 def main(ds_algorithm, ds_resource, nr_iterations, mode):
 
@@ -1707,7 +1710,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                         ORDER BY ID_PARAMETER;"""
     
     
-    if (mode == 100):
+    elif mode == 100:
         sql_query = """WITH T_CPU AS (
                                     SELECT
                                     A.VL_TOTAL_EXECUTION_TIME,
@@ -2328,6 +2331,10 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                     T_CPU.DS_DATASET,
                     T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET;"""
     
+    # MOTIVATIONAL CHARTS (DATA READ FROM CSV FILE)
+    elif mode == 200:
+        sql_query = """SELECT 1"""
+
     # OTHER MODES
     else:
         sql_query = """SELECT
@@ -2694,68 +2701,78 @@ def get_df_from_query(sql_query, conn):
 # Function that generates a graph according to the mode
 def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, mode):
     
-    # # General filtering and sorting parameters
-    # df_filtered = df[
-    #                 (df["ds_algorithm"] == ds_algorithm.upper()) # FIXED VALUE
-    #                 & (df["nr_iterations"] == int(nr_iterations)) # FIXED VALUE
-    #                 & (df["ds_resource"] == ds_resource.upper()) # FIXED VALUE
-    #                 # & (df["ds_dataset"].isin(["S_A_1","S_A_2","S_A_3","S_A_4","S_B_1","S_B_2","S_B_3","S_B_4","S_C_1","S_C_2","S_C_3","S_C_4"])) # FIXED VALUE
-    #                 # & (df["ds_dataset"].isin(["S_AA_1","S_AA_2","S_AA_3","S_AA_4","S_BB_1","S_BB_2","S_BB_3","S_BB_4","S_CC_1","S_CC_2","S_CC_3","S_CC_4"])) # FIXED VALUE
-    #                 # & (df["ds_parameter_type"] == "VAR_BLOCK_CAPACITY_SIZE") # 1.1, 1.2, 1.3, 1.4
-    #                 # & (df["ds_parameter_type"] == "VAR_PARALLELISM_LEVEL") # 2.1, 2.2
-    #                 # & (df["ds_parameter_attribute"] == "0.25") # 1.1
-    #                 # & (df["ds_parameter_attribute"] == "0.50") # 1.2
-    #                 # & (df["ds_parameter_attribute"] == "0.75") # 1.3
-    #                 # & (df["ds_parameter_attribute"] == "1.00") # 1.4
-    #                 # & (df["ds_parameter_attribute"] == "MIN_INTER_MAX_INTRA") # 2.1
-    #                 # & (df["ds_parameter_attribute"] == "MAX_INTER_MIN_INTRA") # 2.2
-    #                 # & (df["vl_dataset_memory_size"] == 400) # 2.2.1
-    #                 # & (df["vl_dataset_memory_size"] == 400000) # 2.2.2
-    #                 # & (df["vl_dataset_memory_size"] == 400000000) # 2.2.3
-    #                 # & (df["vl_dataset_memory_size"] == 640) # 2.2.1
-    #                 # & (df["vl_dataset_memory_size"] == 640000) # 2.2.2
-    #                 # & (df["vl_dataset_memory_size"] == 640000000) # 2.2.3
-    #                 # & (df["ds_dataset"] == "S_A_1")
-    #                 # & (df["ds_dataset"] == "S_A_2")
-    #                 # & (df["ds_dataset"] == "S_A_3")
-    #                 # & (df["ds_dataset"] == "S_A_4")
-    #                 # & (df["ds_dataset"] == "S_B_1")
-    #                 # & (df["ds_dataset"] == "S_B_2")
-    #                 # & (df["ds_dataset"] == "S_B_3")
-    #                 # & (df["ds_dataset"] == "S_B_4")
-    #                 # & (df["ds_dataset"] == "S_C_1")
-    #                 # & (df["ds_dataset"] == "S_C_2")
-    #                 # & (df["ds_dataset"] == "S_C_3")
-    #                 # & (df["ds_dataset"] == "S_C_4")
-    #                 ]
+    if mode == 200:
+        # Path of the "tb_experiments_motivation" table - CSV file
+        dst_path_experiments = "/home/marcos/Dev/project/dev_env/dislib-experiments/experiments/results/tb_experiments_motivation.csv"
 
-    # General filtering and sorting parameters - V2 (VAR_GRID_ROW)
-    df_filtered = df[
-                    (df["ds_algorithm"] == ds_algorithm.upper()) # FIXED VALUE
-                    & (df["nr_iterations"] == int(nr_iterations)) # FIXED VALUE
-                    & (df["ds_resource"] == ds_resource.upper()) # FIXED VALUE
-                    # & (df["ds_dataset"].isin(["S_1MB_1","S_10MB_1","S_100MB_1","S_1GB_1","S_10GB_1","S_100GB_1"])) # FIXED VALUE
-                    & (df["ds_dataset"] == "S_100MB_1")
-                    # & (df["vl_grid_row_dimension"] == 2)
-                    # & (df["ds_dataset"].isin(["S_10GB_1"]))
-                    & (df["ds_parameter_type"] == "VAR_GRID_ROW_5")
-                    ]
-    print(df_filtered)
-    # # # General filtering and sorting parameters - V3 (VAR_CORES_CLUSTER_1 and VAR_CORES_SINGLE_NODE_1)
-    # df_filtered = df[
-    #                 (df["ds_algorithm"] == ds_algorithm.upper()) # FIXED VALUE
-    #                 & (df["nr_iterations"] == int(nr_iterations)) # FIXED VALUE
-    #                 # & (df["ds_resource"] == ds_resource.upper()) # FIXED VALUE
-    #                 & (df["id_resource"].isin([3,4,5,6,7,8,9,10])) # FIXED VALUE
-    #                 # & (df["id_resource"].isin([3,11,12,13,14,15,16])) # FIXED VALUE
-    #                 & (df["ds_dataset"] == "S_10GB_1")
-    #                 & (df["ds_parameter_type"] == "VAR_CORES_CLUSTER_1")
-    #                 # & (df["ds_parameter_type"] == "VAR_CORES_SINGLE_NODE_1")
-    #                 ]
+        # Reading "tb_experiments_motivation" csv table
+        param_file = os.path.join(dst_path_experiments)
+        df_filtered = pd.read_csv(param_file)
+
+    else:        
+
+        # # General filtering and sorting parameters
+        # df_filtered = df[
+        #                 (df["ds_algorithm"] == ds_algorithm.upper()) # FIXED VALUE
+        #                 & (df["nr_iterations"] == int(nr_iterations)) # FIXED VALUE
+        #                 & (df["ds_resource"] == ds_resource.upper()) # FIXED VALUE
+        #                 # & (df["ds_dataset"].isin(["S_A_1","S_A_2","S_A_3","S_A_4","S_B_1","S_B_2","S_B_3","S_B_4","S_C_1","S_C_2","S_C_3","S_C_4"])) # FIXED VALUE
+        #                 # & (df["ds_dataset"].isin(["S_AA_1","S_AA_2","S_AA_3","S_AA_4","S_BB_1","S_BB_2","S_BB_3","S_BB_4","S_CC_1","S_CC_2","S_CC_3","S_CC_4"])) # FIXED VALUE
+        #                 # & (df["ds_parameter_type"] == "VAR_BLOCK_CAPACITY_SIZE") # 1.1, 1.2, 1.3, 1.4
+        #                 # & (df["ds_parameter_type"] == "VAR_PARALLELISM_LEVEL") # 2.1, 2.2
+        #                 # & (df["ds_parameter_attribute"] == "0.25") # 1.1
+        #                 # & (df["ds_parameter_attribute"] == "0.50") # 1.2
+        #                 # & (df["ds_parameter_attribute"] == "0.75") # 1.3
+        #                 # & (df["ds_parameter_attribute"] == "1.00") # 1.4
+        #                 # & (df["ds_parameter_attribute"] == "MIN_INTER_MAX_INTRA") # 2.1
+        #                 # & (df["ds_parameter_attribute"] == "MAX_INTER_MIN_INTRA") # 2.2
+        #                 # & (df["vl_dataset_memory_size"] == 400) # 2.2.1
+        #                 # & (df["vl_dataset_memory_size"] == 400000) # 2.2.2
+        #                 # & (df["vl_dataset_memory_size"] == 400000000) # 2.2.3
+        #                 # & (df["vl_dataset_memory_size"] == 640) # 2.2.1
+        #                 # & (df["vl_dataset_memory_size"] == 640000) # 2.2.2
+        #                 # & (df["vl_dataset_memory_size"] == 640000000) # 2.2.3
+        #                 # & (df["ds_dataset"] == "S_A_1")
+        #                 # & (df["ds_dataset"] == "S_A_2")
+        #                 # & (df["ds_dataset"] == "S_A_3")
+        #                 # & (df["ds_dataset"] == "S_A_4")
+        #                 # & (df["ds_dataset"] == "S_B_1")
+        #                 # & (df["ds_dataset"] == "S_B_2")
+        #                 # & (df["ds_dataset"] == "S_B_3")
+        #                 # & (df["ds_dataset"] == "S_B_4")
+        #                 # & (df["ds_dataset"] == "S_C_1")
+        #                 # & (df["ds_dataset"] == "S_C_2")
+        #                 # & (df["ds_dataset"] == "S_C_3")
+        #                 # & (df["ds_dataset"] == "S_C_4")
+        #                 ]
+
+        # General filtering and sorting parameters - V2 (VAR_GRID_ROW)
+        df_filtered = df[
+                        (df["ds_algorithm"] == ds_algorithm.upper()) # FIXED VALUE
+                        & (df["nr_iterations"] == int(nr_iterations)) # FIXED VALUE
+                        & (df["ds_resource"] == ds_resource.upper()) # FIXED VALUE
+                        # & (df["ds_dataset"].isin(["S_1MB_1","S_10MB_1","S_100MB_1","S_1GB_1","S_10GB_1","S_100GB_1"])) # FIXED VALUE
+                        & (df["ds_dataset"] == "S_10GB_1")
+                        # & (df["vl_grid_row_dimension"] == 2)
+                        # & (df["ds_dataset"].isin(["S_10GB_1"]))
+                        & (df["ds_parameter_type"] == "VAR_GRID_ROW_5")
+                        ]
+        print(df_filtered)
+        # # # General filtering and sorting parameters - V3 (VAR_CORES_CLUSTER_1 and VAR_CORES_SINGLE_NODE_1)
+        # df_filtered = df[
+        #                 (df["ds_algorithm"] == ds_algorithm.upper()) # FIXED VALUE
+        #                 & (df["nr_iterations"] == int(nr_iterations)) # FIXED VALUE
+        #                 # & (df["ds_resource"] == ds_resource.upper()) # FIXED VALUE
+        #                 & (df["id_resource"].isin([3,4,5,6,7,8,9,10])) # FIXED VALUE
+        #                 # & (df["id_resource"].isin([3,11,12,13,14,15,16])) # FIXED VALUE
+        #                 & (df["ds_dataset"] == "S_10GB_1")
+        #                 & (df["ds_parameter_type"] == "VAR_CORES_CLUSTER_1")
+        #                 # & (df["ds_parameter_type"] == "VAR_CORES_SINGLE_NODE_1")
+        #                 ]
 
     if mode == 1:
 
-        print("\nMode ",mode,": Ploting an overview of all execution times, without parameter filters")
+        print("\nMode ",mode,": Plotting an overview of all execution times, without parameter filters")
 
         df_filtered_mean = df_filtered.groupby(["ds_device"], as_index=False).mean()
 
@@ -2834,7 +2851,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 2:
 
-        print("\nMode ",mode,": Ploting all execution times x data set memory size, without parameter filters")
+        print("\nMode ",mode,": Plotting all execution times x data set memory size, without parameter filters")
 
         df_filtered_mean = df_filtered.groupby(['ds_device', 'vl_dataset_memory_size'], as_index=False).mean()
 
@@ -2900,7 +2917,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 3:
 
-        print("\nMode ",mode,": Ploting an overview of all execution times, filtering data set memory size")
+        print("\nMode ",mode,": Plotting an overview of all execution times, filtering data set memory size")
 
         df_filtered_mean = df_filtered.groupby(["ds_device","vl_dataset_memory_size"], as_index=False).mean()
 
@@ -2994,7 +3011,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 4:
 
-        print("\nMode ",mode,": Ploting an overview of all execution times, filtering block dimension")
+        print("\nMode ",mode,": Plotting an overview of all execution times, filtering block dimension")
 
         df_filtered_mean = df_filtered.groupby(["ds_device","ds_parameter_attribute"], as_index=False).mean()
 
@@ -3078,7 +3095,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 5:
 
-        print("\nMode ",mode,": Ploting an overview of all execution times, filtering parallelism level (extreme cases)")
+        print("\nMode ",mode,": Plotting an overview of all execution times, filtering parallelism level (extreme cases)")
 
         df_filtered_mean = df_filtered.groupby(["ds_device","ds_parameter_attribute"], as_index=False).mean()
 
@@ -3168,7 +3185,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
     
     elif mode == 6:
         
-        print("\nMode ",mode,": Ploting an overview of all execution times grouped by data set description")
+        print("\nMode ",mode,": Plotting an overview of all execution times grouped by data set description")
         
         vl_dataset_memory_size_list = [400, 400000, 400000000]
 
@@ -3240,7 +3257,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 7:
         
-        print("\nMode ",mode,": Ploting an overview of all execution times filtered by data set description and grouped by parameter attribute")
+        print("\nMode ",mode,": Plotting an overview of all execution times filtered by data set description and grouped by parameter attribute")
         
         ds_dataset_list = ["S_A_1","S_A_2","S_A_3","S_A_4","S_B_1","S_B_2","S_B_3","S_B_4","S_C_1","S_C_2","S_C_3","S_C_4"]
 
@@ -3309,7 +3326,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 8:
         
-        print("\nMode ",mode,": Ploting an overview of CPU speedup over GPU per vl_dataset_memory_size, ds_parameter_type, ds_parameter_attribute, ds_dataset")
+        print("\nMode ",mode,": Plotting an overview of CPU speedup over GPU per vl_dataset_memory_size, ds_parameter_type, ds_parameter_attribute, ds_dataset")
 
         # Speedup CPU Per vl_dataset_memory_size
         df_filtered_mean = df_filtered.groupby(["vl_dataset_memory_size"], as_index=False).mean()
@@ -3394,7 +3411,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 9:
         
-        print("\nMode ",mode,": Ploting an overview of GPU speedup over CPU per vl_dataset_memory_size, ds_parameter_type, ds_parameter_attribute, ds_dataset")
+        print("\nMode ",mode,": Plotting an overview of GPU speedup over CPU per vl_dataset_memory_size, ds_parameter_type, ds_parameter_attribute, ds_dataset")
 
         # Speedup GPU Per vl_dataset_memory_size
         df_filtered_mean = df_filtered.groupby(["vl_dataset_memory_size"], as_index=False).mean()
@@ -3639,7 +3656,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 11:
 
-        print("\nMode ",mode,": Ploting all execution times x block row and block column dimension, without parameter filters")
+        print("\nMode ",mode,": Plotting all execution times x block row and block column dimension, without parameter filters")
 
         x_value_list = ['vl_block_row_dimension','vl_block_column_dimension']
 
@@ -3718,7 +3735,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 12:
 
-        print("\nMode ",mode,": Ploting all execution times x grid row and column dimension, without parameter filters")
+        print("\nMode ",mode,": Plotting all execution times x grid row and column dimension, without parameter filters")
 
         ds_dataset = df_filtered["ds_dataset"].unique()
         ds_dataset = '(' + ', '.join(ds_dataset) + ')'
@@ -3820,7 +3837,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 13:
 
-        print("\nMode ",mode,": Ploting all execution times x block memory size percentage data set size, without parameter filters")
+        print("\nMode ",mode,": Plotting all execution times x block memory size percentage data set size, without parameter filters")
 
         ds_dataset = df_filtered["ds_dataset"].unique()
         ds_dataset = '(' + ', '.join(ds_dataset) + ')'
@@ -3921,7 +3938,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 14:
 
-        print("\nMode ",mode,": Ploting all execution times x block memory size, without parameter filters")
+        print("\nMode ",mode,": Plotting all execution times x block memory size, without parameter filters")
 
         ds_dataset = df_filtered["ds_dataset"].unique()
         ds_dataset = '(' + ', '.join(ds_dataset) + ')'
@@ -4023,7 +4040,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
     elif mode == 15:
     # elif mode == 22:
 
-        print("\nMode ",mode,": Ploting all execution times x grid and block shapes, without parameter filters")
+        print("\nMode ",mode,": Plotting all execution times x grid and block shapes, without parameter filters")
 
         ds_dataset = df_filtered["ds_dataset"].unique()
         ds_dataset = '(' + ', '.join(ds_dataset) + ')'
@@ -4431,7 +4448,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 16:
 
-        print("\nMode ",mode,": Ploting all execution times x block memory size and percent memory size, without parameter filters")
+        print("\nMode ",mode,": Plotting all execution times x block memory size and percent memory size, without parameter filters")
 
         ds_dataset = df_filtered["ds_dataset"].unique()
         ds_dataset = '(' + ', '.join(ds_dataset) + ')'
@@ -4557,7 +4574,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 17:
 
-        print("\nMode ",mode,": Ploting all execution times x grid column percent dimension, without parameter filters")
+        print("\nMode ",mode,": Plotting all execution times x grid column percent dimension, without parameter filters")
 
         ds_dataset = df_filtered["ds_dataset"].unique()
         ds_dataset = '(' + ', '.join(ds_dataset) + ')'
@@ -4695,7 +4712,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 18:
 
-        print("\nMode ",mode,": Ploting an CPU and GPU speedups per block memory size '%' data set memory size (vl_block_memory_size_percent_dataset) and data set memory size (vl_dataset_memory_size)")
+        print("\nMode ",mode,": Plotting an CPU and GPU speedups per block memory size '%' data set memory size (vl_block_memory_size_percent_dataset) and data set memory size (vl_dataset_memory_size)")
 
         speedup_list = ["speedup_cpu_total_execution_time","speedup_cpu_inter_task_execution_time","speedup_cpu_intra_task_execution_time_full_func","speedup_cpu_intra_task_execution_time_device_func","speedup_gpu_total_execution_time","speedup_gpu_inter_task_execution_time","speedup_gpu_intra_task_execution_time_full_func","speedup_gpu_intra_task_execution_time_device_func","speedup_cpu_intra_task_execution_time_free_additional","speedup_gpu_intra_task_execution_time_free_additional"]
 
@@ -4758,7 +4775,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
     #BLOCK SIZE PERCENT DATA SET
     # elif mode == 188:
 
-    #     print("\nMode ",mode,": Ploting CPU and GPU speedups per block size")
+    #     print("\nMode ",mode,": Plotting CPU and GPU speedups per block size")
 
     #     ds_dataset = df_filtered["ds_dataset"].unique()
     #     ds_dataset = '(' + ', '.join(ds_dataset) + ')'
@@ -4793,7 +4810,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 188:
 
-        print("\nMode ",mode,": Ploting CPU and GPU speedups per block size")
+        print("\nMode ",mode,": Plotting CPU and GPU speedups per block size")
 
         ds_dataset = df_filtered["ds_dataset"].unique()
         ds_dataset = '(' + ', '.join(ds_dataset) + ')'
@@ -4851,7 +4868,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 1888:
 
-        print("\nMode ",mode,": Ploting CPU and GPU speedups per nodes and total cores")
+        print("\nMode ",mode,": Plotting CPU and GPU speedups per nodes and total cores")
 
         ds_dataset = df_filtered["ds_dataset"].unique()
         ds_dataset = '(' + ', '.join(ds_dataset) + ')'
@@ -4886,7 +4903,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 19:
 
-        print("\nMode ",mode,": Ploting the derivative of all execution times x grid and block row")
+        print("\nMode ",mode,": Plotting the derivative of all execution times x grid and block row")
 
         ds_dataset = df_filtered["ds_dataset"].unique()
         ds_dataset = '(' + ', '.join(ds_dataset) + ')'
@@ -4932,7 +4949,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 20:
 
-        print("\nMode ",mode,": Ploting all execution times x nodes and cores (cluster)")
+        print("\nMode ",mode,": Plotting all execution times x nodes and cores (cluster)")
 
         ds_dataset = df_filtered["ds_dataset"].unique()
         ds_dataset = '(' + ', '.join(ds_dataset) + ')'
@@ -4992,7 +5009,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 21:
 
-        print("\nMode ",mode,": Ploting all execution times x nodes and cores (single worker node)")
+        print("\nMode ",mode,": Plotting all execution times x nodes and cores (single worker node)")
 
         ds_dataset = df_filtered["ds_dataset"].unique()
         ds_dataset = '(' + ', '.join(ds_dataset) + ')'
@@ -5053,7 +5070,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 100:
 
-        print("\nMode ",mode,": Ploting GPU speedups and user code execution times per block size")
+        print("\nMode ",mode,": Plotting GPU speedups and user code execution times per block size")
 
         ds_parameter_type = df_filtered['ds_parameter_type'].unique()
 
@@ -5062,7 +5079,6 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         speedup = "speedup_gpu_intra_task_execution_time_full_func"
 
         speedup_title = "Speedup GPU over CPU"
-        vmax=26.00
 
         df_filtered_left = df_filtered[["vl_block_memory_size","vl_block_memory_size_mb","vl_intra_task_execution_time_device_func_cpu","vl_additional_time_cpu","vl_communication_time_cpu","vl_intra_task_execution_time_device_func_gpu","vl_additional_time_gpu","vl_communication_time_gpu"]].sort_values(by=["vl_block_memory_size"], ascending=[True])
         df_filtered_right = df_filtered[["vl_block_memory_size","vl_block_memory_size_mb","speedup_gpu_intra_task_execution_time_full_func"]].sort_values(by=["vl_block_memory_size"], ascending=[True])
@@ -5080,9 +5096,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         plt.ylabel('GPU Speedup over CPU')
         plt.ylim([0, 25])
 
-
         ax1 = ax.twinx()
-
 
         plt.plot(df_filtered_left[x_value], df_filtered_left['vl_intra_task_execution_time_device_func_cpu'], color='C2', linestyle = 'dotted', label='Parallel Code CPU', zorder=3, linewidth=2.5)
         plt.plot(df_filtered_left[x_value], df_filtered_left['vl_additional_time_cpu'], color='C8', linestyle = 'dotted', label='Serial Code CPU', zorder=3, linewidth=2.5)
@@ -5099,11 +5113,73 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         ax.tick_params(axis='x', labelrotation = 0)
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_parameter_type+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
+    elif mode == 200:
+
+        print("\nMode ",mode,": Plotting motivational charts")
+
+        speedup = "speedup_gpu_intra_task_execution_time_full_func"
+
+        speedup_title = "Speedup GPU over CPU"
+
+        df_filtered_left = df_filtered[["concat_grid_row_x_column_dim_nr_tasks_block_size","speedup_gpu_intra_task_execution_time_device_func","speedup_gpu_intra_task_execution_time_full_func","speedup_gpu_total_execution_time"]]
+        df_filtered_right = df_filtered[["concat_grid_row_x_column_dim_nr_tasks_block_size","vl_intra_task_execution_time_device_func","vl_intra_task_overhead","vl_inter_overhead"]]
+
+        df_filtered_left = df_filtered_left.fillna(method='ffill', limit=2)#MATMUL
+
+        ax = plt.gca()
+        X_axis = np.arange(len(df_filtered_left["concat_grid_row_x_column_dim_nr_tasks_block_size"].drop_duplicates()))
+        plt.bar(X_axis - 0.3, df_filtered_left["speedup_gpu_intra_task_execution_time_device_func"], 0.3, label = "Speedup parallel code", color='C0', alpha = 0.25, zorder=3)
+        ax.bar_label(ax.containers[0], label_type='edge', rotation=0, fmt='%.2f')
+        plt.bar(X_axis + 0.0, df_filtered_left["speedup_gpu_intra_task_execution_time_full_func"], 0.3, label = "Speedup user code", color='C3', alpha = 0.25, zorder=3)
+        # ax.bar_label(ax.containers[1], label_type='center', rotation=0, fmt='%.2f')#KMEANS
+        ax.bar_label(ax.containers[1], label_type='edge', rotation=0, fmt='%.2f')#MATMUL
+        plt.bar(X_axis + 0.3, df_filtered_left["speedup_gpu_total_execution_time"], 0.3, label = "Speedup parallel task", color='C8', alpha = 0.25, zorder=3)
+        ax.bar_label(ax.containers[2], label_type='edge', rotation=0, fmt='%.2f')
+        plt.xticks(X_axis, df_filtered_left["concat_grid_row_x_column_dim_nr_tasks_block_size"].drop_duplicates(), rotation=90)
+        plt.xlabel('Block size MB (Grid Shape Dimension ; Total Tasks)')
+        plt.ylabel('GPU Speedup over CPU')
+        plt.ylim([-5, 30])
+
+        ax1 = ax.twinx()
+
+        plt.plot(df_filtered_right['concat_grid_row_x_column_dim_nr_tasks_block_size'], df_filtered_right['vl_intra_task_execution_time_device_func'], color='C0', linestyle = 'dotted', label='Parallel Code', zorder=3, linewidth=2.5)
+        # plt.plot(df_filtered_right['concat_grid_row_x_column_dim_nr_tasks_block_size'], df_filtered_right['vl_intra_task_overhead'], color='C3', linestyle = 'dotted', label='Serial Code', zorder=3, linewidth=2.5)#KMEANS
+        plt.plot(df_filtered_right['concat_grid_row_x_column_dim_nr_tasks_block_size'], df_filtered_right['vl_intra_task_overhead'], color='C3', linestyle = 'dotted', label='CPU-GPU Communication', zorder=3, linewidth=2.5)#MATMUL
+        plt.plot(df_filtered_right['concat_grid_row_x_column_dim_nr_tasks_block_size'], df_filtered_right['vl_inter_overhead'], color='C8', linestyle = 'solid', label='Data Serialization+Deserialization', zorder=3, linewidth=2.5)
+        plt.yscale("log")
+        plt.ylabel('Average Execution Time (s)')
+        plt.ylim([1e-2, 2e3])
+
+        # plt.figlegend(loc=(0.085,0.88), ncol=2)#KMEANS
+        plt.figlegend(loc=(0.085,0.88), ncol=2)#MATMUL
+        ax.tick_params(axis='x', labelrotation = 90)
+
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
 
     else:
 
         print("\nInvalid mode.")
 
+def interpolate_gaps(values, limit=None):
+    """
+    Fill gaps using linear interpolation, optionally only fill gaps up to a
+    size of `limit`.
+    """
+    values = np.asarray(values)
+    i = np.arange(values.size)
+    print("HERE")
+    print(values)
+    valid = np.isfinite(values)
+    filled = np.interp(i, i[valid], values[valid])
+
+    if limit is not None:
+        invalid = ~valid
+        for n in range(1, limit+1):
+            invalid[:-n] &= invalid[n:]
+        filled[invalid] = np.nan
+
+    return filled
 
 def parse_args():
     import argparse

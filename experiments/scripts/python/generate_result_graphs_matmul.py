@@ -1683,7 +1683,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     if mode == 15:
 
-        print("\nMode ",mode,": Ploting all execution times x grid and block shapes, without parameter filters")
+        print("\nMode ",mode,": Plotting all execution times x grid and block shapes, without parameter filters")
 
         ds_dataset = df_filtered["ds_dataset"].unique()
 
@@ -1869,7 +1869,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 155:
 
-        print("\nMode ",mode,": Ploting intra-task execution times x grid and block shapes, without parameter filters")
+        print("\nMode ",mode,": Plotting intra-task execution times x grid and block shapes, without parameter filters")
 
         ds_dataset = df_filtered["ds_dataset"].unique()
         ds_dataset = '(' + ', '.join(ds_dataset) + ')'
@@ -1993,7 +1993,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 1555:
 
-        print("\nMode ",mode,": Ploting intra-task execution times x grid and block shapes, without parameter filters")
+        print("\nMode ",mode,": Plotting intra-task execution times x grid and block shapes, without parameter filters")
 
         ds_dataset = df_filtered["ds_dataset"].unique()
         ds_dataset = '(' + ', '.join(ds_dataset) + ')'
@@ -2039,7 +2039,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 18:
 
-        print("\nMode ",mode,": Ploting an CPU and GPU speedups per block memory size '%' data set memory size (vl_block_memory_size_percent_dataset) and data set memory size (vl_dataset_memory_size)")
+        print("\nMode ",mode,": Plotting an CPU and GPU speedups per block memory size '%' data set memory size (vl_block_memory_size_percent_dataset) and data set memory size (vl_dataset_memory_size)")
 
         speedup_list = ["speedup_cpu_total_execution_time","speedup_gpu_total_execution_time","speedup_cpu_intra_task_execution_time_full_func","speedup_gpu_intra_task_execution_time_full_func"]
 
@@ -2106,7 +2106,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
     #BLOCK SIZE PERCENT DATA SET
     # elif mode == 188:
 
-    #     print("\nMode ",mode,": Ploting CPU and GPU speedups per block size")
+    #     print("\nMode ",mode,": Plotting CPU and GPU speedups per block size")
 
     #     ds_dataset = df_filtered["ds_dataset"].unique()
     #     ds_dataset = '(' + ', '.join(ds_dataset) + ')'
@@ -2141,7 +2141,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 188:
 
-        print("\nMode ",mode,": Ploting CPU and GPU speedups per block size")
+        print("\nMode ",mode,": Plotting CPU and GPU speedups per block size")
 
         ds_dataset = df_filtered["ds_dataset"].unique()
         ds_dataset = '(' + ', '.join(ds_dataset) + ')'
@@ -2202,7 +2202,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 1888:
 
-        print("\nMode ",mode,": Ploting CPU and GPU speedups per block size")
+        print("\nMode ",mode,": Plotting CPU and GPU speedups per block size")
 
         ds_dataset = df_filtered["ds_dataset"].unique()
         ds_dataset = '(' + ', '.join(ds_dataset) + ')'
@@ -2237,7 +2237,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 100:
 
-        print("\nMode ",mode,": Ploting GPU speedups and user code execution times per block size")
+        print("\nMode ",mode,": Plotting GPU speedups and user code execution times per block size")
 
         ds_function = df_filtered['ds_function'].unique()
 
