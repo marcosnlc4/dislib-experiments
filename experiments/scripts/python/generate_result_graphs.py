@@ -8,6 +8,7 @@ import numpy as np
 import csv
 import os
 import math
+import matplotlib
 
 def main(ds_algorithm, ds_resource, nr_iterations, mode):
 
@@ -1710,7 +1711,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                         ORDER BY ID_PARAMETER;"""
     
     
-    elif mode == 100:
+    elif (mode == 100 or mode == 101):
         sql_query = """WITH T_CPU AS (
                                     SELECT
                                     A.VL_TOTAL_EXECUTION_TIME,
@@ -1733,6 +1734,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                     B.ID_PARAMETER_TYPE,
                                     (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_TYPE,
                                     (SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_ATTRIBUTE,
+									(SELECT X.DS_STORAGE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_STORAGE,
                                     B.NR_ITERATIONS,
                                     B.VL_GRID_ROW_DIMENSION,
                                     B.VL_GRID_COLUMN_DIMENSION,
@@ -1786,6 +1788,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                     Y.ID_PARAMETER_TYPE,
                                     Y.DS_PARAMETER_TYPE,
                                     Y.DS_PARAMETER_ATTRIBUTE,
+									Y.DS_STORAGE,
                                     Y.NR_ITERATIONS,
                                     Y.VL_GRID_ROW_DIMENSION,
                                     Y.VL_GRID_COLUMN_DIMENSION,
@@ -1836,6 +1839,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                         X.ID_PARAMETER_TYPE,
                                         X.DS_PARAMETER_TYPE,
                                         X.DS_PARAMETER_ATTRIBUTE,
+										X.DS_STORAGE,
                                         X.NR_ITERATIONS,
                                         X.VL_GRID_ROW_DIMENSION,
                                         X.VL_GRID_COLUMN_DIMENSION,
@@ -1894,7 +1898,8 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                                 B.ID_PARAMETER_TYPE,
                                                 (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_TYPE,
                                                 (SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_ATTRIBUTE,
-                                                B.NR_ITERATIONS,
+                                                (SELECT X.DS_STORAGE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_STORAGE,
+												B.NR_ITERATIONS,
                                                 B.VL_GRID_ROW_DIMENSION,
                                                 B.VL_GRID_COLUMN_DIMENSION,
                                                 B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION AS VL_GRID_ROW_X_COLUMN_DIMENSION,
@@ -1946,6 +1951,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                         X.ID_PARAMETER_TYPE,
                                         X.DS_PARAMETER_TYPE,
                                         X.DS_PARAMETER_ATTRIBUTE,
+										X.DS_STORAGE,
                                         X.NR_ITERATIONS,
                                         X.VL_GRID_ROW_DIMENSION,
                                         X.VL_GRID_COLUMN_DIMENSION,
@@ -2000,7 +2006,8 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                     B.ID_PARAMETER_TYPE,
                                     (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_TYPE,
                                     (SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_ATTRIBUTE,
-                                    B.NR_ITERATIONS,
+                                    (SELECT X.DS_STORAGE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_STORAGE,
+									B.NR_ITERATIONS,
                                     B.VL_GRID_ROW_DIMENSION,
                                     B.VL_GRID_COLUMN_DIMENSION,
                                     B.VL_BLOCK_ROW_DIMENSION,
@@ -2053,6 +2060,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                     Y.ID_PARAMETER_TYPE,
                                     Y.DS_PARAMETER_TYPE,
                                     Y.DS_PARAMETER_ATTRIBUTE,
+									Y.DS_STORAGE,
                                     Y.NR_ITERATIONS,
                                     Y.VL_GRID_ROW_DIMENSION,
                                     Y.VL_GRID_COLUMN_DIMENSION,
@@ -2103,6 +2111,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                         X.ID_PARAMETER_TYPE,
                                         X.DS_PARAMETER_TYPE,
                                         X.DS_PARAMETER_ATTRIBUTE,
+										X.DS_STORAGE,
                                         X.NR_ITERATIONS,
                                         X.VL_GRID_ROW_DIMENSION,
                                         X.VL_GRID_COLUMN_DIMENSION,
@@ -2161,7 +2170,8 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                                 B.ID_PARAMETER_TYPE,
                                                 (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_TYPE,
                                                 (SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_ATTRIBUTE,
-                                                B.NR_ITERATIONS,
+                                                (SELECT X.DS_STORAGE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_STORAGE,
+												B.NR_ITERATIONS,
                                                 B.VL_GRID_ROW_DIMENSION,
                                                 B.VL_GRID_COLUMN_DIMENSION,
                                                 B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION AS VL_GRID_ROW_X_COLUMN_DIMENSION,
@@ -2213,6 +2223,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                         X.ID_PARAMETER_TYPE,
                                         X.DS_PARAMETER_TYPE,
                                         X.DS_PARAMETER_ATTRIBUTE,
+										X.DS_STORAGE,
                                         X.NR_ITERATIONS,
                                         X.VL_GRID_ROW_DIMENSION,
                                         X.VL_GRID_COLUMN_DIMENSION,
@@ -2268,6 +2279,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                     T_CPU.DS_RESOURCE,
                     T_CPU.DS_PARAMETER_TYPE,
                     T_CPU.DS_PARAMETER_ATTRIBUTE,
+					T_CPU.DS_STORAGE,
                     T_CPU.DS_DATASET,
                     CAST(T_CPU.VL_DATASET_MEMORY_SIZE*1e-6 AS BIGINT) as VL_DATASET_MEMORY_SIZE,
                     T_CPU.VL_DATASET_DIMENSION,
@@ -2288,6 +2300,14 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
 						ELSE
 							'999999999999'
 					END AS VL_CONCAT_BLOCK_SIZE_MB_NR_TASKS,
+					CASE
+						WHEN T_CPU.DS_ALGORITHM = 'KMEANS'
+							THEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE*1e-6,0) || ' (' || T_CPU.VL_GRID_ROW_DIMENSION || ' x ' || T_CPU.VL_GRID_COLUMN_DIMENSION || ' ; ' || T_CPU.VL_GRID_ROW_DIMENSION*5 || ')'
+						WHEN T_CPU.DS_ALGORITHM = 'MATMUL_DISLIB'
+							THEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE*1e-6,0) || ' (' || T_CPU.VL_GRID_ROW_DIMENSION || ' x ' || T_CPU.VL_GRID_COLUMN_DIMENSION || ' ; ' || T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION + T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*(T_CPU.VL_GRID_ROW_DIMENSION-1)  || ')'
+						ELSE
+							'999999999999'
+					END AS VL_CONCAT_BLOCK_SIZE_MB_GRID_DIMENSION_NR_TASKS,
 					CASE
 						WHEN T_CPU.DS_ALGORITHM = 'KMEANS'
 							THEN
@@ -2321,7 +2341,11 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                     CASE
                     WHEN ROUND((T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC/T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC)::numeric,2) > 1.00 THEN ROUND((T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC/T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC)::numeric,2)
                     ELSE -ROUND((T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC/T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC)::numeric,2)
-                    END AS SPEEDUP_GPU_INTRA_TASK_EXECUTION_TIME_FULL_FUNC
+                    END AS SPEEDUP_GPU_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+                    CASE
+                    WHEN (T_CPU.VL_INTER_TASK_EXECUTION_TIME/T_GPU.VL_INTER_TASK_EXECUTION_TIME) > 1.00 THEN (T_CPU.VL_INTER_TASK_EXECUTION_TIME/T_GPU.VL_INTER_TASK_EXECUTION_TIME)
+                    ELSE -(T_GPU.VL_INTER_TASK_EXECUTION_TIME/T_CPU.VL_INTER_TASK_EXECUTION_TIME)
+                    END AS SPEEDUP_GPU_INTER_TASK_EXECUTION_TIME
                     FROM T_CPU LEFT JOIN T_GPU ON (T_CPU.CD_PARAMETER = T_GPU.CD_PARAMETER
 													AND T_CPU.VL_GRID_ROW_DIMENSION = T_GPU.VL_GRID_ROW_DIMENSION
 													AND T_CPU.VL_GRID_COLUMN_DIMENSION = T_GPU.VL_GRID_COLUMN_DIMENSION
@@ -2757,7 +2781,6 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                         # & (df["ds_dataset"].isin(["S_10GB_1"]))
                         & (df["ds_parameter_type"] == "VAR_GRID_ROW_5")
                         ]
-        print(df_filtered)
         # # # General filtering and sorting parameters - V3 (VAR_CORES_CLUSTER_1 and VAR_CORES_SINGLE_NODE_1)
         # df_filtered = df[
         #                 (df["ds_algorithm"] == ds_algorithm.upper()) # FIXED VALUE
@@ -2769,6 +2792,17 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         #                 & (df["ds_parameter_type"] == "VAR_CORES_CLUSTER_1")
         #                 # & (df["ds_parameter_type"] == "VAR_CORES_SINGLE_NODE_1")
         #                 ]
+
+        if mode == 101:
+            # Paths of the "tb_parameters_experiments_paraver" and "tb_results_experiments_paraver" tables - CSV file
+            dst_path_paramters_experiments_paraver = "/home/marcos/Dev/project/dev_env/dislib-experiments/experiments/results/tb_parameters_experiments_paraver.csv"
+            dst_path_results_experiments_paraver = "/home/marcos/Dev/project/dev_env/dislib-experiments/experiments/results/tb_results_experiments_paraver.csv"
+
+            # Reading csv tables
+            param_file = os.path.join(dst_path_paramters_experiments_paraver)
+            df_paramters_experiments_paraver = pd.read_csv(param_file)
+            param_file = os.path.join(dst_path_results_experiments_paraver)
+            df_results_experiments_paraver = pd.read_csv(param_file)
 
     if mode == 1:
 
@@ -3551,106 +3585,155 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 10:
 
-        plt.figure()
-        plt.title('Experiments Overview',fontstyle='italic',fontweight="bold")
-        labels = ['Done', 'Not Done']
-        values = [89.93, 10.07]
-        colors = ["green","red"]
-        plt.pie(values, labels = labels, autopct='%1.2f%%', colors = colors, pctdistance=1.35)
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiments_overview_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
 
-        plt.figure()
-        plt.title('Experiments With Lowest Total Execution Time in CPU per Device',fontstyle='italic',fontweight="bold")
-        labels = ['GPU', 'CPU']
-        values = [61.54, 38.46]
-        colors = ["#1B4F72","#21618C"]
-        plt.pie(values, labels = labels, autopct='%1.2f%%', colors = colors, pctdistance=1.2)
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiments_total_exec_time_device_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+        # data = {'Single Node':
+        #         {'CPU': 0.47,
+        #         'GPU': 0.03},
+        #     'Distributed':
+        #         {'CPU': 690.38,
+        #         'GPU': 842.68}
+        #     }
+        data = {'Parallel Fraction':
+                {'CPU': 0.03,
+                'GPU': 0.01},
+            'Task User Code':
+                {'CPU': 0.08,
+                'GPU': 0.06},
+            'Parallel Tasks':
+                {'CPU': 15.33,
+                'GPU': 18.34},
+            }
+        
+        matplotlib.rcParams.update({'font.size': 12})
+        fig = plt.figure()
+        ax = fig.add_subplot(1,1,1)
+        label_group_bar(ax, data)
+        fig.subplots_adjust(bottom=0.3)
+        plt.yscale("log")
+        # fig.savefig('label_group_bar_example.png')
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_''_experiments_total_exec_time_parameter_type_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
-        plt.figure()
-        plt.title('Experiments With Lowest Total Execution Time in CPU per Data Set Size',fontstyle='italic',fontweight="bold")
-        labels = ['400B', '400KB', '400MB']
-        values = [52, 36, 12]
-        colors = ["#1B4F72","#21618C","#2874A6"]
-        plt.pie(values, labels = labels, autopct='%1.2f%%', colors = colors, pctdistance=1.25, labeldistance=1.05)
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiments_total_exec_time_dataset_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+        # matplotlib.rcParams.update({'font.size': 12})
+        # plt.figure()
+        # fig, ax = plt.subplots()
+        # labels = ['CPU Single Node', 'GPU Single Node', 'CPU Distributed', 'GPU Distributed']
+        # values = [0.47, 0.03, 690.38, 842.68]
+        # colors = ["blue","green","blue","green"]
+        # hatches=['','','.','.']
+        # ax.bar(labels, values, color=colors, hatch=hatches, zorder=3)
+        # # plt.xlabel('Device')
+        # plt.ylabel('Execution Time (s)')
+        # # plt.title('% Experiments With Lowest Total Execution Time in CPU per Block Dimension - ' + dataset, fontstyle='italic', fontweight="bold")
+        # # plt.yticks(np.arange(0, 101, 50))
+        # # plt.grid(zorder=0)
+        # plt.yscale("log")
+        # for bars in ax.containers:
+        #     ax.bar_label(bars)
+        # plt.show()
+        # # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_''_experiments_total_exec_time_parameter_type_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+
+        # plt.figure()
+        # plt.title('Experiments Overview',fontstyle='italic',fontweight="bold")
+        # labels = ['Done', 'Not Done']
+        # values = [89.93, 10.07]
+        # colors = ["green","red"]
+        # plt.pie(values, labels = labels, autopct='%1.2f%%', colors = colors, pctdistance=1.35)
+        # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiments_overview_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+
+        # plt.figure()
+        # plt.title('Experiments With Lowest Total Execution Time in CPU per Device',fontstyle='italic',fontweight="bold")
+        # labels = ['GPU', 'CPU']
+        # values = [61.54, 38.46]
+        # colors = ["#1B4F72","#21618C"]
+        # plt.pie(values, labels = labels, autopct='%1.2f%%', colors = colors, pctdistance=1.2)
+        # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiments_total_exec_time_device_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+        # plt.figure()
+        # plt.title('Experiments With Lowest Total Execution Time in CPU per Data Set Size',fontstyle='italic',fontweight="bold")
+        # labels = ['400B', '400KB', '400MB']
+        # values = [52, 36, 12]
+        # colors = ["#1B4F72","#21618C","#2874A6"]
+        # plt.pie(values, labels = labels, autopct='%1.2f%%', colors = colors, pctdistance=1.25, labeldistance=1.05)
+        # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiments_total_exec_time_dataset_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
         
-        dataset_list = ['400B', '400KB', '400MB']
-        for dataset in dataset_list:
-            if dataset == '400B':
-                labels = ['0.75', '1.00', 'MIN_I', '0.50', 'MAX_I']
-                values = [23.08, 23.08, 23.08, 15.38, 15.38]
-                colors = ["#1B4F72","#21618C","#2874A6","#2E86C1","#3498DB"]
+        # dataset_list = ['400B', '400KB', '400MB']
+        # for dataset in dataset_list:
+        #     if dataset == '400B':
+        #         labels = ['0.75', '1.00', 'MIN_I', '0.50', 'MAX_I']
+        #         values = [23.08, 23.08, 23.08, 15.38, 15.38]
+        #         colors = ["#1B4F72","#21618C","#2874A6","#2E86C1","#3498DB"]
             
-            if dataset == '400KB':
+        #     if dataset == '400KB':
 
-                labels = ['0.25', '0.50', 'MIN_I', '1.00', 'MAX_I']
-                values = [33.33, 22.22, 22.22, 11.11, 11.11]
-                colors = ["#1B4F72","#21618C","#2874A6","#2E86C1","#3498DB"]
+        #         labels = ['0.25', '0.50', 'MIN_I', '1.00', 'MAX_I']
+        #         values = [33.33, 22.22, 22.22, 11.11, 11.11]
+        #         colors = ["#1B4F72","#21618C","#2874A6","#2E86C1","#3498DB"]
                 
-            if dataset == '400MB':
+        #     if dataset == '400MB':
                 
-                labels = ['0.50', '1.00', 'MIN_I']
-                values = [33.33, 33.33, 33.33]
-                colors = ["#1B4F72","#21618C","#2874A6"]
+        #         labels = ['0.50', '1.00', 'MIN_I']
+        #         values = [33.33, 33.33, 33.33]
+        #         colors = ["#1B4F72","#21618C","#2874A6"]
 
 
-            # plt.figure()
-            # plt.title('Experiments With Lowest Total Execution Time in CPU per Block Dimension - ' + dataset)
-            # plt.pie(values, labels = labels, autopct='%1.2f%%', colors = colors, pctdistance=1.2, labeldistance=1.4)
-            # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+dataset+'_experiments_total_exec_time_parameter_type_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+        #     # plt.figure()
+        #     # plt.title('Experiments With Lowest Total Execution Time in CPU per Block Dimension - ' + dataset)
+        #     # plt.pie(values, labels = labels, autopct='%1.2f%%', colors = colors, pctdistance=1.2, labeldistance=1.4)
+        #     # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+dataset+'_experiments_total_exec_time_parameter_type_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
             
-            plt.figure()
-            fig, ax = plt.subplots()
-            ax.bar(labels, values, color=colors, zorder=3)
-            plt.xlabel('Block Dimension')
-            plt.ylabel('%')
-            plt.title('% Experiments With Lowest Total Execution Time in CPU per Block Dimension - ' + dataset, fontstyle='italic', fontweight="bold")
-            plt.yticks(np.arange(0, 101, 50))
-            plt.grid(zorder=0)
-            for bars in ax.containers:
-                ax.bar_label(bars)
-            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+dataset+'_experiments_total_exec_time_parameter_type_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+        #     plt.figure()
+        #     fig, ax = plt.subplots()
+        #     ax.bar(labels, values, color=colors, zorder=3)
+        #     plt.xlabel('Block Dimension')
+        #     plt.ylabel('%')
+        #     plt.title('% Experiments With Lowest Total Execution Time in CPU per Block Dimension - ' + dataset, fontstyle='italic', fontweight="bold")
+        #     plt.yticks(np.arange(0, 101, 50))
+        #     plt.grid(zorder=0)
+        #     for bars in ax.containers:
+        #         ax.bar_label(bars)
+        #     plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+dataset+'_experiments_total_exec_time_parameter_type_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
 
-        dataset_list = ['400B', '400KB', '400MB']
-        for dataset in dataset_list:
-            if dataset == '400B':
-                labels = ['S_A_4', 'S_A_3', 'S_A_1', 'S_A_2']
-                values = [38.46, 30.77, 15.38, 15.38]
-                colors = ["#1B4F72","#21618C","#2874A6","#2E86C1"]
+        # dataset_list = ['400B', '400KB', '400MB']
+        # for dataset in dataset_list:
+        #     if dataset == '400B':
+        #         labels = ['S_A_4', 'S_A_3', 'S_A_1', 'S_A_2']
+        #         values = [38.46, 30.77, 15.38, 15.38]
+        #         colors = ["#1B4F72","#21618C","#2874A6","#2E86C1"]
             
-            if dataset == '400KB':
+        #     if dataset == '400KB':
 
-                labels = ['S_B_4','S_B_2','S_B_1']
-                values = [44.44, 33.33, 22.22]
-                colors = ["#1B4F72","#21618C","#2874A6"]
+        #         labels = ['S_B_4','S_B_2','S_B_1']
+        #         values = [44.44, 33.33, 22.22]
+        #         colors = ["#1B4F72","#21618C","#2874A6"]
                 
-            if dataset == '400MB':
+        #     if dataset == '400MB':
                 
-                labels = ['S_C_4']
-                values = [100.00]
-                colors = ["#1B4F72","#21618C","#2874A6"]
+        #         labels = ['S_C_4']
+        #         values = [100.00]
+        #         colors = ["#1B4F72","#21618C","#2874A6"]
 
 
-            # plt.figure()
-            # plt.title('Experiments With Lowest Total Execution Time in CPU per Data Set Type - ' + dataset)
-            # plt.pie(values, labels = labels, autopct='%1.2f%%', colors = colors, pctdistance=1.2, labeldistance=1.4)
-            # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+dataset+'_experiments_total_exec_time_dataset_type_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+        #     # plt.figure()
+        #     # plt.title('Experiments With Lowest Total Execution Time in CPU per Data Set Type - ' + dataset)
+        #     # plt.pie(values, labels = labels, autopct='%1.2f%%', colors = colors, pctdistance=1.2, labeldistance=1.4)
+        #     # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+dataset+'_experiments_total_exec_time_dataset_type_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
             
-            plt.figure()
-            fig, ax = plt.subplots()
-            ax.bar(labels, values, color=colors, zorder=3)
-            plt.xlabel('Data Set Type')
-            plt.ylabel('%')
-            plt.title('% Experiments With Lowest Total Execution Time in CPU per Data Set Type - ' + dataset, fontstyle='italic', fontweight="bold")
-            plt.yticks(np.arange(0, 101, 50))
-            plt.grid(zorder=0)
-            for bars in ax.containers:
-                ax.bar_label(bars)
-            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+dataset+'_experiments_total_exec_time_dataset_type_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+        #     plt.figure()
+        #     fig, ax = plt.subplots()
+        #     ax.bar(labels, values, color=colors, zorder=3)
+        #     plt.xlabel('Data Set Type')
+        #     plt.ylabel('%')
+        #     plt.title('% Experiments With Lowest Total Execution Time in CPU per Data Set Type - ' + dataset, fontstyle='italic', fontweight="bold")
+        #     plt.yticks(np.arange(0, 101, 50))
+        #     plt.grid(zorder=0)
+        #     for bars in ax.containers:
+        #         ax.bar_label(bars)
+        #     plt.savefig(dst_path_figs+'mode_'+str(mode)+'_'+dataset+'_experiments_total_exec_time_dataset_type_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
 
 
@@ -5070,6 +5153,8 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 100:
 
+        matplotlib.rcParams.update({'font.size': 12})
+
         print("\nMode ",mode,": Plotting GPU speedups and user code execution times per block size")
 
         ds_parameter_type = df_filtered['ds_parameter_type'].unique()
@@ -5098,22 +5183,85 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
         ax1 = ax.twinx()
 
-        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_intra_task_execution_time_device_func_cpu'], color='C2', linestyle = 'dotted', label='Parallel Code CPU', zorder=3, linewidth=2.5)
-        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_additional_time_cpu'], color='C8', linestyle = 'dotted', label='Serial Code CPU', zorder=3, linewidth=2.5)
-        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_intra_task_execution_time_device_func_gpu'], color='C2', linestyle = 'solid', label='Parallel Code GPU', zorder=3, linewidth=2.5)
-        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_additional_time_gpu'], color='C8', linestyle = 'solid', label='Serial code GPU', zorder=3, linewidth=2.5)
-        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_communication_time_gpu'], color='C0', linestyle = 'solid', label='CPU-GPU Communication', zorder=3, linewidth=2.5)
+        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_intra_task_execution_time_device_func_cpu'], color='C2', linestyle = 'dotted', label='Parallel Fraction CPU', zorder=3, linewidth=2.5)
+        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_additional_time_cpu'], color='C8', linestyle = 'dotted', label='Serial Fraction CPU', zorder=3, linewidth=2.5)
+        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_intra_task_execution_time_device_func_gpu'], color='C2', linestyle = 'solid', label='Parallel Fraction GPU', zorder=3, linewidth=2.5)
+        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_additional_time_gpu'], color='C8', linestyle = 'solid', label='Serial Fraction GPU', zorder=3, linewidth=2.5)
+        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_communication_time_gpu'], color='C0', linestyle = 'solid', label='CPU-GPU Comm.', zorder=3, linewidth=2.5)
         plt.yscale("log")
         plt.ylabel('Average Time per Task (s)')
         plt.ylim([1e-3, 1e4])
 
 
-        plt.figlegend(loc='upper center', ncol=3)
+        plt.figlegend(loc=(-0.005,0.873), ncol=3, frameon=False)
+
+        # plt.figlegend(loc=(0.019,0.873), ncol=2, frameon=False)
 
         ax.tick_params(axis='x', labelrotation = 0)
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_parameter_type+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
+
+    elif mode == 101:
+
+        matplotlib.rcParams.update({'font.size': 12})
+
+        print("\nMode ",mode,": Plotting GPU speedups and user code execution times per block size")
+
+        df_filtered_paraver = pd.merge(df_paramters_experiments_paraver, df_results_experiments_paraver,  how='inner', on="ID_JOB")
+
+        df_filtered = pd.merge(df_filtered, df_filtered_paraver,  how='inner', left_on=['ds_algorithm','vl_dataset_memory_size','vl_block_memory_size','ds_storage'], right_on = ['DS_ALGORITHM_x','VL_DATASET_MEMORY_SIZE_x','VL_BLOCK_MEMORY_SIZE_x','DS_STORAGE'])
+
+        df_filtered_left = df_filtered[["vl_block_memory_size","vl_concat_block_size_mb_grid_dimension_nr_tasks","DS_DEVICE_x","VL_DESERIALIZING_OBJECT","VL_SERIALIZING_OBJECT"]].sort_values(by=["vl_block_memory_size"], ascending=[True])
+        df_filtered_right = df_filtered[["vl_block_memory_size","vl_concat_block_size_mb_grid_dimension_nr_tasks","speedup_gpu_inter_task_execution_time"]].sort_values(by=["vl_block_memory_size"], ascending=[True])
+
+        df_filtered_left_cpu = df_filtered_left[(df_filtered_left.DS_DEVICE_x=="CPU")]
+        df_filtered_left_gpu = df_filtered_left[(df_filtered_left.DS_DEVICE_x=="GPU")]
+
+        ds_parameter_type = df_filtered['ds_parameter_type'].unique()
+
+        ds_parameter_type = str(df_filtered['ds_parameter_type'].values[0])
+
+        speedup = "speedup_gpu_inter_task_execution_time"
+
+        y1_value_title = "Speedup GPU over CPU"
+        y2_value_title = "Average Time per CPU Core (s)"
+
+        x_value = "vl_concat_block_size_mb_grid_dimension_nr_tasks"
+        x_value_title = 'Block size MB (Grid Shape Dimension ; Total Tasks)'
+
+        fig = plt.figure()
+        ax = plt.gca()
+
+        plt.bar(df_filtered_right[x_value],df_filtered_right['speedup_gpu_inter_task_execution_time'],color='C8', alpha = 0.25, label='Speedup Parallel Task', zorder=3)
+        plt.xlabel(x_value_title)
+        # plt.grid(axis='y', zorder=0)
+        ax.bar_label(ax.containers[0], label_type='edge', rotation=0, fmt='%.2f')
+        plt.ylabel(y1_value_title)
+        plt.ylim([-30, 5])
+
+        ax1 = ax.twinx()
+
+        plt.plot(df_filtered_left_cpu[x_value], df_filtered_left_cpu['VL_DESERIALIZING_OBJECT'], color='C3', linestyle = 'dotted', label='Deserialization CPU', zorder=3, linewidth=2.5)
+        plt.plot(df_filtered_left_gpu[x_value], df_filtered_left_gpu['VL_DESERIALIZING_OBJECT'], color='C3', linestyle = 'solid', label='Deserialization GPU', zorder=3, linewidth=2.5)
+        plt.plot(df_filtered_left_cpu[x_value], df_filtered_left_cpu['VL_SERIALIZING_OBJECT'], color='C2', linestyle = 'dotted', label='Serialization CPU', zorder=3, linewidth=2.5)
+        plt.plot(df_filtered_left_gpu[x_value], df_filtered_left_gpu['VL_SERIALIZING_OBJECT'], color='C2', linestyle = 'solid', label='Deserialization CPU', zorder=3, linewidth=2.5)
+        plt.yscale("log")
+        plt.ylabel(y2_value_title)
+        plt.ylim([1e-2, 1e4])
+
+
+        # plt.figlegend(loc='upper center', ncol=3)
+
+        plt.figlegend(loc=(0.000,0.893), ncol=3, frameon=False)
+
+        ax.tick_params(axis='x', labelrotation = 90)
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_parameter_type+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+
+
     elif mode == 200:
+
+        matplotlib.rcParams.update({'font.size': 12})
 
         print("\nMode ",mode,": Plotting motivational charts")
 
@@ -5128,7 +5276,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
         ax = plt.gca()
         X_axis = np.arange(len(df_filtered_left["concat_grid_row_x_column_dim_nr_tasks_block_size"].drop_duplicates()))
-        plt.bar(X_axis - 0.3, df_filtered_left["speedup_gpu_intra_task_execution_time_device_func"], 0.3, label = "Speedup parallel code", color='C0', alpha = 0.25, zorder=3)
+        plt.bar(X_axis - 0.3, df_filtered_left["speedup_gpu_intra_task_execution_time_device_func"], 0.3, label = "Speedup parallel fraction", color='C0', alpha = 0.25, zorder=3)
         ax.bar_label(ax.containers[0], label_type='edge', rotation=0, fmt='%.2f')
         plt.bar(X_axis + 0.0, df_filtered_left["speedup_gpu_intra_task_execution_time_full_func"], 0.3, label = "Speedup user code", color='C3', alpha = 0.25, zorder=3)
         # ax.bar_label(ax.containers[1], label_type='center', rotation=0, fmt='%.2f')#KMEANS
@@ -5142,17 +5290,18 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
         ax1 = ax.twinx()
 
-        plt.plot(df_filtered_right['concat_grid_row_x_column_dim_nr_tasks_block_size'], df_filtered_right['vl_intra_task_execution_time_device_func'], color='C0', linestyle = 'dotted', label='Parallel Code', zorder=3, linewidth=2.5)
-        # plt.plot(df_filtered_right['concat_grid_row_x_column_dim_nr_tasks_block_size'], df_filtered_right['vl_intra_task_overhead'], color='C3', linestyle = 'dotted', label='Serial Code', zorder=3, linewidth=2.5)#KMEANS
-        plt.plot(df_filtered_right['concat_grid_row_x_column_dim_nr_tasks_block_size'], df_filtered_right['vl_intra_task_overhead'], color='C3', linestyle = 'dotted', label='CPU-GPU Communication', zorder=3, linewidth=2.5)#MATMUL
-        plt.plot(df_filtered_right['concat_grid_row_x_column_dim_nr_tasks_block_size'], df_filtered_right['vl_inter_overhead'], color='C8', linestyle = 'solid', label='Data Serialization+Deserialization', zorder=3, linewidth=2.5)
+        plt.plot(df_filtered_right['concat_grid_row_x_column_dim_nr_tasks_block_size'], df_filtered_right['vl_intra_task_execution_time_device_func'], color='C0', linestyle = 'dotted', label='Parallel Fraction', zorder=3, linewidth=2.5)
+        # plt.plot(df_filtered_right['concat_grid_row_x_column_dim_nr_tasks_block_size'], df_filtered_right['vl_intra_task_overhead'], color='C3', linestyle = 'dotted', label='Serial Fraction + CPU-GPU Comm.', zorder=3, linewidth=2.5)#KMEANS
+        plt.plot(df_filtered_right['concat_grid_row_x_column_dim_nr_tasks_block_size'], df_filtered_right['vl_intra_task_overhead'], color='C3', linestyle = 'dotted', label='CPU-GPU Comm.', zorder=3, linewidth=2.5)#MATMUL
+        plt.plot(df_filtered_right['concat_grid_row_x_column_dim_nr_tasks_block_size'], df_filtered_right['vl_inter_overhead'], color='C8', linestyle = 'dotted', label='Data Serialization+Deserialization', zorder=3, linewidth=2.5)
         plt.yscale("log")
         plt.ylabel('Average Execution Time (s)')
         plt.ylim([1e-2, 2e3])
 
-        # plt.figlegend(loc=(0.085,0.88), ncol=2)#KMEANS
-        plt.figlegend(loc=(0.085,0.88), ncol=2)#MATMUL
+        # plt.figlegend(loc=(0.018,0.873), ncol=2, frameon=False)#KMEANS
+        plt.figlegend(loc=(0.019,0.873), ncol=2, frameon=False)#MATMUL
         ax.tick_params(axis='x', labelrotation = 90)
+
 
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
@@ -5198,6 +5347,73 @@ def parse_args():
                         help='Graph mode'
                         )
     return parser.parse_args()
+
+
+
+
+def mk_groups(data):
+    try:
+        newdata = data.items()
+    except:
+        return
+
+    thisgroup = []
+    groups = []
+    for key, value in newdata:
+        newgroups = mk_groups(value)
+        if newgroups is None:
+            thisgroup.append((key, value))
+        else:
+            thisgroup.append((key, len(newgroups[-1])))
+            if groups:
+                groups = [g + n for n, g in zip(newgroups, groups)]
+            else:
+                groups = newgroups
+    return [thisgroup] + groups
+
+def add_line(ax, xpos, ypos):
+    line = plt.Line2D([xpos, xpos], [ypos + .1, ypos],
+                      transform=ax.transAxes, color='black')
+    line.set_clip_on(False)
+    ax.add_line(line)
+
+def label_group_bar(ax, data):
+    groups = mk_groups(data)
+    xy = groups.pop()
+    x, y = zip(*xy)
+    ly = len(y)
+    xticks = range(1, ly + 1)
+
+    colors = ["C0","C2","C0","C2"]
+    # hatches=['/','/','/','/','/','/']
+
+    ax.bar(xticks, y, align='center', color=colors, zorder=3)
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(x)
+    ax.set_xlim(.5, ly + .5)
+    ax.yaxis.grid(True)
+    plt.ylabel('Average Execution Time (s)')
+    
+
+    # labels = ['CPU Single Node', 'GPU Single Node', 'CPU Distributed', 'GPU Distributed']
+    # values = [0.47, 0.03, 690.38, 842.68]
+
+    # ax.bar(labels, values, color=colors, hatch=hatches, zorder=3)
+
+    scale = 1. / ly
+    for pos in range(ly + 1):  # change xrange to range for python3
+        add_line(ax, pos * scale, -.1)
+    ypos = -.2
+    while groups:
+        group = groups.pop()
+        pos = 0
+        for label, rpos in group:
+            lxpos = (pos + .5 * rpos) * scale
+            ax.text(lxpos, ypos, label, ha='center', transform=ax.transAxes)
+            add_line(ax, pos * scale, ypos)
+            pos += rpos
+        add_line(ax, pos * scale, ypos)
+        ypos -= .1
 
 
 if __name__ == "__main__":

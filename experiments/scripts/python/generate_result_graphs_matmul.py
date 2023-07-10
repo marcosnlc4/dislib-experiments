@@ -5,6 +5,7 @@ import seaborn as sns
 from pathlib import Path
 from config import open_connection, close_connection
 import numpy as np
+import matplotlib
 
 def main(ds_algorithm, ds_resource, nr_iterations, mode):
 
@@ -893,7 +894,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                             AND A.NR_ALGORITHM_ITERATION <> 0
                                         ) X
 										WHERE
-										X.DS_FUNCTION = 'ADD_FUNC'
+										X.DS_FUNCTION = 'MATMUL_FUNC'
                                         GROUP BY
                                         X.ID_PARAMETER,
                                         X.CD_PARAMETER,
@@ -1162,7 +1163,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                             AND A.NR_ALGORITHM_ITERATION <> 0
                                         ) X
 										WHERE
-										X.DS_FUNCTION = 'ADD_FUNC'
+										X.DS_FUNCTION = 'MATMUL_FUNC'
                                         GROUP BY
                                         X.ID_PARAMETER,
                                         X.CD_PARAMETER,
@@ -2237,6 +2238,8 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 100:
 
+        matplotlib.rcParams.update({'font.size': 12})
+
         print("\nMode ",mode,": Plotting GPU speedups and user code execution times per block size")
 
         ds_function = df_filtered['ds_function'].unique()
@@ -2262,23 +2265,23 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         # plt.grid(axis='y', zorder=0)
         ax.bar_label(ax.containers[0], label_type='edge', rotation=0, fmt='%.2f')
         plt.ylabel('GPU Speedup over CPU')
-        plt.ylim([-5, 25])
+        plt.ylim([0, 25])
 
 
         ax1 = ax.twinx()
 
 
-        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_intra_task_execution_time_device_func_cpu'], color='C2', linestyle = 'dotted', label='Parallel Code CPU', zorder=3, linewidth=2.5)
+        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_intra_task_execution_time_device_func_cpu'], color='C2', linestyle = 'dotted', label='Parallel Fraction CPU', zorder=3, linewidth=2.5)
         # plt.plot(df_filtered_left[x_value], df_filtered_left['vl_additional_time_cpu'], color='C8', linestyle = 'dotted', label='$Serial Code CPU', zorder=3, linewidth=2.5)
-        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_intra_task_execution_time_device_func_gpu'], color='C2', linestyle = 'solid', label='Parallel Code GPU', zorder=3, linewidth=2.5)
+        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_intra_task_execution_time_device_func_gpu'], color='C2', linestyle = 'solid', label='Parallel Fraction GPU', zorder=3, linewidth=2.5)
         # plt.plot(df_filtered_left[x_value], df_filtered_left['vl_additional_time_gpu'], color='C8', linestyle = 'solid', label='$Serial code GPU', zorder=3, linewidth=2.5)
-        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_communication_time_gpu'], color='C0', linestyle = 'solid', label='CPU-GPU Communication', zorder=3, linewidth=2.5)
+        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_communication_time_gpu'], color='C0', linestyle = 'solid', label='CPU-GPU Comm.', zorder=3, linewidth=2.5)
         plt.yscale("log")
         plt.ylabel('Average Time per Task (s)')
         plt.ylim([1e-3, 1e4])
 
 
-        plt.figlegend(loc='upper center', ncol=2)
+        plt.figlegend(loc='upper center', ncol=2, frameon=False)
 
         ax.tick_params(axis='x', labelrotation = 0)
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_function+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
