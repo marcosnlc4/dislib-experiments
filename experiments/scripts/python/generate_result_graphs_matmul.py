@@ -2260,7 +2260,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         fig = plt.figure()
         ax = plt.gca()
 
-        plt.bar(df_filtered_right[x_value],df_filtered_right['speedup_gpu_intra_task_execution_time_full_func'],color='r', alpha = 0.25, label='Speedup User Code', zorder=3)
+        plt.bar(df_filtered_right[x_value],df_filtered_right['speedup_gpu_intra_task_execution_time_full_func'],color='C0', alpha = 0.25, label='Speedup User Code', zorder=3)
         plt.xlabel('Block size MB')
         # plt.grid(axis='y', zorder=0)
         ax.bar_label(ax.containers[0], label_type='edge', rotation=0, fmt='%.2f')
@@ -2275,7 +2275,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         # plt.plot(df_filtered_left[x_value], df_filtered_left['vl_additional_time_cpu'], color='C8', linestyle = 'dotted', label='$Serial Code CPU', zorder=3, linewidth=2.5)
         plt.plot(df_filtered_left[x_value], df_filtered_left['vl_intra_task_execution_time_device_func_gpu'], color='C2', linestyle = 'solid', label='Parallel Fraction GPU', zorder=3, linewidth=2.5)
         # plt.plot(df_filtered_left[x_value], df_filtered_left['vl_additional_time_gpu'], color='C8', linestyle = 'solid', label='$Serial code GPU', zorder=3, linewidth=2.5)
-        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_communication_time_gpu'], color='C0', linestyle = 'solid', label='CPU-GPU Comm.', zorder=3, linewidth=2.5)
+        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_communication_time_gpu'], color='C4', linestyle = 'solid', label='CPU-GPU Comm.', zorder=3, linewidth=2.5)
         plt.yscale("log")
         plt.ylabel('Average Time per Task (s)')
         plt.ylim([1e-3, 1e4])
@@ -2284,7 +2284,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         plt.figlegend(loc='upper center', ncol=2, frameon=False)
 
         ax.tick_params(axis='x', labelrotation = 0)
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_function+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_function+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
 
     else:
 
