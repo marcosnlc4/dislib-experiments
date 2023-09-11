@@ -6126,3 +6126,80 @@ WITH T_CPU AS (
 					T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET;
 
 					
+
+
+
+
+-- Query to check individual executions
+				SELECT
+                                    A.ID_EXPERIMENT,
+                                    A.VL_TOTAL_EXECUTION_TIME,
+                                    A.VL_INTER_TASK_EXECUTION_TIME,
+                                    A.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+                                    A.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
+                                    A.VL_COMMUNICATION_TIME_1,
+                                    A.VL_COMMUNICATION_TIME_2,
+                                    A.VL_COMMUNICATION_TIME_1 + A.VL_COMMUNICATION_TIME_2 AS VL_COMMUNICATION_TIME,
+                                    A.VL_ADDITIONAL_TIME_1,
+                                    A.VL_ADDITIONAL_TIME_2,
+                                    A.VL_ADDITIONAL_TIME_1 + A.VL_ADDITIONAL_TIME_2 AS VL_ADDITIONAL_TIME,
+                                    (A.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC + A.VL_ADDITIONAL_TIME_1 + A.VL_ADDITIONAL_TIME_2) AS VL_INTRA_TASK_EXECUTION_TIME_FREE_ADDITIONAL,
+                                    A.DT_PROCESSING,
+                                    B.ID_PARAMETER,
+                                    B.CD_PARAMETER,
+                                    B.CD_CONFIGURATION,
+                                    B.ID_ALGORITHM,
+                                    (SELECT DISTINCT X.DS_ALGORITHM FROM ALGORITHM X WHERE X.ID_ALGORITHM = B.ID_ALGORITHM) AS DS_ALGORITHM,
+                                    B.ID_FUNCTION,
+                                    (SELECT DISTINCT X.DS_FUNCTION FROM FUNCTION X WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_FUNCTION,
+                                    (SELECT DISTINCT Y.ID_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS ID_DEVICE,
+                                    (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_DEVICE,
+                                    B.ID_DATASET,
+                                    B.ID_RESOURCE,
+                                    B.ID_PARAMETER_TYPE,
+                                    (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_TYPE,
+                                    (SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_ATTRIBUTE,
+                                    B.NR_ITERATIONS,
+                                    B.VL_GRID_ROW_DIMENSION,
+                                    B.VL_GRID_COLUMN_DIMENSION,
+                                    B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION AS VL_GRID_ROW_X_COLUMN_DIMENSION,
+                                    B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION || '(' || ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ')' AS VL_CONCAT_GRID_ROW_X_COLUMN_DIMENSION_BLOCK_SIZE_MB,
+									ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) AS VL_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
+                                    B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION || ' (' || ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) || '%)' AS VL_CONCAT_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
+                                    B.VL_BLOCK_ROW_DIMENSION,
+                                    B.VL_BLOCK_COLUMN_DIMENSION,
+                                    B.VL_BLOCK_ROW_DIMENSION || ' x ' || B.VL_BLOCK_COLUMN_DIMENSION AS VL_BLOCK_ROW_X_COLUMN_DIMENSION,
+                                    B.VL_BLOCK_MEMORY_SIZE,
+                                    B.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                                    B.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                                    ROUND((CAST(B.VL_BLOCK_MEMORY_SIZE AS NUMERIC)/CAST(D.VL_DATASET_MEMORY_SIZE AS NUMERIC))*100,2) AS VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                                    ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ' (' || ROUND((CAST(B.VL_BLOCK_MEMORY_SIZE AS NUMERIC)/CAST(D.VL_DATASET_MEMORY_SIZE AS NUMERIC))*100,2) || '%)' AS VL_CONCAT_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                                    C.DS_RESOURCE,
+                                    C.NR_NODES,
+                                    C.NR_COMPUTING_UNITS_CPU,
+                                    C.NR_COMPUTING_UNITS_GPU,
+                                    C.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                                    C.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                                    D.DS_DATASET,
+                                    D.VL_DATASET_MEMORY_SIZE,
+                                    D.DS_DATA_TYPE,
+                                    D.VL_DATA_TYPE_MEMORY_SIZE,
+                                    D.VL_DATASET_DIMENSION,
+                                    D.VL_DATASET_ROW_DIMENSION,
+                                    D.VL_DATASET_COLUMN_DIMENSION,
+                                    D.VL_DATASET_ROW_DIMENSION || ' x ' || D.VL_DATASET_COLUMN_DIMENSION AS VL_DATASET_ROW_X_COLUMN_DIMENSION,
+                                    D.NR_RANDOM_STATE
+                                FROM EXPERIMENT_RAW A
+                                INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER)
+                                INNER JOIN RESOURCE C ON (B.ID_RESOURCE = C.ID_RESOURCE)
+                                INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
+                                WHERE
+                                A.NR_ALGORITHM_ITERATION = 0
+								AND B.nr_iterations = 5
+								AND D.ds_dataset = 'S_10GB_1'
+								AND (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) = 'VAR_GRID_ROW_11'
+								AND B.VL_GRID_ROW_DIMENSION = 16
+								AND B.VL_GRID_COLUMN_DIMENSION = 1
+								AND A.VL_INTER_TASK_EXECUTION_TIME IS NOT NULL
+								AND (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) = 'CPU'
+								--ORDER BY A.VL_INTER_TASK_EXECUTION_TIME DESC
