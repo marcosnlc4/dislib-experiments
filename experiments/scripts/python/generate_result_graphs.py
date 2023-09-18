@@ -2356,7 +2356,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                     T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET;"""
     
     # MOTIVATIONAL CHARTS (DATA READ FROM CSV FILE)
-    elif mode == 200:
+    elif (mode == 200 | mode == 201):
         sql_query = """SELECT 1"""
 
     # OTHER MODES
@@ -2405,7 +2405,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
 								ELSE
 									'999999999999'
 							END AS VL_CONCAT_BLOCK_SIZE_MB_NR_TASKS,
-							ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ' (' || B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION  || ')' AS VL_CONCAT_BLOCK_SIZE_MB_GRID_ROW_X_COLUMN_DIMENSION,
+							ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,0) || ' (' || B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION  || ')' AS VL_CONCAT_BLOCK_SIZE_MB_GRID_ROW_X_COLUMN_DIMENSION,
                             ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) AS VL_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
                             B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION || ' (' || ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) || '%)' AS VL_CONCAT_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
                             B.VL_BLOCK_ROW_DIMENSION,
@@ -2623,7 +2623,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
 										ELSE
 											'999999999999'
 									END AS VL_CONCAT_BLOCK_SIZE_MB_NR_TASKS,
-									ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ' (' || B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION  || ')' AS VL_CONCAT_BLOCK_SIZE_MB_GRID_ROW_X_COLUMN_DIMENSION,
+									ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,0) || ' (' || B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION  || ')' AS VL_CONCAT_BLOCK_SIZE_MB_GRID_ROW_X_COLUMN_DIMENSION,
                                     ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) AS VL_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
                                     B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION || ' (' || ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) || '%)' AS VL_CONCAT_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
                                     B.VL_BLOCK_ROW_DIMENSION,
@@ -2725,7 +2725,7 @@ def get_df_from_query(sql_query, conn):
 # Function that generates a graph according to the mode
 def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, mode):
     
-    if mode == 200:
+    if (mode == 200 | mode == 201):
         # Path of the "tb_experiments_motivation" table - CSV file
         dst_path_experiments = "/home/marcos/Dev/project/dev_env/dislib-experiments/experiments/results/tb_experiments_motivation.csv"
 
@@ -2779,7 +2779,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                         & (df["ds_dataset"] == "S_10GB_1")
                         # & (df["vl_grid_row_dimension"] == 2)
                         # & (df["ds_dataset"].isin(["S_10GB_1"]))
-                        & (df["ds_parameter_type"] == "VAR_GRID_ROW_11")
+                        & (df["ds_parameter_type"] == "VAR_GRID_ROW_16")
                         ]
         # # # General filtering and sorting parameters - V3 (VAR_CORES_CLUSTER_1 and VAR_CORES_SINGLE_NODE_1)
         # df_filtered = df[
@@ -5179,6 +5179,19 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         x_value = "vl_block_memory_size_mb"
         x_value_title = 'Block size MB'
 
+        # use the code below to plot chart with missing values
+        # from here
+        df_filtered_left_new = pd.concat([df_filtered_left,pd.DataFrame({"vl_block_memory_size":["10000000000"],
+                                               "vl_block_memory_size_mb":["10000"],
+                                               "vl_intra_task_execution_time_device_func_cpu":[np.nan],
+                                               "vl_additional_time_cpu":[np.nan],
+                                               "vl_communication_time_cpu":[np.nan],
+                                               "vl_intra_task_execution_time_device_func_gpu":[np.nan],
+                                               "vl_additional_time_gpu":[np.nan],
+                                               "vl_communication_time_gpu":[1000]
+                                               })])
+        # to here
+
         fig = plt.figure()
         ax = plt.gca()
 
@@ -5196,6 +5209,9 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         plt.plot(df_filtered_left[x_value], df_filtered_left['vl_intra_task_execution_time_device_func_gpu'], color='C2', linestyle = 'solid', label='Parallel Fraction GPU', zorder=3, linewidth=2.5)
         plt.plot(df_filtered_left[x_value], df_filtered_left['vl_additional_time_gpu'], color='C8', linestyle = 'solid', label='Serial Fraction GPU', zorder=3, linewidth=2.5)
         plt.plot(df_filtered_left[x_value], df_filtered_left['vl_communication_time_gpu'], color='C4', linestyle = 'solid', label='CPU-GPU Comm.', zorder=3, linewidth=2.5)
+        # use line below to plot chart with missing values
+        plt.plot(df_filtered_left_new[x_value], df_filtered_left_new['vl_communication_time_gpu'], 'r-', alpha = 0.7)
+
         plt.yscale("log")
         plt.ylabel('Average Time per Task (s)')
         plt.ylim([1e-3, 1e4])
@@ -5313,6 +5329,66 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
+
+
+    elif mode == 201:
+
+        matplotlib.rcParams.update({'font.size': 12})
+
+        print("\nMode ",mode,": Plotting Example of Cost Chart")
+
+        speedup = "speedup_gpu_total_execution_time"
+
+        speedup_title = "Speedup GPU over CPU"
+
+        df_filtered_left = df_filtered[["concat_grid_row_x_column_dim_nr_tasks_block_size","speedup_gpu_total_execution_time"]]
+        df_filtered_right = df_filtered[["concat_grid_row_x_column_dim_nr_tasks_block_size","vl_intra_task_execution_time_device_func","vl_intra_task_overhead","vl_inter_overhead"]]
+
+
+        ax = plt.gca()
+        X_axis = np.arange(len(df_filtered_left["concat_grid_row_x_column_dim_nr_tasks_block_size"].drop_duplicates()))
+        plt.bar(X_axis - 0.3, df_filtered_left["speedup_gpu_total_execution_time"], 0.3, label = "Speedup Parallel Task", color='C1', alpha = 1, zorder=3)
+        ax.bar_label(ax.containers[0], label_type='edge', rotation=0, fmt='%.2f')
+        plt.bar(X_axis, df_filtered_right["vl_intra_task_execution_time_device_func"], 0.3, label = "Electricity Cost Parallel Task", color='C1', alpha = 0.25, zorder=3)
+        ax.bar_label(ax.containers[1], label_type='center', rotation=0, fmt='%.2f')
+        plt.xticks(X_axis, df_filtered_left["concat_grid_row_x_column_dim_nr_tasks_block_size"].drop_duplicates(), rotation=90)
+        plt.xlabel('Block size MB (Grid Shape Dimension ; Total Tasks)')
+        plt.ylabel('Increasing rate (GPU over CPU)')
+        # plt.ylim([-2, 4])
+
+
+        # ax = plt.gca()
+        # X_axis = np.arange(len(df_filtered_left["concat_grid_row_x_column_dim_nr_tasks_block_size"].drop_duplicates()))
+        # plt.bar(X_axis, df_filtered_left["speedup_gpu_total_execution_time"], 0.3, label = "Speedup parallel task", color='C1', alpha = 0.25, zorder=3)
+        # ax.bar_label(ax.containers[0], label_type='edge', rotation=0, fmt='%.2f')
+        # plt.xticks(X_axis, df_filtered_left["concat_grid_row_x_column_dim_nr_tasks_block_size"].drop_duplicates(), rotation=90)
+        # plt.xlabel('Block size MB (Grid Shape Dimension ; Total Tasks)')
+        # plt.ylabel('GPU Speedup over CPU')
+        # plt.ylim([-2, 4])
+
+        # plt.plot(df_filtered_left['concat_grid_row_x_column_dim_nr_tasks_block_size'], df_filtered_left['speedup_gpu_total_execution_time'], color='C1',  label='Speedup parallel task', zorder=3, linewidth=2.5)
+        # plt.xlabel('Block size MB (Grid Shape Dimension ; Total Tasks)')
+        # plt.ylabel('GPU Speedup over CPU')
+
+        # ax1 = ax.twinx()
+
+
+        # plt.bar(X_axis + 0.3, df_filtered_right["vl_intra_task_execution_time_device_func"], 0.3, label = "Increase in Electricity Cost", color='C2', alpha = 0.25, zorder=3)
+        # ax.bar_label(ax.containers[0], label_type='edge', rotation=0, fmt='%.2f')
+        # plt.ylabel('Increase in Electricity Cost (GPU over CPU)')
+
+
+        # plt.plot(df_filtered_right['concat_grid_row_x_column_dim_nr_tasks_block_size'], df_filtered_right['vl_intra_task_execution_time_device_func'], color='C1', label='Increase in Electricity Cost', zorder=3, linewidth=2.5)
+        # plt.ylabel('Increase in Electricity Cost (GPU over CPU)')
+        # plt.ylim([1, 4])
+
+        # plt.figlegend(loc=(0.018,0.873), ncol=2, frameon=False)#KMEANS
+        plt.figlegend(ncol=2, frameon=False)#MATMUL
+        ax.tick_params(axis='x', labelrotation = 90)
+
+
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+        # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
 
 
     else:

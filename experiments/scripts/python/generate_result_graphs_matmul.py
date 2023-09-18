@@ -1342,7 +1342,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
 								ELSE
 									'999999999999'
 							END AS VL_CONCAT_BLOCK_SIZE_MB_NR_TASKS,
-							ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ' (' || B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION  || ')' AS VL_CONCAT_BLOCK_SIZE_MB_GRID_ROW_X_COLUMN_DIMENSION,
+							ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,0) || ' (' || B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION  || ')' AS VL_CONCAT_BLOCK_SIZE_MB_GRID_ROW_X_COLUMN_DIMENSION,
                             ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) AS VL_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
                             B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION || ' (' || ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) || '%)' AS VL_CONCAT_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
                             B.VL_BLOCK_ROW_DIMENSION,
@@ -1560,7 +1560,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
 										ELSE
 											'999999999999'
 									END AS VL_CONCAT_BLOCK_SIZE_MB_NR_TASKS,
-									ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ' (' || B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION  || ')' AS VL_CONCAT_BLOCK_SIZE_MB_GRID_ROW_X_COLUMN_DIMENSION,
+									ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,0) || ' (' || B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION  || ')' AS VL_CONCAT_BLOCK_SIZE_MB_GRID_ROW_X_COLUMN_DIMENSION,
                                     ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) AS VL_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
                                     B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION || ' (' || ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) || '%)' AS VL_CONCAT_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
                                     B.VL_BLOCK_ROW_DIMENSION,
@@ -1684,11 +1684,16 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     if mode == 15:
 
+        matplotlib.rcParams.update({'font.size': 12})
+
         print("\nMode ",mode,": Plotting all execution times x grid and block shapes, without parameter filters")
 
         ds_dataset = df_filtered["ds_dataset"].unique()
-
         ds_dataset = '(' + ', '.join(ds_dataset) + ')'
+
+        # x_value_list = ['vl_grid_row_x_column_dimension','vl_block_row_x_column_dimension','vl_grid_row_dimension','vl_block_row_dimension','vl_concat_grid_row_x_column_dimension_block_size_mb']
+
+        # x_value_list = ['vl_grid_row_dimension','vl_block_row_dimension']
 
         # x_value_list = ['vl_concat_block_size_mb_grid_row_x_column_dimension']
 
@@ -1696,14 +1701,32 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
         x_value_list = ['vl_concat_block_size_mb_grid_row_x_column_dimension']
 
+        # x_value_list = ['vl_block_memory_size','vl_concat_block_size_mb_grid_row_x_column_dimension','vl_concat_block_size_mb_nr_tasks']
+
+
         for x_value in x_value_list:
 
-            if x_value == 'vl_concat_grid_row_x_column_dimension_block_size_mb':
-                x_value_title = 'Grid Shape (Block Size MB)'
+            if x_value == 'vl_grid_row_x_column_dimension':
+                x_value_title = 'Grid Shape'
+
+            elif x_value == 'vl_concat_grid_row_x_column_dimension_block_size_mb':
+                x_value_title = 'Grid Shape Dimension (Block Size MB)'
+
             elif x_value == 'vl_concat_block_size_mb_grid_row_x_column_dimension':
                 x_value_title = 'Block Size MB (Grid Shape)'
+
             elif x_value == 'vl_concat_dataset_mb_block_memory_size_percent_dataset':
                 x_value_title = 'Dataset MB (Block Size % Dataset)'
+
+            elif x_value == 'vl_block_row_x_column_dimension':
+                x_value_title = 'Block Shape'
+
+            elif x_value == 'vl_grid_row_dimension':
+                x_value_title = 'Grid Row'
+
+            elif x_value == 'vl_block_row_dimension':
+                x_value_title = 'Block Row'
+
             elif x_value == 'vl_block_memory_size':
                 x_value_title = 'Block Size B'
 
@@ -1721,7 +1744,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                 # df_filtered_mean_cpu.sort_values(by=['vl_grid_row_dimension'])
                 # df_filtered_mean_gpu.sort_values(by=['vl_grid_row_dimension'])
 
-            if (x_value == 'vl_block_row_x_column_dimension') | (x_value == 'vl_concat_block_size_mb_grid_row_x_column_dimension'):
+            if (x_value == 'vl_block_row_x_column_dimension') | (x_value == 'vl_concat_block_size_mb_grid_row_x_column_dimension') | (x_value == 'vl_block_memory_size'):
                 df_filtered_mean_cpu.sort_values('vl_block_row_dimension', inplace=True)
                 df_filtered_mean_gpu.sort_values('vl_block_row_dimension', inplace=True)
                 # df_filtered_mean_cpu.sort_values(by=['vl_block_row_dimension'])
@@ -1731,89 +1754,70 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                 df_filtered_mean_cpu.sort_values(['vl_dataset_memory_size','vl_block_row_dimension'], inplace=True)
                 df_filtered_mean_gpu.sort_values(['vl_dataset_memory_size','vl_block_row_dimension'], inplace=True)
 
-
-            if x_value == 'vl_block_memory_size':
-                df_filtered_mean_cpu.sort_values('vl_block_memory_size', inplace=True)
-                df_filtered_mean_gpu.sort_values('vl_block_memory_size', inplace=True)
-
             # VL_TOTAL_EXECUTION_TIME
-            fig = plt.figure()
-            ax = plt.gca()
-            for frame in [df_filtered_mean_cpu, df_filtered_mean_gpu]:
-                if frame.name == 'df_filtered_mean_cpu':
-                    # plt.xticks(frame[x_value], frame['vl_grid_row_x_column_dimension'])
-                    # plt.plot(frame[x_value], frame['vl_inter_task_execution_time'], color='C1', linestyle = 'dotted', label='$T_{w\_inter}$ CPU', zorder=3)
-                    plt.plot(frame[x_value], frame['vl_total_execution_time'], color='C0', linestyle = 'dotted', label='$T_{w\_total}$ CPU', zorder=3)
-                    # plt.plot(frame[x_value], frame['vl_inter_task_overhead_time'], color='C9', linestyle = 'dotted', label='$T_{o\_inter}$ CPU', zorder=3)
-                    # plt.plot(frame[x_value], frame['vl_intra_task_execution_time_full_func'], color='C2', linestyle = 'dotted', label='$T_{w\_intra}$  CPU', zorder=3)
-                if frame.name == 'df_filtered_mean_gpu':
-                    # plt.xticks(frame[x_value], frame['vl_grid_row_x_column_dimension'])
-                    # plt.plot(frame[x_value], frame['vl_inter_task_execution_time'], color='C1', linestyle = 'solid', label='$T_{w\_inter}$ GPU', zorder=3)
-                    plt.plot(frame[x_value], frame['vl_total_execution_time'], color='C0', linestyle = 'solid', label='$T_{w\_total}$ GPU', zorder=3)
-                    # plt.plot(frame[x_value], frame['vl_inter_task_overhead_time'], color='C9', linestyle = 'solid', label='$T_{o\_inter}$  GPU', zorder=3)
-                    # plt.plot(frame[x_value], frame['vl_intra_task_execution_time_full_func'], color='C2', linestyle = 'solid', label='$T_{w\_intra}$ GPU', zorder=3)
-            plt.legend(loc='best')
-            plt.xlabel(x_value_title)
-            plt.ylabel('Time (s)')
-            plt.title('$T_{w\_inter}$ Time x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
+            fig, ax = plt.subplots()
+            ax.plot(df_filtered_mean_cpu['vl_concat_block_size_mb_grid_row_x_column_dimension'], df_filtered_mean_cpu['vl_total_execution_time'], color='C1', linestyle = 'dotted', label='CPU', zorder=3, linewidth=2.5)
+            ax.plot(df_filtered_mean_gpu['vl_concat_block_size_mb_grid_row_x_column_dimension'], df_filtered_mean_gpu['vl_total_execution_time'], color='C1', linestyle = 'solid', label='GPU', zorder=3, linewidth=2.5)
+            ax.set_xlabel(x_value_title)
+            ax.set_ylabel('Parallel Tasks Average Execution Time (s)')
+            ax.legend()
             plt.grid(zorder=0)
             ax.tick_params(axis='x', labelrotation = 90)
-            # # # NORMAL SCALE
-            # # plt.ylim([0.0000, 265.0000])
-            # if x_value == 'vl_grid_row_dimension' or x_value == 'vl_block_row_dimension':
-            #     ax.ticklabel_format(scilimits=(-5, 1))
-            # # LOG SCALE
-            plt.ylim([1e1, 1e3])
-            plt.yscale("log")
-            # plt.xscale("log")
+            # # NORMAL SCALE
+            plt.ylim([0, 2500])
+            # LOG SCALE
+            # plt.ylim([0, 265])
+            # plt.ylim([1e-1, 1e3])
+            # plt.yscale("log")
             plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_total_execution_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_total_execution_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
 
+
+        # #     # plt.legend(loc='best')
+        # #     # df_filtered_mean_cpu.plot(x = x_value, y = 'vl_total_execution_time', kind = 'line', color='C0', linestyle = 'dotted', ax=ax, label='CPU', zorder=3)
+        # #     # df_filtered_mean_gpu.plot(x = x_value, y = 'vl_total_execution_time', kind = 'line', color='C0', linestyle = 'solid', ax=ax, label='GPU', zorder=3)
+        # #     # plt.xlabel(x_value_title)
+        # #     # plt.ylabel('Average Total Execution Time (s)')
+        # #     # plt.title('Average Total Execution Time x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
+        # #     # plt.grid(zorder=0)
+        # #     # ax.tick_params(axis='x', labelrotation = 90)
+        # #     # # # NORMAL SCALE
+        # #     # # plt.ylim([0, 1000])
+        # #     # # LOG SCALE
+        # #     # plt.ylim([1e0, 1e4])
+        # #     # plt.yscale("log")
+        # #     # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_total_execution_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+
+        #     # # BREAKING VL_INTER_TASK_EXECUTION_TIME = VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC + VL_INTER_TASK_OVERHEAD_TIME
+        #     # fig = plt.figure()
+        #     # ax = plt.gca()
+        #     # for frame in [df_filtered_mean_cpu, df_filtered_mean_gpu]:
+        #     #     if frame.name == 'df_filtered_mean_cpu':
+        #     #         # plt.xticks(frame[x_value], frame['vl_grid_row_x_column_dimension'])
+        #     #         plt.plot(frame[x_value], frame['vl_inter_task_execution_time'], color='C1', linestyle = 'dotted', label='$T_{w\_inter}$ CPU', zorder=3)
+        #     #         # plt.plot(frame[x_value], frame['vl_inter_task_overhead_time'], color='C9', linestyle = 'dotted', label='$T_{o\_inter}$ CPU', zorder=3)
+        #     #         # plt.plot(frame[x_value], frame['vl_intra_task_execution_time_full_func'], color='C2', linestyle = 'dotted', label='$T_{w\_intra}$ CPU', zorder=3)
+        #     #     if frame.name == 'df_filtered_mean_gpu':
+        #     #         # plt.xticks(frame[x_value], frame['vl_grid_row_x_column_dimension'])
+        #     #         plt.plot(frame[x_value], frame['vl_inter_task_execution_time'], color='C1', linestyle = 'solid', label='$T_{w\_inter}$ GPU', zorder=3)
+        #     #         # plt.plot(frame[x_value], frame['vl_inter_task_overhead_time'], color='C9', linestyle = 'solid', label='$T_{o\_inter}$ GPU', zorder=3)
+        #     #         # plt.plot(frame[x_value], frame['vl_intra_task_execution_time_full_func'], color='C2', linestyle = 'solid', label='$T_{w\_intra}$ GPU', zorder=3)
 
         #     # plt.legend(loc='best')
-        #     # df_filtered_mean_cpu.plot(x = x_value, y = 'vl_total_execution_time', kind = 'line', color='C0', linestyle = 'dotted', ax=ax, label='CPU', zorder=3)
-        #     # df_filtered_mean_gpu.plot(x = x_value, y = 'vl_total_execution_time', kind = 'line', color='C0', linestyle = 'solid', ax=ax, label='GPU', zorder=3)
         #     # plt.xlabel(x_value_title)
-        #     # plt.ylabel('Average Total Execution Time (s)')
-        #     # plt.title('Average Total Execution Time x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
+        #     # plt.ylabel('Time (s)')
+        #     # plt.title('$T_{w\_inter}$ Time Composition x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
         #     # plt.grid(zorder=0)
         #     # ax.tick_params(axis='x', labelrotation = 90)
-        #     # # # NORMAL SCALE
-        #     # # plt.ylim([0, 1000])
-        #     # # LOG SCALE
-        #     # plt.ylim([1e0, 1e4])
+        #     # # # # NORMAL SCALE
+        #     # # # plt.ylim([0.0000, 265.0000])
+        #     # # if x_value == 'vl_grid_row_dimension' or x_value == 'vl_block_row_dimension':
+        #     # #     ax.ticklabel_format(scilimits=(-5, 1))
+        #     # # # LOG SCALE
+        #     # plt.ylim([1e-1, 1e4])
         #     # plt.yscale("log")
-        #     # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_total_execution_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
-
-
-            # # BREAKING VL_INTER_TASK_EXECUTION_TIME = VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC + VL_INTER_TASK_OVERHEAD_TIME
-            # fig = plt.figure()
-            # ax = plt.gca()
-            # for frame in [df_filtered_mean_cpu, df_filtered_mean_gpu]:
-            #     if frame.name == 'df_filtered_mean_cpu':
-            #         # plt.xticks(frame[x_value], frame['vl_grid_row_x_column_dimension'])
-            #         plt.plot(frame[x_value], frame['vl_inter_task_execution_time'], color='C1', linestyle = 'dotted', label='$T_{w\_inter}$ CPU', zorder=3)
-            #         # plt.plot(frame[x_value], frame['vl_inter_task_overhead_time'], color='C9', linestyle = 'dotted', label='$T_{o\_inter}$ CPU', zorder=3)
-            #         # plt.plot(frame[x_value], frame['vl_intra_task_execution_time_full_func'], color='C2', linestyle = 'dotted', label='$T_{w\_intra}$ CPU', zorder=3)
-            #     if frame.name == 'df_filtered_mean_gpu':
-            #         # plt.xticks(frame[x_value], frame['vl_grid_row_x_column_dimension'])
-            #         plt.plot(frame[x_value], frame['vl_inter_task_execution_time'], color='C1', linestyle = 'solid', label='$T_{w\_inter}$ GPU', zorder=3)
-            #         # plt.plot(frame[x_value], frame['vl_inter_task_overhead_time'], color='C9', linestyle = 'solid', label='$T_{o\_inter}$ GPU', zorder=3)
-            #         # plt.plot(frame[x_value], frame['vl_intra_task_execution_time_full_func'], color='C2', linestyle = 'solid', label='$T_{w\_intra}$ GPU', zorder=3)
-
-            # plt.legend(loc='best')
-            # plt.xlabel(x_value_title)
-            # plt.ylabel('Time (s)')
-            # plt.title('$T_{w\_inter}$ Time Composition x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
-            # plt.grid(zorder=0)
-            # ax.tick_params(axis='x', labelrotation = 90)
-            # # # # NORMAL SCALE
-            # # # plt.ylim([0.0000, 265.0000])
-            # # if x_value == 'vl_grid_row_dimension' or x_value == 'vl_block_row_dimension':
-            # #     ax.ticklabel_format(scilimits=(-5, 1))
-            # # # LOG SCALE
-            # plt.ylim([1e-1, 1e4])
-            # plt.yscale("log")
-            # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_inter_task_composition_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+        #     # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_inter_task_composition_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
             # # # BREAKING VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC = VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC + VL_COMMUNICATION_TIME + VL_ADDITIONAL_TIME
             # fig = plt.figure()
