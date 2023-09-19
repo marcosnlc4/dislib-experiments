@@ -9,6 +9,7 @@ import csv
 import os
 import math
 import matplotlib
+from sklearn.feature_selection import mutual_info_regression, mutual_info_classif
 
 def main(ds_algorithm, ds_resource, nr_iterations, mode):
 
@@ -2356,7 +2357,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                     T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET;"""
     
     # MOTIVATIONAL CHARTS (DATA READ FROM CSV FILE)
-    elif (mode == 200 | mode == 201):
+    elif (mode == 200 | mode == 201 | mode == 300):
         sql_query = """SELECT 1"""
 
     # OTHER MODES
@@ -2728,6 +2729,14 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
     if (mode == 200 | mode == 201):
         # Path of the "tb_experiments_motivation" table - CSV file
         dst_path_experiments = "/home/marcos/Dev/project/dev_env/dislib-experiments/experiments/results/tb_experiments_motivation.csv"
+
+        # Reading "tb_experiments_motivation" csv table
+        param_file = os.path.join(dst_path_experiments)
+        df_filtered = pd.read_csv(param_file)
+
+    elif (mode == 300):
+        # Path of the "tb_experiments_motivation" table - CSV file
+        dst_path_experiments = "/home/marcos/Dev/project/dev_env/dislib-experiments/experiments/results/tb_correlation.csv"
 
         # Reading "tb_experiments_motivation" csv table
         param_file = os.path.join(dst_path_experiments)
@@ -5389,6 +5398,71 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
         # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
+
+
+    elif mode == 300:
+
+        # # CORRELATION MATRIX (PEARSON OR SPEARMAN)
+        # matplotlib.rcParams.update({'font.size': 12})
+
+        # print("\nMode ",mode,": Plotting Correlation Matrix")
+
+        # corrMatrix = df_filtered.corr(method='kendall')
+        # print(corrMatrix)
+
+        # sns.heatmap(corrMatrix, annot=True)
+
+        # plt.show()
+        # # plt.savefig(dst_path_figs+'mode_pearson.png',bbox_inches='tight',dpi=100)
+
+
+
+
+        # SCATTER PLOT EXAMPLE
+        df = df_filtered
+        x_variable = 'vl_block_memory_size'
+        y_variable = 'vl_dataset_memory_size'
+        metric_variable = y_variable
+        
+        sns.set(style="whitegrid")
+        
+        # Create the scatterplot
+        plt.figure(figsize=(10, 6))  # Adjust the figure size as needed
+        sns.scatterplot(data=df, x=x_variable, y=metric_variable, hue=y_variable, palette="viridis")
+        
+        # Customize plot labels and title
+        plt.xlabel(x_variable)
+        plt.ylabel(metric_variable)
+        plt.title(f'Scatterplot of {metric_variable} vs. {x_variable} (Colored by {y_variable})')
+        
+        # Show the legend
+        plt.legend(title=y_variable, bbox_to_anchor=(1.05, 1.0), loc='upper left')
+        
+        # Show the plot
+        plt.show()
+
+
+        # MUTUAL INFORMATION SCORES
+        # df = df_filtered
+        # y = df['vl_execution_time']  # Replace 'TargetMetric' with the actual name of your target metric column
+        # X = df.drop(columns=['vl_execution_time'])  # Remove the target metric column from your features
+
+        # # Calculate Mutual Information scores
+        # mi_scores = mutual_info_regression(X, y)  # For continuous target metric
+        # # or
+        # # mi_scores = mutual_info_classif(X, y)     # For categorical target metric
+
+        # # Create a DataFrame to store feature names and their MI scores
+        # mi_df = pd.DataFrame({'Feature': X.columns, 'Mutual_Information': mi_scores})
+
+        # # Sort the DataFrame by MI scores in descending order
+        # mi_df = mi_df.sort_values(by='Mutual_Information', ascending=False)
+
+        # # Print or display the sorted MI scores DataFrame
+        # # print(mi_df)
+        # mi_df.plot(x = 'Feature', y = 'Mutual_Information', kind = 'bar')
+        # plt.show()
+
 
 
     else:
