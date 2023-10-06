@@ -1684,7 +1684,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     if mode == 15:
 
-        matplotlib.rcParams.update({'font.size': 12})
+        matplotlib.rcParams.update({'font.size': 16})
 
         print("\nMode ",mode,": Plotting all execution times x grid and block shapes, without parameter filters")
 
@@ -1713,7 +1713,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                 x_value_title = 'Grid Shape Dimension (Block Size MB)'
 
             elif x_value == 'vl_concat_block_size_mb_grid_row_x_column_dimension':
-                x_value_title = 'Block Size MB (Grid Shape)'
+                x_value_title = 'Block Size MB (Grid Dimension)'
 
             elif x_value == 'vl_concat_dataset_mb_block_memory_size_percent_dataset':
                 x_value_title = 'Dataset MB (Block Size % Dataset)'
@@ -1759,7 +1759,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
             ax.plot(df_filtered_mean_cpu['vl_concat_block_size_mb_grid_row_x_column_dimension'], df_filtered_mean_cpu['vl_total_execution_time'], color='C1', linestyle = 'dotted', label='CPU', zorder=3, linewidth=2.5)
             ax.plot(df_filtered_mean_gpu['vl_concat_block_size_mb_grid_row_x_column_dimension'], df_filtered_mean_gpu['vl_total_execution_time'], color='C1', linestyle = 'solid', label='GPU', zorder=3, linewidth=2.5)
             ax.set_xlabel(x_value_title)
-            ax.set_ylabel('Parallel Tasks Average Execution Time (s)')
+            ax.set_ylabel('Parallel Tasks Average Time (s)')
             ax.legend()
             plt.grid(zorder=0)
             ax.tick_params(axis='x', labelrotation = 90)
@@ -1769,7 +1769,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
             # plt.ylim([0, 265])
             # plt.ylim([1e-1, 1e3])
             # plt.yscale("log")
-            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_total_execution_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_total_execution_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
             plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_total_execution_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
 
 
@@ -2267,9 +2267,10 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         plt.bar(df_filtered_right[x_value],df_filtered_right['speedup_gpu_intra_task_execution_time_full_func'],color='C0', alpha = 0.25, label='Speedup User Code', zorder=3)
         plt.xlabel('Block size MB')
         # plt.grid(axis='y', zorder=0)
-        ax.bar_label(ax.containers[0], label_type='edge', rotation=0, fmt='%.2f')
+        # ax.bar_label(ax.containers[0], label_type='edge', rotation=0, fmt='%.2f')
         plt.ylabel('GPU Speedup over CPU')
-        plt.ylim([0, 25])
+        plt.ylim([-5, 25])
+        plt.grid(zorder=0,axis='y')
 
 
         ax1 = ax.twinx()
@@ -2285,10 +2286,12 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         plt.ylim([1e-3, 1e4])
 
 
-        plt.figlegend(loc='upper center', ncol=2, frameon=False)
+        # plt.figlegend(loc=(0.025,0.863), ncol=2, frameon=False) # font size 14
+        plt.figlegend(loc=(0.090,0.879), ncol=2, frameon=False) # font size 12
 
         ax.tick_params(axis='x', labelrotation = 0)
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_function+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
+        # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_function+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
     else:
 

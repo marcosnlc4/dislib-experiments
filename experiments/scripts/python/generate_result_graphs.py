@@ -10,6 +10,7 @@ import os
 import math
 import matplotlib
 from sklearn.feature_selection import mutual_info_regression, mutual_info_classif
+import statsmodels.api as sm
 
 def main(ds_algorithm, ds_resource, nr_iterations, mode):
 
@@ -2357,7 +2358,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                     T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET;"""
     
     # MOTIVATIONAL CHARTS (DATA READ FROM CSV FILE)
-    elif (mode == 200 | mode == 201 | mode == 300):
+    elif (mode == 200):#(mode == 200 | mode == 201 | mode == 300):
         sql_query = """SELECT 1"""
 
     # OTHER MODES
@@ -2726,7 +2727,7 @@ def get_df_from_query(sql_query, conn):
 # Function that generates a graph according to the mode
 def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, mode):
     
-    if (mode == 200 | mode == 201):
+    if (mode == 200):#if (mode == 200 | mode == 201):
         # Path of the "tb_experiments_motivation" table - CSV file
         dst_path_experiments = "/home/marcos/Dev/project/dev_env/dislib-experiments/experiments/results/tb_experiments_motivation.csv"
 
@@ -2788,7 +2789,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                         & (df["ds_dataset"] == "S_10GB_1")
                         # & (df["vl_grid_row_dimension"] == 2)
                         # & (df["ds_dataset"].isin(["S_10GB_1"]))
-                        & (df["ds_parameter_type"] == "VAR_GRID_ROW_16")
+                        & (df["ds_parameter_type"] == "VAR_GRID_ROW_7")
                         ]
         # # # General filtering and sorting parameters - V3 (VAR_CORES_CLUSTER_1 and VAR_CORES_SINGLE_NODE_1)
         # df_filtered = df[
@@ -4136,7 +4137,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
     elif mode == 15:
     # elif mode == 22:
 
-        matplotlib.rcParams.update({'font.size': 12})
+        
 
         print("\nMode ",mode,": Plotting all execution times x grid and block shapes, without parameter filters")
 
@@ -4165,7 +4166,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                 x_value_title = 'Grid Shape Dimension (Block Size MB)'
 
             elif x_value == 'vl_concat_block_size_mb_grid_row_x_column_dimension':
-                x_value_title = 'Block Size MB (Grid Shape)'
+                x_value_title = 'Block Size MB (Grid Dimension)'
 
             elif x_value == 'vl_concat_dataset_mb_block_memory_size_percent_dataset':
                 x_value_title = 'Dataset MB (Block Size % Dataset)'
@@ -4228,10 +4229,11 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
             # VL_INTER_TASK_EXECUTION_TIME
             fig = plt.figure()
             ax = plt.gca()
+            plt.rc('legend', fontsize=16)    # legend fontsize
             df_filtered_mean_cpu.plot(x = x_value, y = 'vl_inter_task_execution_time', kind = 'line', color='C1', linestyle = 'dotted', ax=ax, label='CPU', zorder=3, linewidth=2.5)
             df_filtered_mean_gpu.plot(x = x_value, y = 'vl_inter_task_execution_time', kind = 'line', color='C1', linestyle = 'solid', ax=ax, label='GPU', zorder=3, linewidth=2.5)
-            plt.xlabel(x_value_title)
-            plt.ylabel('Parallel Tasks Average Execution Time (s)')
+            plt.xlabel(x_value_title, fontsize=16)
+            plt.ylabel('Parallel Tasks Average Time (s)', fontsize=16)
             # plt.title('Average Inter-Task Time x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
             plt.grid(zorder=0)
             ax.tick_params(axis='x', labelrotation = 90)
@@ -4241,7 +4243,10 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
             plt.ylim([0, 265])
             # plt.ylim([1e-1, 1e3])
             # plt.yscale("log")
-            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_inter_task_execution_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_inter_task_execution_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            ax.tick_params(labelsize=16)
+            # plt.rcParams.update({'font.size': 16})
+            # matplotlib.rcParams.update({'font.size': 16})
             plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_inter_task_execution_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
 
             # # VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC
@@ -5170,7 +5175,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 100:
 
-        matplotlib.rcParams.update({'font.size': 12})
+        matplotlib.rcParams.update({'font.size': 16})
 
         print("\nMode ",mode,": Plotting GPU speedups and user code execution times per block size")
 
@@ -5201,15 +5206,37 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                                                })])
         # to here
 
-        fig = plt.figure()
-        ax = plt.gca()
+        # fig = plt.figure(figsize=(8.4, 4.8)) # Default values for figsize in matplotlib figsize=(6.4, 4.8)
+        # Define the size of the overall chart area in inches
+        chart_width = 6.4
+        chart_height = 4.8
+
+        # Create a figure with a fixed size
+        fig = plt.figure(figsize=(chart_width, chart_height))
+
+        # Define the size and position of the plot area within the chart
+        left_margin = 0.10
+        bottom_margin = 0.05
+        plot_width = 0.8
+        plot_height = 0.8
+
+        # Calculate the position of the plot area
+        plot_left = left_margin
+        plot_bottom = bottom_margin
+        plot_right = left_margin + plot_width
+        plot_top = bottom_margin + plot_height
+
+        # Create the plot within the defined plot area
+        ax = fig.add_axes([plot_left, plot_bottom, plot_width, plot_height])
 
         plt.bar(df_filtered_right[x_value],df_filtered_right['speedup_gpu_intra_task_execution_time_full_func'],color='C0', alpha = 0.25, label='Speedup User Code', zorder=3)
         plt.xlabel('Block size MB')
         # plt.grid(axis='y', zorder=0)
-        ax.bar_label(ax.containers[0], label_type='edge', rotation=0, fmt='%.2f')
+        # ax.bar_label(ax.containers[0], label_type='edge', rotation=0, fmt='%.2f')
         plt.ylabel('GPU Speedup over CPU')
-        plt.ylim([0, 25])
+        # plt.ylim([0, 20])
+        plt.yticks(np.arange(0, 21, 5.0))
+        plt.grid(zorder=0,axis='y')
 
         ax1 = ax.twinx()
 
@@ -5223,16 +5250,16 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
         plt.yscale("log")
         plt.ylabel('Average Time per Task (s)')
-        plt.ylim([1e-3, 1e4])
+        plt.ylim([1e-3, 1e3])
 
 
-        plt.figlegend(loc=(-0.005,0.873), ncol=3, frameon=False)
+        plt.figlegend(loc=(-0.005,0.833), ncol=2, frameon=False)
 
         # plt.figlegend(loc=(0.019,0.873), ncol=2, frameon=False)
 
-        ax.tick_params(axis='x', labelrotation = 0)
+        ax.tick_params(axis='x', labelrotation = 45)
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_parameter_type+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
-
+        # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_parameter_type+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
     elif mode == 101:
 
@@ -5294,7 +5321,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 200:
 
-        matplotlib.rcParams.update({'font.size': 12})
+        matplotlib.rcParams.update({'font.size': 16})
 
         print("\nMode ",mode,": Plotting motivational charts")
 
@@ -5302,37 +5329,72 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
         speedup_title = "Speedup GPU over CPU"
 
-        df_filtered_left = df_filtered[["concat_grid_row_x_column_dim_nr_tasks_block_size","speedup_gpu_intra_task_execution_time_device_func","speedup_gpu_intra_task_execution_time_full_func","speedup_gpu_total_execution_time"]]
-        df_filtered_right = df_filtered[["concat_grid_row_x_column_dim_nr_tasks_block_size","vl_intra_task_execution_time_device_func","vl_intra_task_overhead","vl_inter_overhead"]]
 
-        # df_filtered_left = df_filtered_left.fillna(method='ffill', limit=2)#MATMUL
+        df_filtered_left = df_filtered[["concat_grid_row_x_column_dim_block_size","speedup_gpu_intra_task_execution_time_device_func","speedup_gpu_intra_task_execution_time_full_func","speedup_gpu_total_execution_time"]]
+        df_filtered_right = df_filtered[["concat_grid_row_x_column_dim_block_size","vl_intra_task_execution_time_device_func","vl_intra_task_overhead","vl_inter_overhead"]]
 
-        ax = plt.gca()
-        X_axis = np.arange(len(df_filtered_left["concat_grid_row_x_column_dim_nr_tasks_block_size"].drop_duplicates()))
+        # fig = plt.figure(figsize=(7.8, 5.05)) #KMEANS
+        # fig = plt.figure(figsize=(7.8, 5.2)) #MATMUL
+        # fig = plt.figure(figsize=(8.5, 4.8))
+        # fig = plt.figure(figsize=(6.4, 4.8))
+        # fig.set_size_inches(8.11, 5.24)
+        # ax = plt.gca()
+
+        # Define the size of the overall chart area in inches
+        chart_width = 6.4
+        chart_height = 4.8
+
+        # Create a figure with a fixed size
+        fig = plt.figure(figsize=(chart_width, chart_height))
+
+        # Define the size and position of the plot area within the chart
+        #BEST
+        # left_margin = 0.25
+        # bottom_margin = 0.08
+        # plot_width = 1
+        # plot_height = 1
+
+        left_margin = 0.15
+        bottom_margin = -0.15
+        plot_width = 1
+        plot_height = 1
+
+
+        # Calculate the position of the plot area
+        plot_left = left_margin
+        plot_bottom = bottom_margin
+        plot_right = left_margin + plot_width
+        plot_top = bottom_margin + plot_height
+
+        # Create the plot within the defined plot area
+        ax = fig.add_axes([plot_left, plot_bottom, plot_width, plot_height])
+
+        X_axis = np.arange(len(df_filtered_left["concat_grid_row_x_column_dim_block_size"].drop_duplicates()))
         plt.bar(X_axis - 0.3, df_filtered_left["speedup_gpu_intra_task_execution_time_device_func"], 0.3, label = "Speedup parallel fraction", color='C2', alpha = 0.25, zorder=3)
-        ax.bar_label(ax.containers[0], label_type='edge', rotation=0, fmt='%.2f')
-        plt.bar(X_axis + 0.0, df_filtered_left["speedup_gpu_intra_task_execution_time_full_func"], 0.3, label = "Speedup user code", color='C0', alpha = 0.25, zorder=3)
+        # ax.bar_label(ax.containers[0], label_type='edge', rotation=0, fmt='%.2f')
+        plt.bar(X_axis + 0.0, df_filtered_left["speedup_gpu_intra_task_execution_time_full_func"], 0.3, label = "Speedup user code", color='C0', alpha = 0.25, zorder=3, hatch='///')
         # ax.bar_label(ax.containers[1], label_type='center', rotation=0, fmt='%.2f')#KMEANS
-        ax.bar_label(ax.containers[1], label_type='edge', rotation=0, fmt='%.2f')#MATMUL
-        plt.bar(X_axis + 0.3, df_filtered_left["speedup_gpu_total_execution_time"], 0.3, label = "Speedup parallel task", color='C1', alpha = 0.25, zorder=3)
-        ax.bar_label(ax.containers[2], label_type='edge', rotation=0, fmt='%.2f')
-        plt.xticks(X_axis, df_filtered_left["concat_grid_row_x_column_dim_nr_tasks_block_size"].drop_duplicates(), rotation=90)
-        plt.xlabel('Block size MB (Grid Shape Dimension ; Total Tasks)')
+        # ax.bar_label(ax.containers[1], label_type='edge', rotation=0, fmt='%.2f')#MATMUL
+        plt.bar(X_axis + 0.3, df_filtered_left["speedup_gpu_total_execution_time"], 0.3, label = "Speedup parallel task", color='C1', alpha = 0.25, zorder=3, hatch='\\\\\\')
+        # ax.bar_label(ax.containers[2], label_type='edge', rotation=0, fmt='%.2f')
+        plt.xticks(X_axis, df_filtered_left["concat_grid_row_x_column_dim_block_size"].drop_duplicates(), rotation=90)
+        plt.xlabel('Block size MB (Grid Dimension)')
         plt.ylabel('GPU Speedup over CPU')
         plt.ylim([-5, 30])
+        plt.grid(zorder=0,axis='y')
 
         ax1 = ax.twinx()
 
-        plt.plot(df_filtered_right['concat_grid_row_x_column_dim_nr_tasks_block_size'], df_filtered_right['vl_intra_task_execution_time_device_func'], color='C2', linestyle = 'dotted', label='Parallel Fraction', zorder=3, linewidth=2.5)
-        # plt.plot(df_filtered_right['concat_grid_row_x_column_dim_nr_tasks_block_size'], df_filtered_right['vl_intra_task_overhead'], color='C0', linestyle = 'dotted', label='Serial Fraction + CPU-GPU Comm.', zorder=3, linewidth=2.5)#KMEANS
-        plt.plot(df_filtered_right['concat_grid_row_x_column_dim_nr_tasks_block_size'], df_filtered_right['vl_intra_task_overhead'], color='C0', linestyle = 'dotted', label='CPU-GPU Comm.', zorder=3, linewidth=2.5)#MATMUL
-        plt.plot(df_filtered_right['concat_grid_row_x_column_dim_nr_tasks_block_size'], df_filtered_right['vl_inter_overhead'], color='C1', linestyle = 'dotted', label='Data Serialization+Deserialization', zorder=3, linewidth=2.5)
+        plt.plot(df_filtered_right['concat_grid_row_x_column_dim_block_size'], df_filtered_right['vl_intra_task_execution_time_device_func'], color='C2', linestyle = '-', label='Parallel Fraction', zorder=3, linewidth=2.5)
+        # plt.plot(df_filtered_right['concat_grid_row_x_column_dim_block_size'], df_filtered_right['vl_intra_task_overhead'], color='C0', linestyle = '-.', label='Serial Fraction + CPU-GPU Comm.', zorder=3, linewidth=2.5)#KMEANS
+        plt.plot(df_filtered_right['concat_grid_row_x_column_dim_block_size'], df_filtered_right['vl_intra_task_overhead'], color='C0', linestyle = '-.', label='CPU-GPU Comm.                           ', zorder=3, linewidth=2.5)#MATMUL
+        plt.plot(df_filtered_right['concat_grid_row_x_column_dim_block_size'], df_filtered_right['vl_inter_overhead'], color='C1', linestyle = '--', label='Data Serialization + Deserialization', zorder=3, linewidth=2.5)
         plt.yscale("log")
         plt.ylabel('Average Execution Time (s)')
         plt.ylim([1e-2, 2e3])
 
-        # plt.figlegend(loc=(0.018,0.873), ncol=2, frameon=False)#KMEANS
-        plt.figlegend(loc=(0.019,0.873), ncol=2, frameon=False)#MATMUL
+        # plt.figlegend(loc=(0.018,0.861), ncol=2, frameon=False)#KMEANS
+        plt.figlegend(loc=(-0.000,0.861), ncol=2, frameon=False)#MATMUL
         ax.tick_params(axis='x', labelrotation = 90)
 
 
@@ -5402,47 +5464,112 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 300:
 
+        # PRE-PROCESSING (NORMALIZING DATA)
+
+        min_value = df_filtered["Block size"].min()
+        max_value = df_filtered["Block size"].max()
+        df_filtered["Block size"] = (df_filtered["Block size"] - min_value) / (max_value - min_value)
+
+        min_value = df_filtered["Computational complexity"].min()
+        max_value = df_filtered["Computational complexity"].max()
+        df_filtered["Computational complexity"] = (df_filtered["Computational complexity"] - min_value) / (max_value - min_value)
+        
+        min_value = df_filtered["DAG maximum width"].min()
+        max_value = df_filtered["DAG maximum width"].max()
+        df_filtered["DAG maximum width"] = (df_filtered["DAG maximum width"] - min_value) / (max_value - min_value)
+        
+        min_value = df_filtered["DAG maximum height"].min()
+        max_value = df_filtered["DAG maximum height"].max()
+        df_filtered["DAG maximum height"] = (df_filtered["DAG maximum height"] - min_value) / (max_value - min_value)
+
+        min_value = df_filtered["Dataset size"].min()
+        max_value = df_filtered["Dataset size"].max()
+        df_filtered["Dataset size"] = (df_filtered["Dataset size"] - min_value) / (max_value - min_value)
+
+
+
         # # CORRELATION MATRIX (PEARSON OR SPEARMAN)
-        # matplotlib.rcParams.update({'font.size': 12})
+        matplotlib.rcParams.update({'font.size': 16})
+        # chart_width = 19.2
+        # chart_height = 14.4
 
-        # print("\nMode ",mode,": Plotting Correlation Matrix")
+        # # Create a figure with a fixed size
+        # fig = plt.figure(figsize=(chart_width, chart_height))
 
-        # corrMatrix = df_filtered.corr(method='kendall')
-        # print(corrMatrix)
+        # # Define the size and position of the plot area within the chart
+        # left_margin = 0.22
+        # bottom_margin = 0.12
+        # plot_width = 0.6
+        # plot_height = 0.4
 
-        # sns.heatmap(corrMatrix, annot=True)
+        # # Calculate the position of the plot area
+        # plot_left = left_margin
+        # plot_bottom = bottom_margin
+        # plot_right = left_margin + plot_width
+        # plot_top = bottom_margin + plot_height
 
-        # plt.show()
-        # # plt.savefig(dst_path_figs+'mode_pearson.png',bbox_inches='tight',dpi=100)
+        # # Create the plot within the defined plot area
+        # ax = fig.add_axes([plot_left, plot_bottom, plot_width, plot_height])
 
+        print("\nMode ",mode,": Plotting Correlation Matrix")
 
-
-
-        # SCATTER PLOT EXAMPLE
-        df = df_filtered
-        x_variable = 'vl_block_memory_size'
-        y_variable = 'vl_dataset_memory_size'
-        metric_variable = y_variable
-        
-        sns.set(style="whitegrid")
-        
-        # Create the scatterplot
-        plt.figure(figsize=(10, 6))  # Adjust the figure size as needed
-        sns.scatterplot(data=df, x=x_variable, y=metric_variable, hue=y_variable, palette="viridis")
-        
-        # Customize plot labels and title
-        plt.xlabel(x_variable)
-        plt.ylabel(metric_variable)
-        plt.title(f'Scatterplot of {metric_variable} vs. {x_variable} (Colored by {y_variable})')
-        
-        # Show the legend
-        plt.legend(title=y_variable, bbox_to_anchor=(1.05, 1.0), loc='upper left')
-        
-        # Show the plot
+        ax = plt.gca()
+        corrMatrix = df_filtered.corr(method='spearman')   
+        # CORRELATION MATRIX
+        print(corrMatrix)
+        # matrix = np.triu(np.ones_like(corrMatrix))
+        # sns.heatmap(corrMatrix, annot=True, fmt='.3f',mask=matrix)
+        sns.heatmap(corrMatrix, annot=True, fmt='.3f', cmap='YlGnBu')
+        plt.xticks(rotation=45, ha='right')
         plt.show()
+        # plt.savefig(dst_path_figs+'mode_pearson.png',bbox_inches='tight',dpi=100)
+
+        # # BAR CHART
+        # corrArray = corrMatrix['vl_execution_time']
+        # corrArray = corrArray.to_frame()
+        # corrArray = corrArray.drop(index=['vl_execution_time'])
+        # corrArray = corrArray.sort_values(by='vl_execution_time', ascending=False)
+        # corrArray = corrArray.rename(columns={'vl_execution_time': 'correlation with exec. time'})
+        # print(corrArray)
+
+        # fig = plt.figure()
+        # ax = plt.gca()
+        # corrArray.plot(kind = 'barh', ax=ax)
+        # plt.xlabel('Correlation with Parallel Task Execution Time')
+        # plt.ylabel('Variables')
+        # print(ax.containers)
+        # ax.bar_label(ax.containers[0], label_type='edge', rotation=0, fmt='%.2f')
+        # ax.get_legend().remove()
+        # plt.xlim([-1, 1])
+        # plt.show()
 
 
-        # MUTUAL INFORMATION SCORES
+
+        # # SCATTER PLOT EXAMPLE
+        # df = df_filtered
+        # x_variable = 'task_computational_complexity'
+        # y_variable = 'vl_execution_time'
+        # metric_variable = y_variable
+        
+        # sns.set(style="whitegrid")
+        
+        # # Create the scatterplot
+        # plt.figure(figsize=(10, 6))  # Adjust the figure size as needed
+        # sns.scatterplot(data=df, x=x_variable, y=metric_variable, hue=y_variable, palette="viridis")
+        
+        # # Customize plot labels and title
+        # plt.xlabel(x_variable)
+        # plt.ylabel(metric_variable)
+        # plt.title(f'Scatterplot of {metric_variable} vs. {x_variable} (Colored by {y_variable})')
+        
+        # # Show the legend
+        # # plt.legend(title=y_variable, bbox_to_anchor=(1.05, 1.0), loc='upper left')
+        
+        # # Show the plot
+        # plt.show()
+
+
+        # # MUTUAL INFORMATION SCORES
         # df = df_filtered
         # y = df['vl_execution_time']  # Replace 'TargetMetric' with the actual name of your target metric column
         # X = df.drop(columns=['vl_execution_time'])  # Remove the target metric column from your features
@@ -5463,7 +5590,48 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         # mi_df.plot(x = 'Feature', y = 'Mutual_Information', kind = 'bar')
         # plt.show()
 
+        # # ADJUSTED R SQUARED
+        # # Separate your target metric (y) and predictor variables (X)
+        # df = df_filtered
+        # y = df['vl_execution_time']  # Replace 'TargetMetric' with the actual name of your target metric column
+        # # Create a DataFrame to store adjusted R-squared values for each variable
+        # adjusted_r_squared_values = []
 
+        # # Loop through each predictor variable
+        # for predictor in df.columns:
+        #     if predictor != 'TargetMetric':
+        #         # Extract the predictor variable
+        #         X = df[predictor]
+                
+        #         # Add a constant term for the intercept
+        #         X = sm.add_constant(X)
+                
+        #         # Fit a linear regression model
+        #         model = sm.OLS(y, X).fit()
+                
+        #         # Calculate the R-squared
+        #         r_squared = model.rsquared
+                
+        #         # Calculate the number of predictor variables
+        #         num_predictors = len(X.columns) - 1  # Subtract 1 for the constant term
+                
+        #         # Calculate the number of observations
+        #         num_observations = len(y)
+                
+        #         # Calculate the degrees of freedom
+        #         degrees_of_freedom = num_observations - num_predictors - 1
+                
+        #         # Calculate the adjusted R-squared
+        #         adjusted_r_squared = 1 - ((1 - r_squared) * (num_observations - 1) / degrees_of_freedom)
+                
+        #         # Append the adjusted R-squared value and variable name to the DataFrame
+        #         adjusted_r_squared_values.append({'Variable': predictor, 'Adjusted_R_Squared': adjusted_r_squared})
+
+        # # Create a DataFrame from the list of adjusted R-squared values
+        # adjusted_r_squared_df = pd.DataFrame(adjusted_r_squared_values)
+
+        # # Print or display the DataFrame with adjusted R-squared values for each variable
+        # print(adjusted_r_squared_df)
 
     else:
 
