@@ -53,15 +53,19 @@ def main():
                         C.VL_DATASET_ROW_DIMENSION,
                         C.VL_DATASET_COLUMN_DIMENSION,
                         C.NR_RANDOM_STATE,
-			            C.VL_DATA_SPARSITY
+			            C.VL_DATA_SPARSITY,
+                        C.VL_DATA_SKEWNESS
                     FROM PARAMETER A
                     INNER JOIN RESOURCE B ON (A.ID_RESOURCE = B.ID_RESOURCE)
                     INNER JOIN DATASET C ON (A.ID_DATASET = C.ID_DATASET)
-                    --WHERE
-                    --(SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = A.ID_PARAMETER_TYPE) in ('VAR_GRID_ROW_5','VAR_GRID_ROW_6','VAR_GRID_ROW_7','VAR_GRID_ROW_8','VAR_GRID_ROW_9','VAR_GRID_ROW_10')
+                    WHERE
+                    (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = A.ID_PARAMETER_TYPE) in ('VAR_GRID_ROW_5')
+                    AND B.DS_RESOURCE = 'MINOTAURO_9_NODES_1_CORE'
+                    AND C.DS_DATASET IN ('S_1GB_3')
+                    --AND A.ID_PARAMETER_TYPE = 17
+                    --(SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = A.ID_PARAMETER_TYPE) in ('VAR_GRID_SHAPE_MATMUL_1')
                     --AND B.DS_RESOURCE = 'MINOTAURO_9_NODES_1_CORE'
-                    --AND C.DS_DATASET IN ('S_10MB_1','S_100MB_1','S_1GB_1','S_10GB_1','S_100GB_1','S_1MB_1')
-                    --A.ID_PARAMETER_TYPE >= 11
+                    --AND C.DS_DATASET IN ('S_32GB_1')
                     ORDER BY A.ID_PARAMETER;"""
     
     # Get dataframe from query

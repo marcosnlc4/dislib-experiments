@@ -43,38 +43,50 @@ DECLARE
 									{MINOTAURO_2_NODES_14_CORES,2,14,1,128000000000,12000000000},
 									{MINOTAURO_9_NODES_1_CORE,9,1,1,128000000000,12000000000}
 								 }';
-	-- Data set parameters (DS_DATASET, VL_DATASET_MEMORY_SIZE, DS_DATA_TYPE, VL_DATA_TYPE_MEMORY_SIZE, VL_DATASET_DIMENSION, VL_DATASET_ROW_DIMENSION, VL_DATASET_COLUMN_DIMENSION, NR_RANDOM_STATE)
+	-- Data set parameters (DS_DATASET, VL_DATASET_MEMORY_SIZE, DS_DATA_TYPE, VL_DATA_TYPE_MEMORY_SIZE, VL_DATASET_DIMENSION, VL_DATASET_ROW_DIMENSION, VL_DATASET_COLUMN_DIMENSION, NR_RANDOM_STATE, VL_DATA_SPARSITY, VL_DATA_SKEWNESS)
 	arr_dataset_data text[] := '{
-									{S_A_1,400,FLOAT64,8,50,50,1,170,0.0},
-									{S_A_2,400,FLOAT64,8,50,10,5,170,0.0},
-									{S_A_3,400,FLOAT64,8,50,5,10,170,0.0},
-									{S_A_4,400,FLOAT64,8,50,7,7,170,0.0},
-							  		{S_B_1,400000,FLOAT64,8,50000,50000,1,170,0.0},
-									{S_B_2,400000,FLOAT64,8,50000,10000,5,170,0.0},
-									{S_B_3,400000,FLOAT64,8,50000,5000,10,170,0.0},
-									{S_B_4,400000,FLOAT64,8,50000,224,224,170,0.0},
-							  		{S_C_1,400000000,FLOAT64,8,50000000,50000000,1,170,0.0},
-									{S_C_2,400000000,FLOAT64,8,50000000,10000000,5,170,0.0},
-									{S_C_3,400000000,FLOAT64,8,50000000,5000000,10,170,0.0},
-									{S_C_4,400000000,FLOAT64,8,50000000,7071,7071,170,0.0},
-									{S_AA_1,640,FLOAT64,8,80,80,1,170,0.0},
-									{S_AA_2,640,FLOAT64,8,80,20,4,170,0.0},
-									{S_AA_3,640,FLOAT64,8,80,5,16,170,0.0},
-									{S_AA_4,640,FLOAT64,8,80,8,8,170,0.0},
-							  		{S_BB_1,640000,FLOAT64,8,80000,80000,1,170,0.0},
-									{S_BB_2,640000,FLOAT64,8,80000,20000,4,170,0.0},
-									{S_BB_3,640000,FLOAT64,8,80000,5000,16,170,0.0},
-									{S_BB_4,640000,FLOAT64,8,80000,282,282,170,0.0},
-							  		{S_CC_1,640000000,FLOAT64,8,80000000,80000000,1,170,0.0},
-									{S_CC_2,640000000,FLOAT64,8,80000000,20000000,4,170,0.0},
-									{S_CC_3,640000000,FLOAT64,8,80000000,5000000,16,170,0.0},
-									{S_CC_4,640000000,FLOAT64,8,80000000,8944,8944,170,0.0},
-									{S_10MB_1,10000000,FLOAT64,8,1250000,12500,100,170,0.0},
-									{S_100MB_1,100000000,FLOAT64,8,12500000,125000,100,170,0.0},
-									{S_1GB_1,1000000000,FLOAT64,8,125000000,1250000,100,170,0.0},
-									{S_10GB_1,10000000000,FLOAT64,8,1250000000,12500000,100,170,0.0},
-									{S_100GB_1,100000000000,FLOAT64,8,12500000000,125000000,100,170,0.0},
-									{S_1MB_1,1000000,FLOAT64,8,125000,1250,100,170,0.0}
+									{S_A_1,400,FLOAT64,8,50,50,1,170,0.0,0.0},
+									{S_A_2,400,FLOAT64,8,50,10,5,170,0.0,0.0},
+									{S_A_3,400,FLOAT64,8,50,5,10,170,0.0,0.0},
+									{S_A_4,400,FLOAT64,8,50,7,7,170,0.0,0.0},
+							  		{S_B_1,400000,FLOAT64,8,50000,50000,1,170,0.0,0.0},
+									{S_B_2,400000,FLOAT64,8,50000,10000,5,170,0.0,0.0},
+									{S_B_3,400000,FLOAT64,8,50000,5000,10,170,0.0,0.0},
+									{S_B_4,400000,FLOAT64,8,50000,224,224,170,0.0,0.0},
+							  		{S_C_1,400000000,FLOAT64,8,50000000,50000000,1,170,0.0,0.0},
+									{S_C_2,400000000,FLOAT64,8,50000000,10000000,5,170,0.0,0.0},
+									{S_C_3,400000000,FLOAT64,8,50000000,5000000,10,170,0.0,0.0},
+									{S_C_4,400000000,FLOAT64,8,50000000,7071,7071,170,0.0,0.0},
+									{S_AA_1,640,FLOAT64,8,80,80,1,170,0.0,0.0},
+									{S_AA_2,640,FLOAT64,8,80,20,4,170,0.0,0.0},
+									{S_AA_3,640,FLOAT64,8,80,5,16,170,0.0,0.0},
+									{S_AA_4,640,FLOAT64,8,80,8,8,170,0.0,0.0},
+							  		{S_BB_1,640000,FLOAT64,8,80000,80000,1,170,0.0,0.0},
+									{S_BB_2,640000,FLOAT64,8,80000,20000,4,170,0.0,0.0},
+									{S_BB_3,640000,FLOAT64,8,80000,5000,16,170,0.0,0.0},
+									{S_BB_4,640000,FLOAT64,8,80000,282,282,170,0.0,0.0},
+							  		{S_CC_1,640000000,FLOAT64,8,80000000,80000000,1,170,0.0,0.0},
+									{S_CC_2,640000000,FLOAT64,8,80000000,20000000,4,170,0.0,0.0},
+									{S_CC_3,640000000,FLOAT64,8,80000000,5000000,16,170,0.0,0.0},
+									{S_CC_4,640000000,FLOAT64,8,80000000,8944,8944,170,0.0,0.0},
+									{S_10MB_1,10000000,FLOAT64,8,1250000,12500,100,170,0.0,0.0},
+									{S_100MB_1,100000000,FLOAT64,8,12500000,125000,100,170,0.0,0.0},
+									{S_1GB_1,1000000000,FLOAT64,8,125000000,1250000,100,170,0.0,0.0},
+									{S_10GB_1,10000000000,FLOAT64,8,1250000000,12500000,100,170,0.0,0.0},
+									{S_100GB_1,100000000000,FLOAT64,8,12500000000,125000000,100,170,0.0,0.0},
+									{S_1MB_1,1000000,FLOAT64,8,125000,1250,100,170,0.0,0.0},
+									{S_10MB_2,10000000,FLOAT64,8,1250000,12500,100,170,0.0,1.0},
+									{S_100MB_2,100000000,FLOAT64,8,12500000,125000,100,170,0.0,1.0},
+									{S_1GB_2,1000000000,FLOAT64,8,125000000,1250000,100,170,0.0,1.0},
+									{S_10GB_2,10000000000,FLOAT64,8,1250000000,12500000,100,170,0.0,1.0},
+									{S_100GB_2,100000000000,FLOAT64,8,12500000000,125000000,100,170,0.0,1.0},
+									{S_1MB_2,1000000,FLOAT64,8,125000,1250,100,170,0.0,1.0},
+									{S_10MB_3,10000000,FLOAT64,8,1250000,12500,100,170,0.0,0.5},
+									{S_100MB_3,100000000,FLOAT64,8,12500000,125000,100,170,0.0,0.5},
+									{S_1GB_3,1000000000,FLOAT64,8,125000000,1250000,100,170,0.0,0.5},
+									{S_10GB_3,10000000000,FLOAT64,8,1250000000,12500000,100,170,0.0,0.5},
+									{S_100GB_3,100000000000,FLOAT64,8,12500000000,125000000,100,170,0.0,0.5},
+									{S_1MB_3,1000000,FLOAT64,8,125000,1250,100,170,0.0,0.5}
 								}';
 	-- Number of repetitions for each parameter set
 	arr_nr_iteration bigint[] := '{
@@ -89,34 +101,34 @@ DECLARE
 	-- VAR_CORES_CLUSTER_1: grid_row_dimension__grid_column_dimension
 	-- VAR_CORES_SINGLE_NODE_1: grid_row_dimension__grid_column_dimension
 	arr_parameter_type_data text[] := '{
-									{VAR_BLOCK_CAPACITY_SIZE,0.25,TrunkCT,0.6.4,default,10,GPFS},
-									{VAR_BLOCK_CAPACITY_SIZE,0.50,TrunkCT,0.6.4,default,10,GPFS},
-									{VAR_BLOCK_CAPACITY_SIZE,0.75,TrunkCT,0.6.4,default,10,GPFS},
-									{VAR_BLOCK_CAPACITY_SIZE,1.00,TrunkCT,0.6.4,default,10,GPFS},
-									{VAR_PARALLELISM_LEVEL,MIN_INTER_MAX_INTRA,TrunkCT,0.6.4,default,10,GPFS},
-									{VAR_PARALLELISM_LEVEL,MAX_INTER_MIN_INTRA,TrunkCT,0.6.4,default,10,GPFS},
-									{VAR_GRID_ROW,2MAXCORES_1,TrunkCT,0.6.4,default,10,GPFS},
-									{VAR_GRID_COLUMN,MAXCORES_0.1,TrunkCT,0.6.4,default,10,GPFS},
-									{VAR_CORES_CLUSTER_1,MAXCORES_1,TrunkCT,0.6.4,default,10,GPFS},
-									{VAR_CORES_SINGLE_NODE_1,SINGLEMAXCORES_1,TrunkCT,0.6.4,default,10,GPFS},
-									{VAR_GRID_ROW_2,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS},
-									{VAR_GRID_ROW_3,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS},
-									{VAR_GRID_ROW_4,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS},
-									{VAR_CORES_CLUSTER_2,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS},
-									{VAR_CORES_CLUSTER_3,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS},
-									{VAR_CORES_CLUSTER_4,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS},
-									{VAR_GRID_ROW_5,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS},
-									{VAR_GRID_ROW_6,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS},
-									{VAR_GRID_ROW_7,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS},
-									{VAR_GRID_ROW_8,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,10,LOCAL_DISK},
-									{VAR_GRID_ROW_9,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,100,LOCAL_DISK},
-									{VAR_GRID_ROW_10,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,1000,LOCAL_DISK},
-									{VAR_GRID_ROW_11,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,LOCAL_DISK},
-									{VAR_GRID_ROW_12,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,LOCAL_DISK},
-									{VAR_GRID_ROW_13,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,LOCAL_DISK},
-									{VAR_GRID_ROW_14,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,10,GPFS},
-									{VAR_GRID_ROW_15,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,100,GPFS},
-									{VAR_GRID_ROW_16,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,1000,GPFS}
+									{VAR_BLOCK_CAPACITY_SIZE,0.25,TrunkCT,0.6.4,default,10,GPFS,FALSE},
+									{VAR_BLOCK_CAPACITY_SIZE,0.50,TrunkCT,0.6.4,default,10,GPFS,FALSE},
+									{VAR_BLOCK_CAPACITY_SIZE,0.75,TrunkCT,0.6.4,default,10,GPFS,FALSE},
+									{VAR_BLOCK_CAPACITY_SIZE,1.00,TrunkCT,0.6.4,default,10,GPFS,FALSE},
+									{VAR_PARALLELISM_LEVEL,MIN_INTER_MAX_INTRA,TrunkCT,0.6.4,default,10,GPFS,FALSE},
+									{VAR_PARALLELISM_LEVEL,MAX_INTER_MIN_INTRA,TrunkCT,0.6.4,default,10,GPFS,FALSE},
+									{VAR_GRID_ROW,2MAXCORES_1,TrunkCT,0.6.4,default,10,GPFS,FALSE},
+									{VAR_GRID_COLUMN,MAXCORES_0.1,TrunkCT,0.6.4,default,10,GPFS,FALSE},
+									{VAR_CORES_CLUSTER_1,MAXCORES_1,TrunkCT,0.6.4,default,10,GPFS,FALSE},
+									{VAR_CORES_SINGLE_NODE_1,SINGLEMAXCORES_1,TrunkCT,0.6.4,default,10,GPFS,FALSE},
+									{VAR_GRID_ROW_2,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS,FALSE},
+									{VAR_GRID_ROW_3,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS,FALSE},
+									{VAR_GRID_ROW_4,2MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS,FALSE},
+									{VAR_CORES_CLUSTER_2,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS,FALSE},
+									{VAR_CORES_CLUSTER_3,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS,FALSE},
+									{VAR_CORES_CLUSTER_4,MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS,FALSE},
+									{VAR_GRID_ROW_5,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,GPFS,FALSE},
+									{VAR_GRID_ROW_6,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,GPFS,FALSE},
+									{VAR_GRID_ROW_7,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,GPFS,FALSE},
+									{VAR_GRID_ROW_8,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,10,LOCAL_DISK,FALSE},
+									{VAR_GRID_ROW_9,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,100,LOCAL_DISK,FALSE},
+									{VAR_GRID_ROW_10,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,1000,LOCAL_DISK,FALSE},
+									{VAR_GRID_ROW_11,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,10,LOCAL_DISK,FALSE},
+									{VAR_GRID_ROW_12,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,100,LOCAL_DISK,FALSE},
+									{VAR_GRID_ROW_13,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.orderstrict.fifo.FifoTS,1000,LOCAL_DISK,FALSE},
+									{VAR_GRID_ROW_14,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,10,GPFS,FALSE},
+									{VAR_GRID_ROW_15,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,100,GPFS,FALSE},
+									{VAR_GRID_ROW_16,32MAXCORES_1,TrunkCT,0.6.4,es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS,1000,GPFS,FALSE}
 								}';
 								
 	arr_id_resource bigint[];
@@ -287,6 +299,7 @@ BEGIN
 				  AND VL_DATASET_COLUMN_DIMENSION = CAST(arr_text_iterator[7] AS BIGINT)
 				  AND NR_RANDOM_STATE = CAST(arr_text_iterator[8] AS BIGINT)
 				  AND VL_DATA_SPARSITY = CAST(arr_text_iterator[9] AS DOUBLE PRECISION)
+				  AND VL_DATA_SKEWNESS = CAST(arr_text_iterator[10] AS DOUBLE PRECISION)
 				 )
 		THEN
 		
@@ -303,7 +316,8 @@ BEGIN
 								VL_DATASET_ROW_DIMENSION,
 								VL_DATASET_COLUMN_DIMENSION,
 								NR_RANDOM_STATE,
-								VL_DATA_SPARSITY)
+								VL_DATA_SPARSITY,
+								VL_DATA_SKEWNESS)
 			VALUES
 			(DEFAULT,
 			 arr_text_iterator[1],
@@ -314,7 +328,8 @@ BEGIN
 			 CAST(arr_text_iterator[6] AS BIGINT),
 			 CAST(arr_text_iterator[7] AS BIGINT),
 			 CAST(arr_text_iterator[8] AS BIGINT),
-			 CAST(arr_text_iterator[9] AS BIGINT));
+			 CAST(arr_text_iterator[9] AS DOUBLE PRECISION),
+			 CAST(arr_text_iterator[10] AS DOUBLE PRECISION));
 		
 		END IF;
 	
@@ -496,7 +511,8 @@ BEGIN
 		VL_DATASET_ROW_DIMENSION BIGINT,
 		VL_DATASET_COLUMN_DIMENSION BIGINT,
 		NR_RANDOM_STATE BIGINT,
-		VL_DATA_SPARSITY DOUBLE PRECISION
+		VL_DATA_SPARSITY DOUBLE PRECISION,
+		VL_DATA_SKEWNESS DOUBLE PRECISION
 	);
 
 	CREATE TABLE PARAMETER_TYPE
@@ -1039,12 +1055,15 @@ BEGIN
 		
 	-- ELSIF (var_ds_parameter_type = 'VAR_GRID_ROW' or var_ds_parameter_type = 'VAR_GRID_ROW_2' or var_ds_parameter_type = 'VAR_GRID_ROW_3' or var_ds_parameter_type = 'VAR_GRID_ROW_4')
 	--ELSIF (var_ds_parameter_type = 'VAR_GRID_ROW_5' or var_ds_parameter_type = 'VAR_GRID_ROW_6' or var_ds_parameter_type = 'VAR_GRID_ROW_7')
-	ELSIF (var_ds_parameter_type = 'VAR_GRID_ROW_11' or var_ds_parameter_type = 'VAR_GRID_ROW_12' or var_ds_parameter_type = 'VAR_GRID_ROW_13' or var_ds_parameter_type = 'VAR_GRID_ROW_14' or var_ds_parameter_type = 'VAR_GRID_ROW_15' or var_ds_parameter_type = 'VAR_GRID_ROW_16')
+	--ELSIF (var_ds_parameter_type = 'VAR_GRID_ROW_11' or var_ds_parameter_type = 'VAR_GRID_ROW_12' or var_ds_parameter_type = 'VAR_GRID_ROW_13' or var_ds_parameter_type = 'VAR_GRID_ROW_14' or var_ds_parameter_type = 'VAR_GRID_ROW_15' or var_ds_parameter_type = 'VAR_GRID_ROW_16')
+	ELSIF (var_ds_parameter_type = 'VAR_GRID_ROW_5' or var_ds_parameter_type = 'VAR_GRID_ROW_6' or var_ds_parameter_type = 'VAR_GRID_ROW_7' or var_ds_parameter_type = 'VAR_GRID_ROW_8' or var_ds_parameter_type = 'VAR_GRID_ROW_9' or var_ds_parameter_type = 'VAR_GRID_ROW_10')
 	-- ELSIF (false)
 	THEN
 
 		arr_id_resource := ARRAY(SELECT DISTINCT ID_RESOURCE FROM RESOURCE WHERE ID_RESOURCE = 18 ORDER BY ID_RESOURCE);
-		arr_id_dataset := ARRAY(SELECT DISTINCT ID_DATASET FROM DATASET WHERE DS_DATASET IN ('S_1MB_1','S_10MB_1','S_100MB_1','S_1GB_1','S_10GB_1','S_100GB_1') ORDER BY ID_DATASET);
+		-- arr_id_dataset := ARRAY(SELECT DISTINCT ID_DATASET FROM DATASET WHERE DS_DATASET IN ('S_1MB_1','S_10MB_1','S_100MB_1','S_1GB_1','S_10GB_1','S_100GB_1') ORDER BY ID_DATASET);
+		--arr_id_dataset := ARRAY(SELECT DISTINCT ID_DATASET FROM DATASET WHERE DS_DATASET IN ('S_1MB_2','S_10MB_2','S_100MB_2','S_1GB_2','S_10GB_2','S_100GB_2') ORDER BY ID_DATASET);
+		arr_id_dataset := ARRAY(SELECT DISTINCT ID_DATASET FROM DATASET WHERE DS_DATASET IN ('S_1MB_3','S_10MB_3','S_100MB_3','S_1GB_3','S_10GB_3','S_100GB_3') ORDER BY ID_DATASET);
 
 		param_grid_row_dimension := split_part(var_ds_parameter_attribute,'_',1);
 		param_grid_column_dimension := split_part(var_ds_parameter_attribute,'_',2);

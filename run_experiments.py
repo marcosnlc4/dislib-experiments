@@ -180,6 +180,7 @@ def main():
         vl_dataset_column_dimension = row["vl_dataset_column_dimension"]
         nr_random_state = row["nr_random_state"]
         vl_data_sparsity = row["vl_data_sparsity"]
+        vl_data_skewness = row["vl_data_skewness"]
 
         execution_progress = round((current_execution/df_parameters.shape[0])*100,2)
         print("\n@@@@@@ EXECUTION PROGRESS:",str(execution_progress),"%\n")
@@ -209,7 +210,7 @@ def main():
             if ds_algorithm == "KMEANS":
 
                 # generate and load data into a ds-array
-                dis_x = ds.random_array((vl_dataset_row_dimension, vl_dataset_column_dimension), (vl_block_row_dimension, vl_block_column_dimension), random_state=nr_random_state)
+                dis_x = ds.random_array((vl_dataset_row_dimension, vl_dataset_column_dimension), (vl_block_row_dimension, vl_block_column_dimension), random_state=nr_random_state, data_skewness=vl_data_skewness)
                 
                 if ds_device == "GPU":
 
@@ -259,7 +260,7 @@ def main():
 
                 # generate and load data into a ds-array
                 if vl_data_sparsity == 0.0:
-                    x = ds.random_array((vl_dataset_row_dimension, vl_dataset_column_dimension), (vl_block_row_dimension, vl_block_column_dimension), random_state=nr_random_state)
+                    x = ds.random_array((vl_dataset_row_dimension, vl_dataset_column_dimension), (vl_block_row_dimension, vl_block_column_dimension), random_state=nr_random_state, data_skewness=vl_data_skewness)
                 elif (vl_data_sparsity == 1.0) & (ds_data_type == 'FLOAT64'):
                     x = ds.array(csr_matrix((vl_dataset_row_dimension, vl_dataset_column_dimension), dtype = np.float64).toarray(), block_size=(vl_block_row_dimension, vl_block_column_dimension))
                 else:
