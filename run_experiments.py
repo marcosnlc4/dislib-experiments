@@ -91,7 +91,7 @@ def main():
     #                             ].sort_values(by=["id_parameter"])
 
     # Filtering and sorting parameters (TEST)
-    df_parameters = df_parameters[(df_parameters["id_parameter"] != 14433) & (df_parameters["id_parameter"] != 14434) & (df_parameters["id_parameter"] != 14435) & (df_parameters["id_parameter"] != 14436) & (df_parameters["id_parameter"] != 14437) & (df_parameters["id_parameter"] != 14438) & (df_parameters["id_parameter"] != 14439) & (df_parameters["id_parameter"] != 14440) & (df_parameters["id_parameter"] != 14441) & (df_parameters["id_parameter"] != 14442)].sort_values(by=["id_parameter"])
+    df_parameters = df_parameters[(df_parameters["id_parameter"] != 56) & (df_parameters["id_parameter"] != 65) & (df_parameters["id_parameter"] != 66) & (df_parameters["id_parameter"] != 67) & (df_parameters["id_parameter"] != 68) & (df_parameters["id_parameter"] != 69) & (df_parameters["id_parameter"] != 70) & (df_parameters["id_parameter"] != 71) & (df_parameters["id_parameter"] != 72)].sort_values(by=["id_parameter"])
     # df_parameters = df_parameters[(df_parameters["id_parameter"] == 11841) | (df_parameters["id_parameter"] == 11842)]
     # df_parameters = df_parameters[(df_parameters["id_parameter"] == 7531)]
 
@@ -319,24 +319,36 @@ def main():
                 if ds_device == "GPU":
 
                     # execution 1 - extract intra execution times with CUDA events
+                    compss_barrier()
                     ds.dot(A, A, C, id_device=4, id_parameter=id_parameter, nr_algorithm_iteration=i)
+                    compss_barrier()
 
                     # execution 2 - extract total and inter execution times with synchornized function calls
+                    compss_barrier()
                     ds.dot(A, A, C, id_device=6, id_parameter=id_parameter, nr_algorithm_iteration=i)
+                    compss_barrier()
 
                     # execution 3 - extract total execution time for GPU (id_device = 2)
+                    compss_barrier()
                     ds.dot(A, A, C, id_device=2, id_parameter=id_parameter, nr_algorithm_iteration=i)
+                    compss_barrier()
 
                 else:
 
                     # execution 1 - extract intra execution times with synchornized function calls
+                    compss_barrier()
                     ds.dot(A, A, C, id_device=3, id_parameter=id_parameter, nr_algorithm_iteration=i)
+                    compss_barrier()
 
                     # execution 2 - extract total and inter execution times with synchornized function calls
+                    compss_barrier()
                     ds.dot(A, A, C, id_device=5, id_parameter=id_parameter, nr_algorithm_iteration=i)
+                    compss_barrier()
 
                     # execution 3 - extract total execution time for CPU (id_device = 1)
+                    compss_barrier()
                     ds.dot(A, A, C, id_device=1, id_parameter=id_parameter, nr_algorithm_iteration=i)
+                    compss_barrier()
 
             else:
                 print("Invalid Algorithm!")

@@ -34,7 +34,8 @@ def open_connection():
 
         # Set schema
         # cur.execute("SET search_path = user_dev,schema_dev;") #KMEANS
-        cur.execute("SET search_path = user_dev,schema_dev_matmul;") #MATMUL
+        # cur.execute("SET search_path = user_dev,schema_dev_matmul;") #MATMUL
+        cur.execute("SET search_path = user_dev,schema_dev_matmul_fma;") #MATMUL FMA
 
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)
