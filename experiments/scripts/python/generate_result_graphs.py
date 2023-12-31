@@ -2434,13 +2434,20 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                             D.VL_DATASET_ROW_DIMENSION,
                             D.VL_DATASET_COLUMN_DIMENSION,
                             D.VL_DATASET_ROW_DIMENSION || ' x ' || D.VL_DATASET_COLUMN_DIMENSION AS VL_DATASET_ROW_X_COLUMN_DIMENSION,
-                            D.NR_RANDOM_STATE
+                            D.NR_RANDOM_STATE,
+                            CASE
+                                WHEN (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) = 'CPU' AND D.VL_DATA_SKEWNESS = 0 THEN 'CPU NOT SKEWED'
+                                WHEN (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) = 'CPU' AND D.VL_DATA_SKEWNESS = 0.5 THEN 'CPU SKEWED'
+                                WHEN (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) = 'GPU' AND D.VL_DATA_SKEWNESS = 0 THEN 'GPU NOT SKEWED'
+                                WHEN (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) = 'GPU' AND D.VL_DATA_SKEWNESS = 0.5 THEN 'GPU SKEWED'
+                            ELSE ''
+                            END AS DEVICE_SKEWNESS
                         FROM EXPERIMENT A
                         INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER)
                         INNER JOIN RESOURCE C ON (B.ID_RESOURCE = C.ID_RESOURCE)
                         INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
-                        WHERE
-                        A.VL_TOTAL_EXECUTION_TIME is not null
+                        --WHERE
+                        --A.VL_TOTAL_EXECUTION_TIME is not null
                         --(SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) <> 'MAX_INTER_MIN_INTRA'
                         --AND DATE_TRUNC('day', A.DT_PROCESSING) < TO_DATE('15/11/2022', 'dd/mm/yyyy')
                         
@@ -2511,7 +2518,14 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                         Y.VL_DATASET_ROW_DIMENSION,
                         Y.VL_DATASET_COLUMN_DIMENSION,
                         Y.VL_DATASET_ROW_X_COLUMN_DIMENSION,
-                        Y.NR_RANDOM_STATE
+                        Y.NR_RANDOM_STATE,
+                        CASE
+                            WHEN Y.DS_DEVICE = 'CPU' AND Y.VL_DATA_SKEWNESS = 0 THEN 'CPU NOT SKEWED'
+                            WHEN Y.DS_DEVICE = 'CPU' AND Y.VL_DATA_SKEWNESS = 0.5 THEN 'CPU SKEWED'
+                            WHEN Y.DS_DEVICE = 'GPU' AND Y.VL_DATA_SKEWNESS = 0 THEN 'GPU NOT SKEWED'
+                            WHEN Y.DS_DEVICE = 'GPU' AND Y.VL_DATA_SKEWNESS = 0.5 THEN 'GPU SKEWED'
+                            ELSE ''
+                        END AS DEVICE_SKEWNESS
                         FROM
                         (
                             SELECT
@@ -2580,7 +2594,9 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                             X.VL_DATASET_ROW_DIMENSION,
                             X.VL_DATASET_COLUMN_DIMENSION,
                             X.VL_DATASET_ROW_X_COLUMN_DIMENSION,
-                            X.NR_RANDOM_STATE
+                            X.NR_RANDOM_STATE,
+							X.VL_DATA_SPARSITY,
+							X.VL_DATA_SKEWNESS
                             FROM
                             (
                                 SELECT
@@ -2650,14 +2666,34 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                     D.VL_DATASET_ROW_DIMENSION,
                                     D.VL_DATASET_COLUMN_DIMENSION,
                                     D.VL_DATASET_ROW_DIMENSION || ' x ' || D.VL_DATASET_COLUMN_DIMENSION AS VL_DATASET_ROW_X_COLUMN_DIMENSION,
-                                    D.NR_RANDOM_STATE
+                                    D.NR_RANDOM_STATE,
+									D.VL_DATA_SPARSITY,
+									D.VL_DATA_SKEWNESS
                                 FROM EXPERIMENT_RAW A
                                 INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER)
                                 INNER JOIN RESOURCE C ON (B.ID_RESOURCE = C.ID_RESOURCE)
                                 INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
                                 WHERE
-                                A.NR_ALGORITHM_ITERATION <> 0
+                                --A.NR_ALGORITHM_ITERATION <> 0
                                 --AND DATE_TRUNC('day', A.DT_PROCESSING) < TO_DATE('15/11/2022', 'dd/mm/yyyy')
+                                --FILTERS TO REMOVE TOP 10 OUTLIERS IN SKEWNED DATASET EXPERIMENTS (WHERE JUST 1 EXECUTION WAS DONE) 
+                                --AND A.ID_EXPERIMENT NOT IN () -- GRID ROW DIM 1 SKEWED ('S_1GB_1') -- NO NEED TO FILTER (ONLY ONE TASK)
+                                --AND A.ID_EXPERIMENT NOT IN () -- GRID ROW DIM 1 NOT SKEWED ('S_1GB_3') -- NO NEED TO FILTER (ONLY ONE TASK)
+                                A.ID_EXPERIMENT NOT IN (784797,784799,784798) -- GRID ROW DIM 2 SKEWED ('S_1GB_1')
+                                AND A.ID_EXPERIMENT NOT IN (779557,779558,779559) -- GRID ROW DIM 2 NOT SKEWED ('S_1GB_3')
+                                AND A.ID_EXPERIMENT NOT IN (784838,784839,784836,784845,784837,784847,784844) -- GRID ROW DIM 4 SKEWED ('S_1GB_1')
+                                AND A.ID_EXPERIMENT NOT IN (779598,779599,779609,779614,779610,779597,779604) -- GRID ROW DIM 4 NOT SKEWED ('S_1GB_3')
+                                AND A.ID_EXPERIMENT NOT IN (784911,784913,784912,784910,784909,784908,784944,784929,784928,784938) -- GRID ROW DIM 8 SKEWED ('S_1GB_1')
+                                AND A.ID_EXPERIMENT NOT IN (779672,779671,779673,779670,779668,779669,779667,779676,779683,779677) -- GRID ROW DIM 8 NOT SKEWED ('S_1GB_3')
+                                AND A.ID_EXPERIMENT NOT IN (785049,785048,785046,785047,785038,785039,785057,785095,785067,785060) -- GRID ROW DIM 16 SKEWED ('S_1GB_1')
+                                AND A.ID_EXPERIMENT NOT IN (779805,779807,779806,779810,779811,779808,779809,779800,779799,779798) -- GRID ROW DIM 16 NOT SKEWED ('S_1GB_3')
+                                AND A.ID_EXPERIMENT NOT IN (785321,785320,785323,785322,785310,785309,785311,785308,785317,785318) -- GRID ROW DIM 32 SKEWED ('S_1GB_1')
+                                AND A.ID_EXPERIMENT NOT IN (780079,780078,780074,780075,780076,780077,780083,780082,780081,780080) -- GRID ROW DIM 32 NOT SKEWED ('S_1GB_3')
+                                AND A.ID_EXPERIMENT NOT IN (785827,785832,785825,785826,785828,785834,785824,785823,786016,786080) -- GRID ROW DIM 64 SKEWED ('S_1GB_1')
+                                AND A.ID_EXPERIMENT NOT IN (780603,780602,780607,780606,780601,780605,780568,780565,780589,780567) -- GRID ROW DIM 64 NOT SKEWED ('S_1GB_3')
+                                AND A.ID_EXPERIMENT NOT IN (786781,786784,786780,786783,786793,786827,786812,786807,786808,786803) -- GRID ROW DIM 128 SKEWED ('S_1GB_1')
+                                AND A.ID_EXPERIMENT NOT IN (781551,781549,781548,781544,781545,781541,781546,781540,781562,781542) -- GRID ROW DIM 128 NOT SKEWED ('S_1GB_3')
+                                AND A.ID_EXPERIMENT NOT IN (788843,788847,788728,788729,788735,788734,788739,788738,788727,788733) -- GRID ROW DIM 256 SKEWED ('S_1GB_1')
                             ) X
                             GROUP BY
                             X.ID_PARAMETER,
@@ -2706,7 +2742,9 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                             X.VL_DATASET_ROW_DIMENSION,
                             X.VL_DATASET_COLUMN_DIMENSION,
                             X.VL_DATASET_ROW_X_COLUMN_DIMENSION,
-                            X.NR_RANDOM_STATE
+                            X.NR_RANDOM_STATE,
+							X.VL_DATA_SPARSITY,
+							X.VL_DATA_SKEWNESS
                         ) Y
                         ORDER BY ID_PARAMETER;"""
     
@@ -2786,10 +2824,12 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                         & (df["nr_iterations"] == int(nr_iterations)) # FIXED VALUE
                         & (df["ds_resource"] == ds_resource.upper()) # FIXED VALUE
                         # & (df["ds_dataset"].isin(["S_1MB_1","S_10MB_1","S_100MB_1","S_1GB_1","S_10GB_1","S_100GB_1"])) # FIXED VALUE
-                        & (df["ds_dataset"] == "S_10GB_1")
+                        # & (df["ds_dataset"] == "S_1GB_1")
                         # & (df["vl_grid_row_dimension"] == 2)
                         # & (df["ds_dataset"].isin(["S_10GB_1"]))
-                        & (df["ds_parameter_type"] == "VAR_GRID_ROW_7")
+                        # & (df["ds_device"] == "GPU")
+                        & (df["ds_dataset"].isin(["S_1GB_1","S_1GB_3"])) #mode 1555 only
+                        & (df["ds_parameter_type"] == "VAR_GRID_ROW_5")
                         ]
         # # # General filtering and sorting parameters - V3 (VAR_CORES_CLUSTER_1 and VAR_CORES_SINGLE_NODE_1)
         # df_filtered = df[
@@ -4551,6 +4591,93 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
             # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_avg_vl_intra_task_execution_time_free_additional_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
 
+    elif mode == 1555:
+
+        matplotlib.rcParams.update({'font.size': 16})
+
+        print("\nMode ",mode,": Plotting intra-task execution times x grid and block shapes, without parameter filters")
+
+        ds_dataset = df_filtered["ds_dataset"].unique()
+        ds_dataset = '(' + ', '.join(ds_dataset) + ')'
+        
+        # Define the size of the overall chart area in inches
+        chart_width = 6.4
+        chart_height = 4.8
+
+        # Create a figure with a fixed size
+        fig = plt.figure(figsize=(chart_width, chart_height))
+
+        # Define the size and position of the plot area within the chart
+        #BEST
+        # left_margin = 0.25
+        # bottom_margin = 0.08
+        # plot_width = 1
+        # plot_height = 1
+
+        left_margin = 0.15
+        bottom_margin = -0.15
+        plot_width = 1
+        plot_height = 1
+
+
+        # Calculate the position of the plot area
+        plot_left = left_margin
+        plot_bottom = bottom_margin
+        plot_right = left_margin + plot_width
+        plot_top = bottom_margin + plot_height
+
+        # Create the plot within the defined plot area
+        ax = fig.add_axes([plot_left, plot_bottom, plot_width, plot_height])
+
+
+        x_value_list = ['vl_concat_block_size_mb_grid_row_x_column_dimension']
+
+        for x_value in x_value_list:
+
+            if x_value == 'vl_concat_grid_row_x_column_dimension_block_size_mb':
+                x_value_title = 'Grid Shape (Block Size MB)'
+            elif x_value == 'vl_concat_block_size_mb_grid_row_x_column_dimension':
+                x_value_title = 'Block Size MB (Grid Shape)'
+            
+            df_filtered_mean = df_filtered.groupby([x_value,'device_skewness'], as_index=False).mean()
+
+            df_filtered_mean.sort_values(by=['vl_grid_row_dimension'], ascending=[False], inplace=True)
+            
+            df_filtered_mean = df_filtered_mean[[x_value,'device_skewness','vl_intra_task_execution_time_full_func']]
+            
+            plt.figure(2)
+            X_axis = np.arange(len(df_filtered_mean[x_value].drop_duplicates()))
+            plt.bar(X_axis - 0.2, df_filtered_mean[(df_filtered_mean.device_skewness=="CPU NOT SKEWED")]["vl_intra_task_execution_time_full_func"], 0.3, label = "Dataset 0% Skewed", color='C0', alpha = 0.25, zorder=3)
+            plt.bar(X_axis + 0.2, df_filtered_mean[(df_filtered_mean.device_skewness=="CPU SKEWED")]["vl_intra_task_execution_time_full_func"], 0.3, label = "Dataset 50% Skewed", color='C0', alpha = 0.25, hatch='oo', zorder=3)
+            plt.xticks(X_axis, df_filtered_mean[x_value].drop_duplicates(), rotation=90)
+            plt.xlabel(x_value_title)
+            plt.ylabel('User Code Exec. Time CPU (s)')
+            # plt.title('$T_{w\_intra}$ Time x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0,axis='y')
+            plt.figlegend(loc='upper center', ncol=2, frameon=False)
+            plt.ylim([0, 2.5])
+            # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=len(df_filtered_mean[x_value].drop_duplicates()))
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_CPU_avg_intra_task_composition_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_CPU_avg_intra_task_composition_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
+
+
+            plt.figure(3)
+            X_axis = np.arange(len(df_filtered_mean[x_value].drop_duplicates()))
+            plt.bar(X_axis - 0.2, df_filtered_mean[(df_filtered_mean.device_skewness=="GPU NOT SKEWED")]["vl_intra_task_execution_time_full_func"], 0.3, label = "Dataset 0% Skewed", color='C0', alpha = 0.25, zorder=3)
+            plt.bar(X_axis + 0.2, df_filtered_mean[(df_filtered_mean.device_skewness=="GPU SKEWED")]["vl_intra_task_execution_time_full_func"], 0.3, label = "Dataset 50% Skewed", color='C0', alpha = 0.25, hatch='oo', zorder=3)
+            plt.xticks(X_axis, df_filtered_mean[x_value].drop_duplicates(), rotation=90)
+            plt.xlabel(x_value_title)
+            plt.ylabel('User Code Exec. Time GPU (s)')
+            # plt.title('$T_{w\_intra}$ Time x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
+            plt.grid(zorder=0,axis='y')
+            plt.figlegend(loc='upper center', ncol=2, frameon=False)
+            plt.ylim([0, 2.5])
+            # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=len(df_filtered_mean[x_value].drop_duplicates()))
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_GPU_avg_intra_task_composition_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_GPU_avg_intra_task_composition_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
+
+
+
     elif mode == 16:
 
         print("\nMode ",mode,": Plotting all execution times x block memory size and percent memory size, without parameter filters")
@@ -5386,15 +5513,15 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         ax1 = ax.twinx()
 
         plt.plot(df_filtered_right['concat_grid_row_x_column_dim_block_size'], df_filtered_right['vl_intra_task_execution_time_device_func'], color='C2', linestyle = '-', label='Parallel Fraction', zorder=3, linewidth=2.5)
-        # plt.plot(df_filtered_right['concat_grid_row_x_column_dim_block_size'], df_filtered_right['vl_intra_task_overhead'], color='C0', linestyle = '-.', label='Serial Fraction + CPU-GPU Comm.', zorder=3, linewidth=2.5)#KMEANS
-        plt.plot(df_filtered_right['concat_grid_row_x_column_dim_block_size'], df_filtered_right['vl_intra_task_overhead'], color='C0', linestyle = '-.', label='CPU-GPU Comm.                           ', zorder=3, linewidth=2.5)#MATMUL
+        plt.plot(df_filtered_right['concat_grid_row_x_column_dim_block_size'], df_filtered_right['vl_intra_task_overhead'], color='C0', linestyle = '-.', label='Serial Fraction + CPU-GPU Comm.', zorder=3, linewidth=2.5)#KMEANS
+        # plt.plot(df_filtered_right['concat_grid_row_x_column_dim_block_size'], df_filtered_right['vl_intra_task_overhead'], color='C0', linestyle = '-.', label='CPU-GPU Comm.                           ', zorder=3, linewidth=2.5)#MATMUL
         plt.plot(df_filtered_right['concat_grid_row_x_column_dim_block_size'], df_filtered_right['vl_inter_overhead'], color='C1', linestyle = '--', label='Data Serialization + Deserialization', zorder=3, linewidth=2.5)
         plt.yscale("log")
         plt.ylabel('Average Execution Time (s)')
-        plt.ylim([1e-2, 2e3])
+        plt.ylim([1e-2, 1e4])
 
-        # plt.figlegend(loc=(0.018,0.861), ncol=2, frameon=False)#KMEANS
-        plt.figlegend(loc=(-0.000,0.861), ncol=2, frameon=False)#MATMUL
+        plt.figlegend(loc=(0.018,0.861), ncol=2, frameon=False)#KMEANS
+        # plt.figlegend(loc=(-0.000,0.861), ncol=2, frameon=False)#MATMUL
         ax.tick_params(axis='x', labelrotation = 90)
 
 

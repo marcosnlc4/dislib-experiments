@@ -891,10 +891,10 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                             INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
                                             WHERE
                                             (SELECT DISTINCT Z.DS_DEVICE FROM FUNCTION W INNER JOIN DEVICE Z ON (W.ID_DEVICE = Z.ID_DEVICE) WHERE W.ID_FUNCTION = B.ID_FUNCTION) = 'CPU'
-                                            AND A.NR_ALGORITHM_ITERATION <> 0
+                                            --AND A.NR_ALGORITHM_ITERATION <> 0
                                         ) X
-										WHERE
-										X.DS_FUNCTION = 'MATMUL_FUNC'
+										--WHERE
+										--X.DS_FUNCTION = 'MATMUL_FUNC'
                                         GROUP BY
                                         X.ID_PARAMETER,
                                         X.CD_PARAMETER,
@@ -1160,10 +1160,10 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                             INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
                                             WHERE
                                             (SELECT DISTINCT Z.DS_DEVICE FROM FUNCTION W INNER JOIN DEVICE Z ON (W.ID_DEVICE = Z.ID_DEVICE) WHERE W.ID_FUNCTION = B.ID_FUNCTION) = 'GPU'
-                                            AND A.NR_ALGORITHM_ITERATION <> 0
+                                            --AND A.NR_ALGORITHM_ITERATION <> 0
                                         ) X
-										WHERE
-										X.DS_FUNCTION = 'MATMUL_FUNC'
+										--WHERE
+										--X.DS_FUNCTION = 'MATMUL_FUNC'
                                         GROUP BY
                                         X.ID_PARAMETER,
                                         X.CD_PARAMETER,
@@ -1265,7 +1265,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
 									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 6.2 THEN 6.3 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*5  || ')'
 									ELSE ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*5  || ')'
 								END
-						WHEN T_CPU.DS_ALGORITHM = 'MATMUL_DISLIB'
+						WHEN (T_CPU.DS_ALGORITHM = 'MATMUL_DISLIB' OR T_CPU.DS_ALGORITHM = 'MATMUL_FMA')
 							THEN
 								CASE
 									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 0.3 THEN 0.4 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION + T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*(T_CPU.VL_GRID_ROW_DIMENSION-1)  || ')'
@@ -2304,9 +2304,9 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
         print("\nMode ",mode,": Plotting GPU speedups and user code execution times per block size")
 
-        ds_function = df_filtered['ds_function'].unique()
+        # ds_function = df_filtered['ds_function'].unique()
 
-        ds_function = str(df_filtered['ds_function'].values[0])
+        # ds_function = str(df_filtered['ds_function'].values[0])
 
         speedup = "speedup_gpu_intra_task_execution_time_full_func"
 
@@ -2327,7 +2327,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         # plt.grid(axis='y', zorder=0)
         # ax.bar_label(ax.containers[0], label_type='edge', rotation=0, fmt='%.2f')
         plt.ylabel('GPU Speedup over CPU')
-        plt.ylim([-5, 25])
+        plt.ylim([0, 25])
         plt.grid(zorder=0,axis='y')
 
 
@@ -2348,7 +2348,9 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         plt.figlegend(loc=(0.090,0.879), ncol=2, frameon=False) # font size 12
 
         ax.tick_params(axis='x', labelrotation = 0)
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_function+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
+        # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_function+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
         # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_function+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
     else:
@@ -2360,7 +2362,7 @@ def parse_args():
     import argparse
     description = 'Generating graphs for the experiments'
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('-a', '--ds_algorithm', type=str, default="MATMUL_DISLIB",
+    parser.add_argument('-a', '--ds_algorithm', type=str, default="MATMUL_FMA",
                         help='Algorithm description'
                         )
     parser.add_argument('-r', '--ds_resource', type=str, default="MINOTAURO_9_NODES_1_CORE",
