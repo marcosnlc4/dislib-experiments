@@ -5,7 +5,12 @@ import seaborn as sns
 from pathlib import Path
 from config import open_connection, close_connection
 import numpy as np
+import csv
+import os
+import math
 import matplotlib
+from sklearn.feature_selection import mutual_info_regression, mutual_info_classif
+import statsmodels.api as sm
 
 def main(ds_algorithm, ds_resource, nr_iterations, mode):
 
@@ -672,8 +677,10 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                     T_CPU.DS_DATASET,
                     T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET;"""
         
-    if (mode == 100):
-        sql_query = """WITH T_CPU AS (
+    elif (mode == 100):
+        sql_query = """SELECT 1"""
+
+        sql_queryA = """WITH T_CPU AS (
                                     SELECT
                                     A.VL_TOTAL_EXECUTION_TIME,
                                     A.VL_INTER_TASK_EXECUTION_TIME,
@@ -1297,6 +1304,630 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                     T_CPU.DS_DATASET,
                     T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET;"""
         
+        sql_queryB = """WITH T_CPU AS (
+                                    SELECT
+                                    A.VL_TOTAL_EXECUTION_TIME,
+                                    A.VL_INTER_TASK_EXECUTION_TIME,
+									A.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+                                    A.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
+									A.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC - (A.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC+A.VL_COMMUNICATION_TIME) AS VL_ADDITIONAL_TIME,
+                                    A.VL_COMMUNICATION_TIME,
+									B.ID_PARAMETER,
+                                    B.CD_PARAMETER,
+                                    B.CD_CONFIGURATION,
+                                    B.ID_ALGORITHM,
+                                    (SELECT DISTINCT X.DS_ALGORITHM FROM ALGORITHM X WHERE X.ID_ALGORITHM = B.ID_ALGORITHM) AS DS_ALGORITHM,
+                                    B.ID_FUNCTION,
+                                    (SELECT DISTINCT X.DS_FUNCTION FROM FUNCTION X WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_FUNCTION,
+                                    (SELECT DISTINCT Y.ID_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS ID_DEVICE,
+                                    (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_DEVICE,
+                                    B.ID_DATASET,
+                                    B.ID_RESOURCE,
+                                    B.ID_PARAMETER_TYPE,
+                                    (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_TYPE,
+                                    (SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_ATTRIBUTE,
+                                    B.NR_ITERATIONS,
+                                    B.VL_GRID_ROW_DIMENSION,
+                                    B.VL_GRID_COLUMN_DIMENSION,
+                                    B.VL_BLOCK_ROW_DIMENSION,
+                                    B.VL_BLOCK_COLUMN_DIMENSION,
+                                    B.VL_BLOCK_MEMORY_SIZE,
+                                    B.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                                    B.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                                    ROUND((CAST(B.VL_BLOCK_MEMORY_SIZE AS NUMERIC)/CAST(D.VL_DATASET_MEMORY_SIZE AS NUMERIC))*100,2) AS VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                                    C.DS_RESOURCE,
+                                    C.NR_NODES,
+                                    C.NR_COMPUTING_UNITS_CPU,
+                                    C.NR_COMPUTING_UNITS_GPU,
+                                    C.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                                    C.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                                    D.DS_DATASET,
+                                    D.VL_DATASET_MEMORY_SIZE,
+                                    D.DS_DATA_TYPE,
+                                    D.VL_DATA_TYPE_MEMORY_SIZE,
+                                    D.VL_DATASET_DIMENSION,
+                                    D.VL_DATASET_ROW_DIMENSION,
+                                    D.VL_DATASET_COLUMN_DIMENSION,
+                                    D.NR_RANDOM_STATE
+                                FROM EXPERIMENT A
+                                INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER)
+                                INNER JOIN RESOURCE C ON (B.ID_RESOURCE = C.ID_RESOURCE)
+                                INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
+                                WHERE
+                                (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) = 'CPU'
+
+                                UNION ALL
+
+                                    SELECT
+                                    Y.VL_TOTAL_EXECUTION_TIME,
+                                    Y.VL_INTER_TASK_EXECUTION_TIME,
+									Y.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+									Y.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
+									Y.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC - (Y.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC+Y.VL_COMMUNICATION_TIME) AS VL_ADDITIONAL_TIME,
+									Y.VL_COMMUNICATION_TIME,
+                                    Y.ID_PARAMETER,
+                                    Y.CD_PARAMETER,
+                                    Y.CD_CONFIGURATION,
+                                    Y.ID_ALGORITHM,
+                                    Y.DS_ALGORITHM,
+                                    Y.ID_FUNCTION,
+                                    Y.DS_FUNCTION,
+                                    Y.ID_DEVICE,
+                                    Y.DS_DEVICE,
+                                    Y.ID_DATASET,
+                                    Y.ID_RESOURCE,
+                                    Y.ID_PARAMETER_TYPE,
+                                    Y.DS_PARAMETER_TYPE,
+                                    Y.DS_PARAMETER_ATTRIBUTE,
+                                    Y.NR_ITERATIONS,
+                                    Y.VL_GRID_ROW_DIMENSION,
+                                    Y.VL_GRID_COLUMN_DIMENSION,
+                                    Y.VL_BLOCK_ROW_DIMENSION,
+                                    Y.VL_BLOCK_COLUMN_DIMENSION,
+                                    Y.VL_BLOCK_MEMORY_SIZE,
+                                    Y.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                                    Y.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                                    Y.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                                    Y.DS_RESOURCE,
+                                    Y.NR_NODES,
+                                    Y.NR_COMPUTING_UNITS_CPU,
+                                    Y.NR_COMPUTING_UNITS_GPU,
+                                    Y.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                                    Y.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                                    Y.DS_DATASET,
+                                    Y.VL_DATASET_MEMORY_SIZE,
+                                    Y.DS_DATA_TYPE,
+                                    Y.VL_DATA_TYPE_MEMORY_SIZE,
+                                    Y.VL_DATASET_DIMENSION,
+                                    Y.VL_DATASET_ROW_DIMENSION,
+                                    Y.VL_DATASET_COLUMN_DIMENSION,
+                                    Y.NR_RANDOM_STATE
+                                    FROM
+                                    (
+                                        SELECT
+                                        AVG(X.VL_TOTAL_EXECUTION_TIME) AS VL_TOTAL_EXECUTION_TIME,
+                                        AVG(X.VL_INTER_TASK_EXECUTION_TIME) AS VL_INTER_TASK_EXECUTION_TIME,
+                                        AVG(X.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC) AS VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+                                        AVG(X.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC) AS VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
+                                        AVG(X.VL_COMMUNICATION_TIME_1) AS VL_COMMUNICATION_TIME_1,
+                                        AVG(X.VL_COMMUNICATION_TIME_2) AS VL_COMMUNICATION_TIME_2,
+                                        AVG(X.VL_COMMUNICATION_TIME) AS VL_COMMUNICATION_TIME,
+                                        AVG(X.VL_ADDITIONAL_TIME_1) AS VL_ADDITIONAL_TIME_1,
+                                        AVG(X.VL_ADDITIONAL_TIME_2) AS VL_ADDITIONAL_TIME_2,
+                                        AVG(X.VL_ADDITIONAL_TIME) AS VL_ADDITIONAL_TIME,
+                                        X.ID_PARAMETER,
+                                        X.CD_PARAMETER,
+                                        X.CD_CONFIGURATION,
+                                        X.ID_ALGORITHM,
+                                        X.DS_ALGORITHM,
+                                        X.ID_FUNCTION,
+                                        X.DS_FUNCTION,
+                                        X.ID_DEVICE,
+                                        X.DS_DEVICE,
+                                        X.ID_DATASET,
+                                        X.ID_RESOURCE,
+                                        X.ID_PARAMETER_TYPE,
+                                        X.DS_PARAMETER_TYPE,
+                                        X.DS_PARAMETER_ATTRIBUTE,
+                                        X.NR_ITERATIONS,
+                                        X.VL_GRID_ROW_DIMENSION,
+                                        X.VL_GRID_COLUMN_DIMENSION,
+                                        X.VL_GRID_ROW_X_COLUMN_DIMENSION,
+                                        X.VL_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
+                                        X.VL_CONCAT_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
+                                        X.VL_BLOCK_ROW_DIMENSION,
+                                        X.VL_BLOCK_COLUMN_DIMENSION,
+                                        X.VL_BLOCK_ROW_X_COLUMN_DIMENSION,
+                                        X.VL_BLOCK_MEMORY_SIZE,
+                                        X.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                                        X.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                                        X.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                                        X.VL_CONCAT_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                                        X.DS_RESOURCE,
+                                        X.NR_NODES,
+                                        X.NR_COMPUTING_UNITS_CPU,
+                                        X.NR_COMPUTING_UNITS_GPU,
+                                        X.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                                        X.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                                        X.DS_DATASET,
+                                        X.VL_DATASET_MEMORY_SIZE,
+                                        X.DS_DATA_TYPE,
+                                        X.VL_DATA_TYPE_MEMORY_SIZE,
+                                        X.VL_DATASET_DIMENSION,
+                                        X.VL_DATASET_ROW_DIMENSION,
+                                        X.VL_DATASET_COLUMN_DIMENSION,
+                                        X.VL_DATASET_ROW_X_COLUMN_DIMENSION,
+                                        X.NR_RANDOM_STATE
+                                        FROM
+                                        (
+                                            SELECT
+                                                A.ID_EXPERIMENT,
+                                                A.VL_TOTAL_EXECUTION_TIME,
+                                                A.VL_INTER_TASK_EXECUTION_TIME,
+                                                A.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+                                                A.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
+                                                A.VL_COMMUNICATION_TIME_1,
+                                                A.VL_COMMUNICATION_TIME_2,
+                                                A.VL_COMMUNICATION_TIME_1 + A.VL_COMMUNICATION_TIME_2 AS VL_COMMUNICATION_TIME,
+                                                A.VL_ADDITIONAL_TIME_1,
+                                                A.VL_ADDITIONAL_TIME_2,
+                                                A.VL_ADDITIONAL_TIME_1 + A.VL_ADDITIONAL_TIME_2 AS VL_ADDITIONAL_TIME,
+                                                A.DT_PROCESSING,
+                                                B.ID_PARAMETER,
+                                                B.CD_PARAMETER,
+                                                B.CD_CONFIGURATION,
+                                                B.ID_ALGORITHM,
+                                                (SELECT DISTINCT X.DS_ALGORITHM FROM ALGORITHM X WHERE X.ID_ALGORITHM = B.ID_ALGORITHM) AS DS_ALGORITHM,
+                                                B.ID_FUNCTION,
+                                                (SELECT DISTINCT X.DS_FUNCTION FROM FUNCTION X WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_FUNCTION,
+                                                (SELECT DISTINCT Y.ID_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS ID_DEVICE,
+                                                (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_DEVICE,
+                                                B.ID_DATASET,
+                                                B.ID_RESOURCE,
+                                                B.ID_PARAMETER_TYPE,
+                                                (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_TYPE,
+                                                (SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_ATTRIBUTE,
+                                                B.NR_ITERATIONS,
+                                                B.VL_GRID_ROW_DIMENSION,
+                                                B.VL_GRID_COLUMN_DIMENSION,
+                                                B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION AS VL_GRID_ROW_X_COLUMN_DIMENSION,
+                                                ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) AS VL_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
+                                                B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION || ' (' || ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) || '%)' AS VL_CONCAT_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
+                                                B.VL_BLOCK_ROW_DIMENSION,
+                                                B.VL_BLOCK_COLUMN_DIMENSION,
+                                                B.VL_BLOCK_ROW_DIMENSION || ' x ' || B.VL_BLOCK_COLUMN_DIMENSION AS VL_BLOCK_ROW_X_COLUMN_DIMENSION,
+                                                B.VL_BLOCK_MEMORY_SIZE,
+                                                B.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                                                B.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                                                ROUND((CAST(B.VL_BLOCK_MEMORY_SIZE AS NUMERIC)/CAST(D.VL_DATASET_MEMORY_SIZE AS NUMERIC))*100,2) AS VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                                                ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ' (' || ROUND((CAST(B.VL_BLOCK_MEMORY_SIZE AS NUMERIC)/CAST(D.VL_DATASET_MEMORY_SIZE AS NUMERIC))*100,2) || '%)' AS VL_CONCAT_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                                                C.DS_RESOURCE,
+                                                C.NR_NODES,
+                                                C.NR_COMPUTING_UNITS_CPU,
+                                                C.NR_COMPUTING_UNITS_GPU,
+                                                C.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                                                C.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                                                D.DS_DATASET,
+                                                D.VL_DATASET_MEMORY_SIZE,
+                                                D.DS_DATA_TYPE,
+                                                D.VL_DATA_TYPE_MEMORY_SIZE,
+                                                D.VL_DATASET_DIMENSION,
+                                                D.VL_DATASET_ROW_DIMENSION,
+                                                D.VL_DATASET_COLUMN_DIMENSION,
+                                                D.VL_DATASET_ROW_DIMENSION || ' x ' || D.VL_DATASET_COLUMN_DIMENSION AS VL_DATASET_ROW_X_COLUMN_DIMENSION,
+                                                D.NR_RANDOM_STATE
+                                            FROM EXPERIMENT_RAW A
+                                            INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER)
+                                            INNER JOIN RESOURCE C ON (B.ID_RESOURCE = C.ID_RESOURCE)
+                                            INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
+                                            WHERE
+                                            (SELECT DISTINCT Z.DS_DEVICE FROM FUNCTION W INNER JOIN DEVICE Z ON (W.ID_DEVICE = Z.ID_DEVICE) WHERE W.ID_FUNCTION = B.ID_FUNCTION) = 'CPU'
+                                            AND A.NR_ALGORITHM_ITERATION <> 0
+                                        ) X
+										WHERE
+										X.DS_FUNCTION = 'ADD_FUNC'
+                                        GROUP BY
+                                        X.ID_PARAMETER,
+                                        X.CD_PARAMETER,
+                                        X.CD_CONFIGURATION,
+                                        X.ID_ALGORITHM,
+                                        X.DS_ALGORITHM,
+                                        X.ID_FUNCTION,
+                                        X.DS_FUNCTION,
+                                        X.ID_DEVICE,
+                                        X.DS_DEVICE,
+                                        X.ID_DATASET,
+                                        X.ID_RESOURCE,
+                                        X.ID_PARAMETER_TYPE,
+                                        X.DS_PARAMETER_TYPE,
+                                        X.DS_PARAMETER_ATTRIBUTE,
+                                        X.NR_ITERATIONS,
+                                        X.VL_GRID_ROW_DIMENSION,
+                                        X.VL_GRID_COLUMN_DIMENSION,
+                                        X.VL_GRID_ROW_X_COLUMN_DIMENSION,
+                                        X.VL_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
+                                        X.VL_CONCAT_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
+                                        X.VL_BLOCK_ROW_DIMENSION,
+                                        X.VL_BLOCK_COLUMN_DIMENSION,
+                                        X.VL_BLOCK_ROW_X_COLUMN_DIMENSION,
+                                        X.VL_BLOCK_MEMORY_SIZE,
+                                        X.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                                        X.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                                        X.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                                        X.VL_CONCAT_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                                        X.DS_RESOURCE,
+                                        X.NR_NODES,
+                                        X.NR_COMPUTING_UNITS_CPU,
+                                        X.NR_COMPUTING_UNITS_GPU,
+                                        X.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                                        X.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                                        X.DS_DATASET,
+                                        X.VL_DATASET_MEMORY_SIZE,
+                                        X.DS_DATA_TYPE,
+                                        X.VL_DATA_TYPE_MEMORY_SIZE,
+                                        X.VL_DATASET_DIMENSION,
+                                        X.VL_DATASET_ROW_DIMENSION,
+                                        X.VL_DATASET_COLUMN_DIMENSION,
+                                        X.VL_DATASET_ROW_X_COLUMN_DIMENSION,
+                                        X.NR_RANDOM_STATE
+                                    ) Y
+
+                                ),
+                    T_GPU AS (
+                                    SELECT
+                                    A.VL_TOTAL_EXECUTION_TIME,
+                                    A.VL_INTER_TASK_EXECUTION_TIME,
+									A.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+									A.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
+									A.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC - (A.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC+A.VL_COMMUNICATION_TIME) AS VL_ADDITIONAL_TIME,
+									A.VL_COMMUNICATION_TIME,
+									B.ID_PARAMETER,
+                                    B.CD_PARAMETER,
+                                    B.CD_CONFIGURATION,
+                                    B.ID_ALGORITHM,
+                                    (SELECT DISTINCT X.DS_ALGORITHM FROM ALGORITHM X WHERE X.ID_ALGORITHM = B.ID_ALGORITHM) AS DS_ALGORITHM,
+                                    B.ID_FUNCTION,
+                                    (SELECT DISTINCT X.DS_FUNCTION FROM FUNCTION X WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_FUNCTION,
+                                    (SELECT DISTINCT Y.ID_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS ID_DEVICE,
+                                    (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_DEVICE,
+                                    B.ID_DATASET,
+                                    B.ID_RESOURCE,
+                                    B.ID_PARAMETER_TYPE,
+                                    (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_TYPE,
+                                    (SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_ATTRIBUTE,
+                                    B.NR_ITERATIONS,
+                                    B.VL_GRID_ROW_DIMENSION,
+                                    B.VL_GRID_COLUMN_DIMENSION,
+                                    B.VL_BLOCK_ROW_DIMENSION,
+                                    B.VL_BLOCK_COLUMN_DIMENSION,
+                                    B.VL_BLOCK_MEMORY_SIZE,
+                                    B.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                                    B.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                                    ROUND((CAST(B.VL_BLOCK_MEMORY_SIZE AS NUMERIC)/CAST(D.VL_DATASET_MEMORY_SIZE AS NUMERIC))*100,2) AS VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                                    C.DS_RESOURCE,
+                                    C.NR_NODES,
+                                    C.NR_COMPUTING_UNITS_CPU,
+                                    C.NR_COMPUTING_UNITS_GPU,
+                                    C.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                                    C.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                                    D.DS_DATASET,
+                                    D.VL_DATASET_MEMORY_SIZE,
+                                    D.DS_DATA_TYPE,
+                                    D.VL_DATA_TYPE_MEMORY_SIZE,
+                                    D.VL_DATASET_DIMENSION,
+                                    D.VL_DATASET_ROW_DIMENSION,
+                                    D.VL_DATASET_COLUMN_DIMENSION,
+                                    D.NR_RANDOM_STATE
+                                    FROM EXPERIMENT A
+                                    INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER)
+                                    INNER JOIN RESOURCE C ON (B.ID_RESOURCE = C.ID_RESOURCE)
+                                    INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
+                                    WHERE
+                                    (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) = 'GPU'
+
+                                UNION ALL
+
+                                    SELECT
+                                    Y.VL_TOTAL_EXECUTION_TIME,
+                                    Y.VL_INTER_TASK_EXECUTION_TIME,
+                                    Y.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+									Y.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
+									Y.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC - (Y.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC+Y.VL_COMMUNICATION_TIME) AS VL_ADDITIONAL_TIME,
+									Y.VL_COMMUNICATION_TIME,
+									Y.ID_PARAMETER,
+                                    Y.CD_PARAMETER,
+                                    Y.CD_CONFIGURATION,
+                                    Y.ID_ALGORITHM,
+                                    Y.DS_ALGORITHM,
+                                    Y.ID_FUNCTION,
+                                    Y.DS_FUNCTION,
+                                    Y.ID_DEVICE,
+                                    Y.DS_DEVICE,
+                                    Y.ID_DATASET,
+                                    Y.ID_RESOURCE,
+                                    Y.ID_PARAMETER_TYPE,
+                                    Y.DS_PARAMETER_TYPE,
+                                    Y.DS_PARAMETER_ATTRIBUTE,
+                                    Y.NR_ITERATIONS,
+                                    Y.VL_GRID_ROW_DIMENSION,
+                                    Y.VL_GRID_COLUMN_DIMENSION,
+                                    Y.VL_BLOCK_ROW_DIMENSION,
+                                    Y.VL_BLOCK_COLUMN_DIMENSION,
+                                    Y.VL_BLOCK_MEMORY_SIZE,
+                                    Y.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                                    Y.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                                    Y.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                                    Y.DS_RESOURCE,
+                                    Y.NR_NODES,
+                                    Y.NR_COMPUTING_UNITS_CPU,
+                                    Y.NR_COMPUTING_UNITS_GPU,
+                                    Y.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                                    Y.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                                    Y.DS_DATASET,
+                                    Y.VL_DATASET_MEMORY_SIZE,
+                                    Y.DS_DATA_TYPE,
+                                    Y.VL_DATA_TYPE_MEMORY_SIZE,
+                                    Y.VL_DATASET_DIMENSION,
+                                    Y.VL_DATASET_ROW_DIMENSION,
+                                    Y.VL_DATASET_COLUMN_DIMENSION,
+                                    Y.NR_RANDOM_STATE
+                                    FROM
+                                    (
+                                        SELECT
+                                        AVG(X.VL_TOTAL_EXECUTION_TIME) AS VL_TOTAL_EXECUTION_TIME,
+                                        AVG(X.VL_INTER_TASK_EXECUTION_TIME) AS VL_INTER_TASK_EXECUTION_TIME,
+                                        AVG(X.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC) AS VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+                                        AVG(X.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC) AS VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
+                                        AVG(X.VL_COMMUNICATION_TIME_1) AS VL_COMMUNICATION_TIME_1,
+                                        AVG(X.VL_COMMUNICATION_TIME_2) AS VL_COMMUNICATION_TIME_2,
+                                        AVG(X.VL_COMMUNICATION_TIME) AS VL_COMMUNICATION_TIME,
+                                        AVG(X.VL_ADDITIONAL_TIME_1) AS VL_ADDITIONAL_TIME_1,
+                                        AVG(X.VL_ADDITIONAL_TIME_2) AS VL_ADDITIONAL_TIME_2,
+                                        AVG(X.VL_ADDITIONAL_TIME) AS VL_ADDITIONAL_TIME,
+                                        X.ID_PARAMETER,
+                                        X.CD_PARAMETER,
+                                        X.CD_CONFIGURATION,
+                                        X.ID_ALGORITHM,
+                                        X.DS_ALGORITHM,
+                                        X.ID_FUNCTION,
+                                        X.DS_FUNCTION,
+                                        X.ID_DEVICE,
+                                        X.DS_DEVICE,
+                                        X.ID_DATASET,
+                                        X.ID_RESOURCE,
+                                        X.ID_PARAMETER_TYPE,
+                                        X.DS_PARAMETER_TYPE,
+                                        X.DS_PARAMETER_ATTRIBUTE,
+                                        X.NR_ITERATIONS,
+                                        X.VL_GRID_ROW_DIMENSION,
+                                        X.VL_GRID_COLUMN_DIMENSION,
+                                        X.VL_GRID_ROW_X_COLUMN_DIMENSION,
+                                        X.VL_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
+                                        X.VL_CONCAT_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
+                                        X.VL_BLOCK_ROW_DIMENSION,
+                                        X.VL_BLOCK_COLUMN_DIMENSION,
+                                        X.VL_BLOCK_ROW_X_COLUMN_DIMENSION,
+                                        X.VL_BLOCK_MEMORY_SIZE,
+                                        X.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                                        X.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                                        X.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                                        X.VL_CONCAT_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                                        X.DS_RESOURCE,
+                                        X.NR_NODES,
+                                        X.NR_COMPUTING_UNITS_CPU,
+                                        X.NR_COMPUTING_UNITS_GPU,
+                                        X.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                                        X.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                                        X.DS_DATASET,
+                                        X.VL_DATASET_MEMORY_SIZE,
+                                        X.DS_DATA_TYPE,
+                                        X.VL_DATA_TYPE_MEMORY_SIZE,
+                                        X.VL_DATASET_DIMENSION,
+                                        X.VL_DATASET_ROW_DIMENSION,
+                                        X.VL_DATASET_COLUMN_DIMENSION,
+                                        X.VL_DATASET_ROW_X_COLUMN_DIMENSION,
+                                        X.NR_RANDOM_STATE
+                                        FROM
+                                        (
+                                            SELECT
+                                                A.ID_EXPERIMENT,
+                                                A.VL_TOTAL_EXECUTION_TIME,
+                                                A.VL_INTER_TASK_EXECUTION_TIME,
+                                                A.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC,
+                                                A.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC,
+                                                A.VL_COMMUNICATION_TIME_1,
+                                                A.VL_COMMUNICATION_TIME_2,
+                                                A.VL_COMMUNICATION_TIME_1 + A.VL_COMMUNICATION_TIME_2 AS VL_COMMUNICATION_TIME,
+                                                A.VL_ADDITIONAL_TIME_1,
+                                                A.VL_ADDITIONAL_TIME_2,
+                                                A.VL_ADDITIONAL_TIME_1 + A.VL_ADDITIONAL_TIME_2 AS VL_ADDITIONAL_TIME,
+                                                A.DT_PROCESSING,
+                                                B.ID_PARAMETER,
+                                                B.CD_PARAMETER,
+                                                B.CD_CONFIGURATION,
+                                                B.ID_ALGORITHM,
+                                                (SELECT DISTINCT X.DS_ALGORITHM FROM ALGORITHM X WHERE X.ID_ALGORITHM = B.ID_ALGORITHM) AS DS_ALGORITHM,
+                                                B.ID_FUNCTION,
+                                                (SELECT DISTINCT X.DS_FUNCTION FROM FUNCTION X WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_FUNCTION,
+                                                (SELECT DISTINCT Y.ID_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS ID_DEVICE,
+                                                (SELECT DISTINCT Y.DS_DEVICE FROM FUNCTION X INNER JOIN DEVICE Y ON (X.ID_DEVICE = Y.ID_DEVICE) WHERE X.ID_FUNCTION = B.ID_FUNCTION) AS DS_DEVICE,
+                                                B.ID_DATASET,
+                                                B.ID_RESOURCE,
+                                                B.ID_PARAMETER_TYPE,
+                                                (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_TYPE,
+                                                (SELECT X.DS_PARAMETER_ATTRIBUTE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = B.ID_PARAMETER_TYPE) AS DS_PARAMETER_ATTRIBUTE,
+                                                B.NR_ITERATIONS,
+                                                B.VL_GRID_ROW_DIMENSION,
+                                                B.VL_GRID_COLUMN_DIMENSION,
+                                                B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION AS VL_GRID_ROW_X_COLUMN_DIMENSION,
+                                                ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) AS VL_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
+                                                B.VL_GRID_ROW_DIMENSION || ' x ' || B.VL_GRID_COLUMN_DIMENSION || ' (' || ROUND((CAST(B.VL_GRID_COLUMN_DIMENSION AS NUMERIC)/CAST(D.VL_DATASET_COLUMN_DIMENSION AS NUMERIC))*100,2) || '%)' AS VL_CONCAT_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
+                                                B.VL_BLOCK_ROW_DIMENSION,
+                                                B.VL_BLOCK_COLUMN_DIMENSION,
+                                                B.VL_BLOCK_ROW_DIMENSION || ' x ' || B.VL_BLOCK_COLUMN_DIMENSION AS VL_BLOCK_ROW_X_COLUMN_DIMENSION,
+                                                B.VL_BLOCK_MEMORY_SIZE,
+                                                B.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                                                B.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                                                ROUND((CAST(B.VL_BLOCK_MEMORY_SIZE AS NUMERIC)/CAST(D.VL_DATASET_MEMORY_SIZE AS NUMERIC))*100,2) AS VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                                                ROUND(B.VL_BLOCK_MEMORY_SIZE*1e-6,2) || ' (' || ROUND((CAST(B.VL_BLOCK_MEMORY_SIZE AS NUMERIC)/CAST(D.VL_DATASET_MEMORY_SIZE AS NUMERIC))*100,2) || '%)' AS VL_CONCAT_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                                                C.DS_RESOURCE,
+                                                C.NR_NODES,
+                                                C.NR_COMPUTING_UNITS_CPU,
+                                                C.NR_COMPUTING_UNITS_GPU,
+                                                C.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                                                C.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                                                D.DS_DATASET,
+                                                D.VL_DATASET_MEMORY_SIZE,
+                                                D.DS_DATA_TYPE,
+                                                D.VL_DATA_TYPE_MEMORY_SIZE,
+                                                D.VL_DATASET_DIMENSION,
+                                                D.VL_DATASET_ROW_DIMENSION,
+                                                D.VL_DATASET_COLUMN_DIMENSION,
+                                                D.VL_DATASET_ROW_DIMENSION || ' x ' || D.VL_DATASET_COLUMN_DIMENSION AS VL_DATASET_ROW_X_COLUMN_DIMENSION,
+                                                D.NR_RANDOM_STATE
+                                            FROM EXPERIMENT_RAW A
+                                            INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER)
+                                            INNER JOIN RESOURCE C ON (B.ID_RESOURCE = C.ID_RESOURCE)
+                                            INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
+                                            WHERE
+                                            (SELECT DISTINCT Z.DS_DEVICE FROM FUNCTION W INNER JOIN DEVICE Z ON (W.ID_DEVICE = Z.ID_DEVICE) WHERE W.ID_FUNCTION = B.ID_FUNCTION) = 'GPU'
+                                            AND A.NR_ALGORITHM_ITERATION <> 0
+                                        ) X
+										WHERE
+										X.DS_FUNCTION = 'ADD_FUNC'
+                                        GROUP BY
+                                        X.ID_PARAMETER,
+                                        X.CD_PARAMETER,
+                                        X.CD_CONFIGURATION,
+                                        X.ID_ALGORITHM,
+                                        X.DS_ALGORITHM,
+                                        X.ID_FUNCTION,
+                                        X.DS_FUNCTION,
+                                        X.ID_DEVICE,
+                                        X.DS_DEVICE,
+                                        X.ID_DATASET,
+                                        X.ID_RESOURCE,
+                                        X.ID_PARAMETER_TYPE,
+                                        X.DS_PARAMETER_TYPE,
+                                        X.DS_PARAMETER_ATTRIBUTE,
+                                        X.NR_ITERATIONS,
+                                        X.VL_GRID_ROW_DIMENSION,
+                                        X.VL_GRID_COLUMN_DIMENSION,
+                                        X.VL_GRID_ROW_X_COLUMN_DIMENSION,
+                                        X.VL_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
+                                        X.VL_CONCAT_GRID_COLUMN_DIMENSION_PERCENT_DATASET,
+                                        X.VL_BLOCK_ROW_DIMENSION,
+                                        X.VL_BLOCK_COLUMN_DIMENSION,
+                                        X.VL_BLOCK_ROW_X_COLUMN_DIMENSION,
+                                        X.VL_BLOCK_MEMORY_SIZE,
+                                        X.VL_BLOCK_MEMORY_SIZE_PERCENT_CPU,
+                                        X.VL_BLOCK_MEMORY_SIZE_PERCENT_GPU,
+                                        X.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                                        X.VL_CONCAT_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                                        X.DS_RESOURCE,
+                                        X.NR_NODES,
+                                        X.NR_COMPUTING_UNITS_CPU,
+                                        X.NR_COMPUTING_UNITS_GPU,
+                                        X.VL_MEMORY_SIZE_PER_CPU_COMPUTING_UNIT,
+                                        X.VL_MEMORY_SIZE_PER_GPU_COMPUTING_UNIT,
+                                        X.DS_DATASET,
+                                        X.VL_DATASET_MEMORY_SIZE,
+                                        X.DS_DATA_TYPE,
+                                        X.VL_DATA_TYPE_MEMORY_SIZE,
+                                        X.VL_DATASET_DIMENSION,
+                                        X.VL_DATASET_ROW_DIMENSION,
+                                        X.VL_DATASET_COLUMN_DIMENSION,
+                                        X.VL_DATASET_ROW_X_COLUMN_DIMENSION,
+                                        X.NR_RANDOM_STATE
+                                    ) Y
+                    )
+                    SELECT
+                    T_CPU.ID_PARAMETER_TYPE,
+                    T_CPU.CD_PARAMETER,
+                    T_CPU.DS_ALGORITHM,
+                    T_CPU.DS_FUNCTION,
+                    T_CPU.NR_ITERATIONS,
+                    CASE
+                    WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 0.3 THEN 0.4
+                    WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 0.7 THEN 0.8
+                    WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 1.5 THEN 1.6
+                    WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 3.0 THEN 3.1
+                    WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 6.2 THEN 6.3
+                    ELSE ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) END AS VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                    CASE
+                    WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 0.3 THEN 0.4 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION || ' x ' || T_CPU.VL_GRID_COLUMN_DIMENSION  || ')'
+                    WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 0.7 THEN 0.8 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION || ' x ' || T_CPU.VL_GRID_COLUMN_DIMENSION  || ')'
+                    WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 1.5 THEN 1.6 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION || ' x ' || T_CPU.VL_GRID_COLUMN_DIMENSION  || ')'
+                    WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 3.0 THEN 3.1 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION || ' x ' || T_CPU.VL_GRID_COLUMN_DIMENSION  || ')'
+                    WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 6.2 THEN 6.3 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION || ' x ' || T_CPU.VL_GRID_COLUMN_DIMENSION  || ')'
+                    ELSE ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) || ' (' || T_CPU.VL_GRID_ROW_DIMENSION || ' x ' || T_CPU.VL_GRID_COLUMN_DIMENSION  || ')' END AS CONCAT_BLOCK_PERCENT_DATASET_GRID_DIMENSION,
+                    --ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) AS VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,
+                    T_CPU.DS_RESOURCE,
+                    T_CPU.DS_PARAMETER_TYPE,
+                    T_CPU.DS_PARAMETER_ATTRIBUTE,
+                    T_CPU.DS_DATASET,
+                    CAST(T_CPU.VL_DATASET_MEMORY_SIZE*1e-6 AS BIGINT) as VL_DATASET_MEMORY_SIZE,
+                    T_CPU.VL_DATASET_DIMENSION,
+                    T_CPU.VL_DATASET_ROW_DIMENSION,
+                    T_CPU.VL_DATASET_COLUMN_DIMENSION,
+                    T_CPU.VL_GRID_ROW_DIMENSION,
+                    T_CPU.VL_GRID_COLUMN_DIMENSION,
+                    T_CPU.VL_BLOCK_ROW_DIMENSION,
+                    T_CPU.VL_BLOCK_COLUMN_DIMENSION,
+                    T_CPU.VL_BLOCK_MEMORY_SIZE,
+                    ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE*1e-6,0)::varchar(255) as VL_BLOCK_MEMORY_SIZE_MB,
+                    ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE*1e-6,0) || ' (' || T_CPU.VL_GRID_ROW_DIMENSION || ' x ' || T_CPU.VL_GRID_COLUMN_DIMENSION  || ')' AS VL_CONCAT_BLOCK_SIZE_MB_GRID_ROW_X_COLUMN_DIMENSION,
+					CASE
+						WHEN T_CPU.DS_ALGORITHM = 'KMEANS'
+							THEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE*1e-6,0) || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*5 || ')'
+						WHEN T_CPU.DS_ALGORITHM = 'MATMUL_DISLIB'
+							THEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE*1e-6,0) || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION + T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*(T_CPU.VL_GRID_ROW_DIMENSION-1)  || ')'
+						ELSE
+							'999999999999'
+					END AS VL_CONCAT_BLOCK_SIZE_MB_NR_TASKS,
+					CASE
+						WHEN T_CPU.DS_ALGORITHM = 'KMEANS'
+							THEN
+								CASE
+									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 0.3 THEN 0.4 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*5  || ')'
+									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 0.7 THEN 0.8 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*5  || ')'
+									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 1.5 THEN 1.6 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*5  || ')'
+									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 3.0 THEN 3.1 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*5  || ')'
+									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 6.2 THEN 6.3 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*5  || ')'
+									ELSE ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*5  || ')'
+								END
+						WHEN T_CPU.DS_ALGORITHM = 'MATMUL_DISLIB'
+							THEN
+								CASE
+									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 0.3 THEN 0.4 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION + T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*(T_CPU.VL_GRID_ROW_DIMENSION-1)  || ')'
+									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 0.7 THEN 0.8 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION + T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*(T_CPU.VL_GRID_ROW_DIMENSION-1)  || ')'
+									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 1.5 THEN 1.6 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION + T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*(T_CPU.VL_GRID_ROW_DIMENSION-1)  || ')'
+									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 3.0 THEN 3.1 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION + T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*(T_CPU.VL_GRID_ROW_DIMENSION-1)  || ')'
+									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 6.2 THEN 6.3 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION + T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*(T_CPU.VL_GRID_ROW_DIMENSION-1)  || ')'
+									ELSE ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION + T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*(T_CPU.VL_GRID_ROW_DIMENSION-1)  || ')'
+								END
+						ELSE
+							'999999999999'
+					END AS CONCAT_BLOCK_PERCENT_DATASET_NR_TASKS,
+					T_CPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC AS VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC_CPU,
+					T_GPU.VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC AS VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC_GPU,
+					T_CPU.VL_ADDITIONAL_TIME AS VL_ADDITIONAL_TIME_CPU,
+					T_GPU.VL_ADDITIONAL_TIME AS VL_ADDITIONAL_TIME_GPU,
+					T_CPU.VL_COMMUNICATION_TIME AS VL_COMMUNICATION_TIME_CPU,
+					T_GPU.VL_COMMUNICATION_TIME AS VL_COMMUNICATION_TIME_GPU,
+                    CASE
+                    WHEN ROUND((T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC/T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC)::numeric,2) > 1.00 THEN ROUND((T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC/T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC)::numeric,2)
+                    ELSE -ROUND((T_GPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC/T_CPU.VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC)::numeric,2)
+                    END AS SPEEDUP_GPU_INTRA_TASK_EXECUTION_TIME_FULL_FUNC
+                    FROM T_CPU LEFT JOIN T_GPU ON (T_CPU.CD_PARAMETER = T_GPU.CD_PARAMETER
+													AND T_CPU.VL_GRID_ROW_DIMENSION = T_GPU.VL_GRID_ROW_DIMENSION
+													AND T_CPU.VL_GRID_COLUMN_DIMENSION = T_GPU.VL_GRID_COLUMN_DIMENSION
+													AND T_CPU.VL_BLOCK_ROW_DIMENSION = T_GPU.VL_BLOCK_ROW_DIMENSION
+													AND T_CPU.VL_BLOCK_COLUMN_DIMENSION = T_GPU.VL_BLOCK_COLUMN_DIMENSION)
+                    ORDER BY
+                    T_CPU.DS_DATASET,
+                    T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET;"""
+        
     else:
         sql_query = """SELECT
                             A.VL_TOTAL_EXECUTION_TIME,
@@ -1662,11 +2293,25 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                         ) Y
                         ORDER BY ID_PARAMETER;"""
 
-    # Get dataframe from query
-    df = get_df_from_query(sql_query,conn)
+    if (mode == 100):
 
-    # Close connection to the database
-    close_connection(cur, conn)
+        # Get dataframe from query
+        dfA = get_df_from_query(sql_queryA,conn)
+        dfB = get_df_from_query(sql_queryB,conn)
+
+        df = pd.concat([dfA, dfB])
+
+        print(df)
+
+        # Close connection to the database
+        close_connection(cur, conn)
+
+    else:
+        # Get dataframe from query
+        df = get_df_from_query(sql_query,conn)
+
+        # Close connection to the database
+        close_connection(cur, conn)
 
     # Generate graph (mode 2)
     generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, mode)
@@ -1679,6 +2324,23 @@ def get_df_from_query(sql_query, conn):
 # Function that generates a graph according to the mode
 def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, mode):
 
+    # if (mode == 100):
+
+    #     # Get dataframe from query
+    #     dfA = get_df_from_query(sql_queryA,conn)
+    #     # Close connection to the database
+    #     close_connection(cur, conn)
+
+    #     # Path of the "tb_experiments_motivation" table - CSV file
+    #     dst_path_experiments = "/home/marcos/Dev/project/dev_env/dislib-experiments/experiments/results/tb_experiments_fig8.csv"
+
+    #     # Reading "tb_experiments_motivation" csv table
+    #     param_file = os.path.join(dst_path_experiments)
+    #     df_filtered = pd.read_csv(param_file)
+
+    # else:
+
+
     # General filtering and sorting parameters - V2 (VAR_GRID_ROW)
     df_filtered = df[
                     (df["ds_algorithm"] == ds_algorithm.upper()) # FIXED VALUE
@@ -1689,14 +2351,18 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                     # & (df["ds_dataset"].isin(["S_2GB_1"]))
                     # & (df["ds_dataset"].isin(["S_2GB_1","S_2GB_2"])) #mode 155 and 1555 only
                     # & (df["ds_dataset"] != "S_128MB_1")
-                    & (df["ds_dataset"] == "S_8GB_1")
+                    # & (df["ds_dataset"] == "S_8GB_1")
                     # & (df["ds_device"] == "GPU")
                     # VAR_GRID_SHAPE_MATMUL_1, VAR_GRID_SHAPE_MATMUL_2
-                    & (df["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_5")
+                    # & (df["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_5")
                     # MATMUL_FUNC, ADD_FUNC
-                    & (df["ds_function"] == "MATMUL_FUNC")
+                    # & (df["ds_function"] == "MATMUL_FUNC")
                     # & (df["vl_concat_block_size_mb_grid_row_x_column_dimension"] != "8 (16 x 16)")
                     # & (df["vl_block_memory_size_percent_dataset"] != 0.4)
+                    # for mode == 15 AND 16
+                    & (df["ds_parameter_type"].isin(["VAR_GRID_SHAPE_MATMUL_6","VAR_GRID_SHAPE_MATMUL_2","VAR_GRID_SHAPE_MATMUL_1","VAR_GRID_SHAPE_MATMUL_5"])) # FIXED VALUE
+                    & (df["ds_dataset"] == "S_8GB_1")
+                    & (df["ds_function"] == "MATMUL_FUNC")
                     ]
 
 
@@ -1890,6 +2556,102 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
             # plt.ylim([0.0, 165.0])
             # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_stddev_inter_task_composition_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
 
+    elif mode == 16:
+        matplotlib.rcParams.update({'font.size': 18})
+
+        print("\nMode ",mode,": Plotting all execution times x grid and block shapes, without parameter filters")
+        
+        x = 'vl_concat_block_size_mb_grid_row_x_column_dimension'
+        x_value = "vl_concat_block_size_mb_grid_row_x_column_dimension"
+        x_value_title = 'Block size MB'
+
+        df_filtered_mean = df_filtered.groupby(['ds_device', 'ds_parameter_type', x_value], as_index=False).mean()
+
+        # Matmul Time 
+        # local order
+        df_filtered_mean_left_top_cpu = df_filtered_mean[(df_filtered_mean.ds_device=='CPU') & (df_filtered_mean.ds_parameter_type=='VAR_GRID_SHAPE_MATMUL_6')]
+        df_filtered_mean_left_top_gpu = df_filtered_mean[(df_filtered_mean.ds_device=='GPU') & (df_filtered_mean.ds_parameter_type=='VAR_GRID_SHAPE_MATMUL_6')]
+        # local data
+        df_filtered_mean_right_top_cpu = df_filtered_mean[(df_filtered_mean.ds_device=='CPU') & (df_filtered_mean.ds_parameter_type=='VAR_GRID_SHAPE_MATMUL_2')]
+        df_filtered_mean_right_top_gpu = df_filtered_mean[(df_filtered_mean.ds_device=='GPU') & (df_filtered_mean.ds_parameter_type=='VAR_GRID_SHAPE_MATMUL_2')]
+        
+        # Matmul Time
+        # shared order
+        df_filtered_mean_left_bottom_cpu = df_filtered_mean[(df_filtered_mean.ds_device=='CPU') & (df_filtered_mean.ds_parameter_type=='VAR_GRID_SHAPE_MATMUL_1')]
+        df_filtered_mean_left_bottom_gpu = df_filtered_mean[(df_filtered_mean.ds_device=='GPU') & (df_filtered_mean.ds_parameter_type=='VAR_GRID_SHAPE_MATMUL_1')]
+        # local order
+        df_filtered_mean_right_bottom_cpu = df_filtered_mean[(df_filtered_mean.ds_device=='CPU') & (df_filtered_mean.ds_parameter_type=='VAR_GRID_SHAPE_MATMUL_5')]
+        df_filtered_mean_right_bottom_gpu = df_filtered_mean[(df_filtered_mean.ds_device=='GPU') & (df_filtered_mean.ds_parameter_type=='VAR_GRID_SHAPE_MATMUL_5')]
+        
+        df_filtered_mean_left_top_cpu.name = 'df_filtered_mean_left_top_cpu'
+        df_filtered_mean_left_top_gpu.name = 'df_filtered_mean_left_top_gpu'
+        df_filtered_mean_right_top_cpu.name = 'df_filtered_mean_right_top_cpu'
+        df_filtered_mean_right_top_gpu.name = 'df_filtered_mean_right_top_gpu'
+        df_filtered_mean_left_bottom_cpu.name = 'df_filtered_mean_left_bottom_cpu'
+        df_filtered_mean_left_bottom_gpu.name = 'df_filtered_mean_left_bottom_gpu'
+        df_filtered_mean_right_bottom_cpu.name = 'df_filtered_mean_right_bottom_cpu'
+        df_filtered_mean_right_bottom_gpu.name = 'df_filtered_mean_right_bottom_gpu'
+
+        # Times
+        df1_cpu = df_filtered_mean_left_top_cpu.sort_values(by=["vl_block_row_dimension"], ascending=[True])
+        df1_gpu = df_filtered_mean_left_top_gpu.sort_values(by=["vl_block_row_dimension"], ascending=[True])
+        df2_cpu = df_filtered_mean_right_top_cpu.sort_values(by=["vl_block_row_dimension"], ascending=[True])
+        df2_gpu = df_filtered_mean_right_top_gpu.sort_values(by=["vl_block_row_dimension"], ascending=[True])
+        df3_cpu = df_filtered_mean_left_bottom_cpu.sort_values(by=["vl_block_row_dimension"], ascending=[True])
+        df3_gpu = df_filtered_mean_left_bottom_gpu.sort_values(by=["vl_block_row_dimension"], ascending=[True])
+        df4_cpu = df_filtered_mean_right_bottom_cpu.sort_values(by=["vl_block_row_dimension"], ascending=[True])
+        df4_gpu = df_filtered_mean_right_bottom_gpu.sort_values(by=["vl_block_row_dimension"], ascending=[True])
+
+        fig, axs = plt.subplots(1, 4, figsize=(24, 4), sharey='row', sharex='col')
+
+      
+        # Plot the first chart (top-left - Bar chart)
+        axs[0].plot(df1_cpu[x_value],df1_cpu['vl_total_execution_time'], color='C1', linestyle = 'dotted', label='CPU', zorder=3, linewidth=2.5)
+        axs[0].plot(df1_gpu[x_value],df1_gpu['vl_total_execution_time'], color='C1', linestyle = 'solid', label='GPU', zorder=3, linewidth=2.5)
+        axs[0].set_xlabel('Block size MB (Grid Dimension)')
+        axs[0].legend(loc='upper left', frameon=False, labelspacing=0.01, ncol=2, borderpad=0.1)
+        axs[0].set_ylabel('P. Tasks Average Time (s)')  # Add y-axis label
+        axs[0].set_ylim([0, 2500])
+        axs[0].grid(zorder=0,axis='y')
+        axs[0].set_title('Local disk, task generation order', pad=10)
+
+        # Plot the second chart (top-right - Bar chart)
+        axs[1].plot(df2_cpu[x_value],df2_cpu['vl_total_execution_time'], color='C1', linestyle = 'dotted', zorder=3, linewidth=2.5)
+        axs[1].plot(df2_gpu[x_value],df2_gpu['vl_total_execution_time'], color='C1', linestyle = 'solid', zorder=3, linewidth=2.5)
+        axs[1].legend(loc='upper left', frameon=False, labelspacing=0.01, ncol=2, borderpad=0.1)
+        axs[1].set_ylim([0, 2500])
+        axs[1].grid(zorder=0,axis='y')
+        axs[1].set_title('Local disk, data locality', pad=10)
+
+        # Plot the third chart (bottom-left - Line chart)
+        axs[2].plot(df3_cpu[x_value],df3_cpu['vl_total_execution_time'], color='C1', linestyle = 'dotted', zorder=3, linewidth=2.5)
+        axs[2].plot(df3_gpu[x_value],df3_gpu['vl_total_execution_time'], color='C1', linestyle = 'solid', zorder=3, linewidth=2.5)
+        axs[2].set_ylim([0, 2500])
+        axs[2].tick_params(axis='x', labelrotation = 35)
+        axs[2].grid(zorder=0,axis='y')
+        axs[2].set_title('Shared disk, task generation order', pad=10)
+        
+        
+        # Plot the fourth chart (bottom-center - Line chart)
+        axs[3].plot(df4_cpu[x_value],df4_cpu['vl_total_execution_time'], color='C1', linestyle = 'dotted', zorder=3, linewidth=2.5)
+        axs[3].plot(df4_gpu[x_value],df4_gpu['vl_total_execution_time'], color='C1', linestyle = 'solid', zorder=3, linewidth=2.5)
+        axs[3].set_ylim([0, 2500])
+        axs[3].tick_params(axis='x', labelrotation = 35)
+        axs[3].grid(zorder=0,axis='y')
+        axs[3].set_title('Shared disk, data locality', pad=10)
+        
+        # Adjust layout to prevent clipping of titles and labels
+        plt.tight_layout()
+
+        fig.autofmt_xdate(rotation=35, ha='right')
+
+        # Adjust spacing
+        plt.subplots_adjust(wspace=0.01, hspace=0.28)
+        
+        # Show the plots
+        # plt.show()
+        plt.savefig(dst_path_figs+'FIG10.png',bbox_inches='tight',dpi=100)
+        plt.savefig(dst_path_figs+'FIG10.pdf',bbox_inches='tight',dpi=100)
 
     elif mode == 155:
 
@@ -2301,7 +3063,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 100:
 
-        matplotlib.rcParams.update({'font.size': 12})
+        matplotlib.rcParams.update({'font.size': 18})
 
         print("\nMode ",mode,": Plotting GPU speedups and user code execution times per block size")
 
@@ -2312,46 +3074,84 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         speedup = "speedup_gpu_intra_task_execution_time_full_func"
 
         speedup_title = "Speedup GPU over CPU"
-        vmax=26.00
 
-        df_filtered_left = df_filtered[["vl_block_memory_size","vl_block_memory_size_mb","vl_intra_task_execution_time_device_func_cpu","vl_additional_time_cpu","vl_communication_time_cpu","vl_intra_task_execution_time_device_func_gpu","vl_additional_time_gpu","vl_communication_time_gpu"]].sort_values(by=["vl_block_memory_size"], ascending=[True])
-        df_filtered_right = df_filtered[["vl_block_memory_size","vl_block_memory_size_mb","speedup_gpu_intra_task_execution_time_full_func"]].sort_values(by=["vl_block_memory_size"], ascending=[True])
+        # Matmul Speedup
+        # matmul_func
+        df_filtered_left_top = df_filtered[(df_filtered.ds_function=='MATMUL_FUNC')]
+        # add_func
+        df_filtered_right_top = df_filtered[(df_filtered.ds_function=='ADD_FUNC')]
+        
+        # Matmul Time
+        # matmul_func
+        df_filtered_left_bottom = df_filtered[(df_filtered.ds_function=='MATMUL_FUNC')]
+        # add_func
+        df_filtered_right_bottom = df_filtered[(df_filtered.ds_function=='ADD_FUNC')]
+        left_title = 'matmul_func'
+        right_title = 'add_func'
 
+        # Speedups
+        df1 = df_filtered_left_top[["vl_block_memory_size","vl_block_memory_size_mb","speedup_gpu_intra_task_execution_time_full_func"]].sort_values(by=["vl_block_memory_size"], ascending=[True])
+        df2 = df_filtered_right_top[["vl_block_memory_size","vl_block_memory_size_mb","speedup_gpu_intra_task_execution_time_full_func"]].sort_values(by=["vl_block_memory_size"], ascending=[True])
+        print(df_filtered_right_top)
+        # Times
+        df3 = df_filtered_left_bottom[["vl_block_memory_size","vl_block_memory_size_mb","vl_intra_task_execution_time_device_func_cpu","vl_additional_time_cpu","vl_communication_time_cpu","vl_intra_task_execution_time_device_func_gpu","vl_additional_time_gpu","vl_communication_time_gpu"]].sort_values(by=["vl_block_memory_size"], ascending=[True])
+        df4 = df_filtered_right_bottom[["vl_block_memory_size","vl_block_memory_size_mb","vl_intra_task_execution_time_device_func_cpu","vl_additional_time_cpu","vl_communication_time_cpu","vl_intra_task_execution_time_device_func_gpu","vl_additional_time_gpu","vl_communication_time_gpu"]].sort_values(by=["vl_block_memory_size"], ascending=[True])
+
+        x = 'vl_block_memory_size_mb'
         x_value = "vl_block_memory_size_mb"
         x_value_title = 'Block size MB'
 
-        fig = plt.figure()
-        ax = plt.gca()
+        fig, axs = plt.subplots(2, 2, figsize=(10, 8), sharey='row', sharex='col')
 
-        plt.bar(df_filtered_right[x_value],df_filtered_right['speedup_gpu_intra_task_execution_time_full_func'],color='C0', alpha = 0.25, label='Speedup User Code', zorder=3)
-        plt.xlabel('Block size MB')
-        # plt.grid(axis='y', zorder=0)
-        # ax.bar_label(ax.containers[0], label_type='edge', rotation=0, fmt='%.2f')
-        plt.ylabel('GPU Speedup over CPU')
-        plt.ylim([-5, 25])
-        plt.grid(zorder=0,axis='y')
+        # Plot the first chart (top-left - Bar chart)
+        axs[0, 0].bar(df1[x_value],df1['speedup_gpu_intra_task_execution_time_full_func'], color='C0', alpha = 0.25, label='Usr. Code')
+        axs[0, 0].legend(loc=(-0.000,0.99), frameon=False, labelspacing=0.01, ncol=3, borderpad=0.1)
+        axs[0, 0].set_ylabel('GPU Speedup over CPU')  # Add y-axis label
+        axs[0, 0].set_ylim([-5, 25])
+        axs[0, 0].grid(zorder=0,axis='y')
+        axs[0, 0].set_title(left_title, pad=25, style='italic')
 
+        # Plot the second chart (top-right - Bar chart)
+        axs[0, 1].bar(df2[x],df2['speedup_gpu_intra_task_execution_time_full_func'],color='C0', alpha = 0.25)
+        axs[0, 1].set_ylim([-5, 25])
+        axs[0, 1].grid(zorder=0,axis='y')
+        axs[0, 1].set_title(right_title, pad=25, style='italic')
 
-        ax1 = ax.twinx()
+        # Plot the third chart (bottom-left - Line chart)
+        axs[1, 0].plot(df3[x], df3['vl_intra_task_execution_time_device_func_cpu'], color='C2', linestyle = 'dotted', label='P. Frac. CPU', linewidth=2.5)
+        axs[1, 0].plot(df3[x], df3['vl_intra_task_execution_time_device_func_gpu'], color='C2', linestyle = 'solid', label='P. Frac. GPU', linewidth=2.5)
+        axs[1, 0].plot(df3[x], df3['vl_communication_time_gpu'], color='C4', linestyle = 'solid', label='CPU-GPU Comm.', linewidth=2.5)
+        axs[1, 0].legend(loc=(-0.000,0.99), frameon=False, labelspacing=0.01, ncol=3, borderpad=0.1)
+        axs[1, 0].set_xlabel('Block size MB')  # Add x-axis label
+        axs[1, 0].set_ylabel('Average Time per Task (s)')  # Add y-axis label
+        axs[1, 0].set_yscale('log')
+        axs[1, 0].set_ylim([1e-3, 1e4])
+        axs[1, 0].tick_params(axis='x', labelrotation = 0)
+        axs[1, 0].grid(zorder=0,axis='y')
+        
+        # Plot the fourth chart (bottom-right - Line chart)
+        axs[1, 1].plot(df4[x], df4['vl_intra_task_execution_time_device_func_cpu'], color='C2', linestyle = 'dotted', linewidth=2.5)
+        axs[1, 1].plot(df4[x], df4['vl_intra_task_execution_time_device_func_gpu'], color='C2', linestyle = 'solid', linewidth=2.5)
+        axs[1, 1].plot(df4[x], df4['vl_communication_time_gpu'], color='C4', linestyle = 'solid', linewidth=2.5)
+        axs[1, 1].legend(loc=(-0.000,0.99), frameon=False, labelspacing=0.01, ncol=3, borderpad=0.1)
+        axs[1, 1].set_xlabel('Block size MB')  # Add x-axis label
+        axs[1, 1].set_yscale('log')
+        axs[1, 1].set_ylim([1e-3, 1e4])
+        axs[1, 1].tick_params(axis='x', labelrotation = 0)
+        axs[1, 1].grid(zorder=0,axis='y')
+        
+        # Adjust layout to prevent clipping of titles and labels
+        plt.tight_layout()
 
+        # Adjust spacing
+        plt.subplots_adjust(wspace=0.01, hspace=0.25)
+        
+        # Show the plots
+        # plt.show()
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
 
-        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_intra_task_execution_time_device_func_cpu'], color='C2', linestyle = 'dotted', label='Parallel Fraction CPU', zorder=3, linewidth=2.5)
-        # plt.plot(df_filtered_left[x_value], df_filtered_left['vl_additional_time_cpu'], color='C8', linestyle = 'dotted', label='$Serial Code CPU', zorder=3, linewidth=2.5)
-        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_intra_task_execution_time_device_func_gpu'], color='C2', linestyle = 'solid', label='Parallel Fraction GPU', zorder=3, linewidth=2.5)
-        # plt.plot(df_filtered_left[x_value], df_filtered_left['vl_additional_time_gpu'], color='C8', linestyle = 'solid', label='$Serial code GPU', zorder=3, linewidth=2.5)
-        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_communication_time_gpu'], color='C4', linestyle = 'solid', label='CPU-GPU Comm.', zorder=3, linewidth=2.5)
-        plt.yscale("log")
-        plt.ylabel('Average Time per Task (s)')
-        plt.ylim([1e-3, 1e4])
-
-
-        # plt.figlegend(loc=(0.025,0.863), ncol=2, frameon=False) # font size 14
-        plt.figlegend(loc=(0.090,0.879), ncol=2, frameon=False) # font size 12
-
-        ax.tick_params(axis='x', labelrotation = 0)
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_function+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
-        # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_function+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
-
+       
     else:
 
         print("\nInvalid mode.")

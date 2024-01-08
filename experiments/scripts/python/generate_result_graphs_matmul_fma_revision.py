@@ -891,10 +891,10 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                             INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
                                             WHERE
                                             (SELECT DISTINCT Z.DS_DEVICE FROM FUNCTION W INNER JOIN DEVICE Z ON (W.ID_DEVICE = Z.ID_DEVICE) WHERE W.ID_FUNCTION = B.ID_FUNCTION) = 'CPU'
-                                            AND A.NR_ALGORITHM_ITERATION <> 0
+                                            --AND A.NR_ALGORITHM_ITERATION <> 0
                                         ) X
-										WHERE
-										X.DS_FUNCTION = 'MATMUL_FUNC'
+										--WHERE
+										--X.DS_FUNCTION = 'MATMUL_FUNC'
                                         GROUP BY
                                         X.ID_PARAMETER,
                                         X.CD_PARAMETER,
@@ -1160,10 +1160,10 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
                                             INNER JOIN DATASET D ON (B.ID_DATASET = D.ID_DATASET)
                                             WHERE
                                             (SELECT DISTINCT Z.DS_DEVICE FROM FUNCTION W INNER JOIN DEVICE Z ON (W.ID_DEVICE = Z.ID_DEVICE) WHERE W.ID_FUNCTION = B.ID_FUNCTION) = 'GPU'
-                                            AND A.NR_ALGORITHM_ITERATION <> 0
+                                            --AND A.NR_ALGORITHM_ITERATION <> 0
                                         ) X
-										WHERE
-										X.DS_FUNCTION = 'MATMUL_FUNC'
+										--WHERE
+										--X.DS_FUNCTION = 'MATMUL_FUNC'
                                         GROUP BY
                                         X.ID_PARAMETER,
                                         X.CD_PARAMETER,
@@ -1265,7 +1265,7 @@ def main(ds_algorithm, ds_resource, nr_iterations, mode):
 									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 6.2 THEN 6.3 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*5  || ')'
 									ELSE ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*5  || ')'
 								END
-						WHEN T_CPU.DS_ALGORITHM = 'MATMUL_DISLIB'
+						WHEN (T_CPU.DS_ALGORITHM = 'MATMUL_DISLIB' OR T_CPU.DS_ALGORITHM = 'MATMUL_FMA')
 							THEN
 								CASE
 									WHEN ROUND(T_CPU.VL_BLOCK_MEMORY_SIZE_PERCENT_DATASET,1) = 0.3 THEN 0.4 || ' (' || T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION + T_CPU.VL_GRID_ROW_DIMENSION*T_CPU.VL_GRID_ROW_DIMENSION*(T_CPU.VL_GRID_ROW_DIMENSION-1)  || ')'
@@ -1692,9 +1692,9 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                     & (df["ds_dataset"] == "S_8GB_1")
                     # & (df["ds_device"] == "GPU")
                     # VAR_GRID_SHAPE_MATMUL_1, VAR_GRID_SHAPE_MATMUL_2
-                    & (df["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_5")
+                    & (df["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_1")
                     # MATMUL_FUNC, ADD_FUNC
-                    & (df["ds_function"] == "MATMUL_FUNC")
+                    # & (df["ds_function"] == "MATMUL_FUNC")
                     # & (df["vl_concat_block_size_mb_grid_row_x_column_dimension"] != "8 (16 x 16)")
                     # & (df["vl_block_memory_size_percent_dataset"] != 0.4)
                     ]
@@ -1780,8 +1780,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
             ax.set_ylabel('Parallel Tasks Average Time (s)')
             ax.legend()
             plt.grid(zorder=0)
-            ax.tick_params(axis='x', labelrotation = 45)
-            fig.autofmt_xdate(rotation=45, ha='right')  # Rotate the entire x-axis labels
+            ax.tick_params(axis='x', labelrotation = 90)
             # # NORMAL SCALE
             plt.ylim([0, 2500])
             # LOG SCALE
@@ -2301,56 +2300,76 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 100:
 
-        matplotlib.rcParams.update({'font.size': 12})
+        matplotlib.rcParams.update({'font.size': 18})
 
         print("\nMode ",mode,": Plotting GPU speedups and user code execution times per block size")
-
-        ds_function = df_filtered['ds_function'].unique()
-
-        ds_function = str(df_filtered['ds_function'].values[0])
 
         speedup = "speedup_gpu_intra_task_execution_time_full_func"
 
         speedup_title = "Speedup GPU over CPU"
-        vmax=26.00
 
-        df_filtered_left = df_filtered[["vl_block_memory_size","vl_block_memory_size_mb","vl_intra_task_execution_time_device_func_cpu","vl_additional_time_cpu","vl_communication_time_cpu","vl_intra_task_execution_time_device_func_gpu","vl_additional_time_gpu","vl_communication_time_gpu"]].sort_values(by=["vl_block_memory_size"], ascending=[True])
-        df_filtered_right = df_filtered[["vl_block_memory_size","vl_block_memory_size_mb","speedup_gpu_intra_task_execution_time_full_func"]].sort_values(by=["vl_block_memory_size"], ascending=[True])
+        # Matmul FMA Speedup
+        df_filtered_left = df_filtered
+        # Matmul FMA Time
+        df_filtered_right = df_filtered
 
+        # Speedups
+        df1 = df_filtered_left[["vl_block_memory_size","vl_block_memory_size_mb","speedup_gpu_intra_task_execution_time_full_func"]].sort_values(by=["vl_block_memory_size"], ascending=[True])
+        # Times
+        df2 = df_filtered_right[["vl_block_memory_size","vl_block_memory_size_mb","vl_intra_task_execution_time_device_func_cpu","vl_additional_time_cpu","vl_communication_time_cpu","vl_intra_task_execution_time_device_func_gpu","vl_additional_time_gpu","vl_communication_time_gpu"]].sort_values(by=["vl_block_memory_size"], ascending=[True])
+
+        # use the code below to plot chart with missing values
+        # from here
+        df1 = pd.concat([df1,pd.DataFrame({"vl_block_memory_size":["8192000000"],
+                                               "vl_block_memory_size_mb":["8192"],
+                                               "speedup_gpu_intra_task_execution_time_full_func":[0]
+                                               })])
+
+
+        x = 'vl_block_memory_size_mb'
         x_value = "vl_block_memory_size_mb"
         x_value_title = 'Block size MB'
 
-        fig = plt.figure()
-        ax = plt.gca()
+        fig, axs = plt.subplots(1, 2, figsize=(10, 4))
 
-        plt.bar(df_filtered_right[x_value],df_filtered_right['speedup_gpu_intra_task_execution_time_full_func'],color='C0', alpha = 0.25, label='Speedup User Code', zorder=3)
-        plt.xlabel('Block size MB')
-        # plt.grid(axis='y', zorder=0)
-        # ax.bar_label(ax.containers[0], label_type='edge', rotation=0, fmt='%.2f')
-        plt.ylabel('GPU Speedup over CPU')
-        plt.ylim([-5, 25])
-        plt.grid(zorder=0,axis='y')
+        # Plot the first chart (top-left - Bar chart)
+        axs[0].bar(df1[x_value],df1['speedup_gpu_intra_task_execution_time_full_func'], color='C0', alpha = 0.25, label='Usr. Code')
+        axs[0].legend(loc='upper left', frameon=False, labelspacing=0.01, ncol=3, borderpad=0.1)
+        axs[0].set_ylabel('GPU Speedup over CPU')  # Add y-axis label
+        axs[0].set_xlabel('Block size MB', loc='left')  # Add x-axis label
+        axs[0].set_ylim([0, 25])
+        axs[0].grid(zorder=0,axis='y')
+
+        # Plot the second chart (top-right - Bar chart)
+        axs[1].plot(df2[x],df2['vl_intra_task_execution_time_device_func_cpu'], color='C2', linestyle = 'dotted', label='P. Frac. CPU', zorder=3, linewidth=2.5)
+        axs[1].plot(df2[x],df2['vl_intra_task_execution_time_device_func_gpu'], color='C2', linestyle = 'solid', label='P. Frac. GPU', zorder=3, linewidth=2.5)
+        axs[1].plot(df2[x],df2['vl_communication_time_gpu'],color='C4', linestyle = 'solid', label='CPU-GPU Comm.', zorder=3, linewidth=2.5)
+        axs[1].legend(loc='upper left', frameon=False, labelspacing=0.01, ncol=1, borderpad=0.1)
+        axs[1].set_ylabel('Average Time per Task (s)')  # Add y-axis label
+        axs[1].set_ylim([1e-2, 1e4])
+        axs[1].set_yscale('log')
+        axs[1].grid(zorder=0,axis='y')
+
+        # Adjust layout to prevent clipping of titles and labels
+        plt.tight_layout()
+
+        # Adjust spacing
+        plt.subplots_adjust(wspace=0.37, hspace=0.2)
+        
+        # Show the plots
+        # plt.show()
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
 
 
-        ax1 = ax.twinx()
 
 
-        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_intra_task_execution_time_device_func_cpu'], color='C2', linestyle = 'dotted', label='Parallel Fraction CPU', zorder=3, linewidth=2.5)
-        # plt.plot(df_filtered_left[x_value], df_filtered_left['vl_additional_time_cpu'], color='C8', linestyle = 'dotted', label='$Serial Code CPU', zorder=3, linewidth=2.5)
-        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_intra_task_execution_time_device_func_gpu'], color='C2', linestyle = 'solid', label='Parallel Fraction GPU', zorder=3, linewidth=2.5)
-        # plt.plot(df_filtered_left[x_value], df_filtered_left['vl_additional_time_gpu'], color='C8', linestyle = 'solid', label='$Serial code GPU', zorder=3, linewidth=2.5)
-        plt.plot(df_filtered_left[x_value], df_filtered_left['vl_communication_time_gpu'], color='C4', linestyle = 'solid', label='CPU-GPU Comm.', zorder=3, linewidth=2.5)
-        plt.yscale("log")
-        plt.ylabel('Average Time per Task (s)')
-        plt.ylim([1e-3, 1e4])
 
 
-        # plt.figlegend(loc=(0.025,0.863), ncol=2, frameon=False) # font size 14
-        plt.figlegend(loc=(0.090,0.879), ncol=2, frameon=False) # font size 12
 
-        ax.tick_params(axis='x', labelrotation = 0)
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_function+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
-        # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'_'+ds_function+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+
+
+
 
     else:
 
@@ -2361,7 +2380,7 @@ def parse_args():
     import argparse
     description = 'Generating graphs for the experiments'
     parser = argparse.ArgumentParser(description=description)
-    parser.add_argument('-a', '--ds_algorithm', type=str, default="MATMUL_DISLIB",
+    parser.add_argument('-a', '--ds_algorithm', type=str, default="MATMUL_FMA",
                         help='Algorithm description'
                         )
     parser.add_argument('-r', '--ds_resource', type=str, default="MINOTAURO_9_NODES_1_CORE",
