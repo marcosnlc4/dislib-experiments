@@ -606,3 +606,51 @@ def add_mix_kernel(y_len):
       'raw T x, raw T y', 'raw T z',
       f'z[i] = x[i / {y_len}] + y[i % {y_len}]',
       'add_mix')
+
+#########
+# EXAMPLE PSEUDO CODE K-MEANS (REVISED PAPER)
+#########
+
+
+def fit(self, x, y=None):
+    self.random_state = check_random_state(self.random_state)
+    self._init_centers(x.shape[1], x._sparse)
+
+    old_centers = None
+    iteration = 0
+
+    while not self._converged(old_centers, iteration):
+        old_centers = self.centers.copy()
+        partials = []
+
+        for row in x._iterator(axis=0):
+            partial = _partial_sum(row._blocks, old_centers)
+            partials.append(partial)
+
+    return self
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ])
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=np.array)
+def _partial_sum_gpu(blocks, centers):
+
+    partials = np.zeros((centers.shape[0], 2), dtype=object)
+    arr = Array._merge_blocks(blocks).astype(np.float32)
+    arr_gpu, centers_gpu = cp.asarray(arr), cp.asarray(centers).astype(cp.float32)
+
+    close_centers_gpu = cp.argmin(distance_gpu(arr_gpu, centers_gpu), axis=1)
+
+    close_centers = cp.asnumpy(close_centers_gpu)
+
+    arr_gpu, centers_gpu = None, None
+    for center_idx, _ in enumerate(centers):
+        indices = np.argwhere(close_centers == center_idx).flatten()
+        partials[center_idx][0] = np.sum(arr[indices], axis=0)
+        partials[center_idx][1] = indices.shape[0]
+
+    return partials
+
+
+
