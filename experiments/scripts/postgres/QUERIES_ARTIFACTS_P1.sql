@@ -209,7 +209,7 @@ INNER JOIN DEVICE H ON (G.ID_DEVICE = H.ID_DEVICE)
 WHERE
 F.DS_ALGORITHM = 'KMEANS'
 AND B.NR_ITERATIONS = 5
-AND E.DS_DATASET = 'S_1GB_3'
+AND E.DS_DATASET in ('S_1GB_1','S_1GB_3')
 AND D.ID_RESOURCE = 18
 AND C.ID_PARAMETER_TYPE = 17
 --ORDER BY A.ID_EXPERIMENT
@@ -358,7 +358,78 @@ AND C.ID_PARAMETER_TYPE = 1
 
 UNION ALL
 
---EXTRA EXPERIMENT (SPARSE DATASET)
+--EXTRA EXPERIMENT (SKEWED DATASET)
+SELECT
+A.id_experiment,
+A.nr_algorithm_iteration,
+A.nr_function_iteration,
+A.nr_task,
+A.vl_total_execution_time,
+A.vl_inter_task_execution_time,-- as vl_parallel_task_execution_time,
+A.vl_intra_task_execution_time_full_func,-- as vl_task_user_code_execution_time,
+A.vl_intra_task_execution_time_device_func,-- as vl_parallel_fraction_execution_time,
+A.vl_additional_time_1 + A.vl_additional_time_2,-- as vl_serial_fraction_execution_time,
+A.vl_communication_time_1,-- as vl_cpu_gpu_communication_time,
+A.vl_communication_time_2,-- as vl_gpu_cpu_communication_time,
+B.id_parameter,
+B.nr_iterations,
+B.vl_grid_row_dimension,
+B.vl_grid_column_dimension,
+B.vl_block_row_dimension,
+B.vl_block_column_dimension,
+B.vl_block_memory_size,
+C.id_parameter_type,
+CASE
+	WHEN C.ds_compss_version = 'TrunkCT' THEN '3.0'
+	ELSE ''
+END AS ds_compss_version,
+C.ds_dislib_version,
+C.ds_schdeuler,
+C.nr_cluster,
+C.ds_storage,
+B.id_resource,
+D.ds_resource,
+D.nr_nodes,
+D.nr_computing_units_cpu,
+D.nr_computing_units_gpu,
+D.vl_memory_size_per_cpu_computing_unit,
+D.vl_memory_size_per_gpu_computing_unit,
+E.id_dataset,
+E.ds_dataset,
+E.vl_dataset_memory_size,
+E.ds_data_type,
+E.vl_data_type_memory_size,
+E.vl_dataset_dimension,
+E.vl_dataset_row_dimension,
+E.vl_dataset_column_dimension,
+E.nr_random_state,
+E.vl_data_sparsity,
+E.vl_data_skewness,
+F.id_algorithm,
+F.ds_algorithm,
+G.id_function,
+G.ds_function,
+H.id_device,
+H.ds_device
+FROM EXPERIMENT_RAW A
+INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER)
+INNER JOIN PARAMETER_TYPE C ON (B.ID_PARAMETER_TYPE = C.ID_PARAMETER_TYPE) 
+INNER JOIN RESOURCE D ON (B.ID_RESOURCE = D.ID_RESOURCE)
+INNER JOIN DATASET E ON (B.ID_DATASET = E.ID_DATASET)
+INNER JOIN ALGORITHM F ON (B.ID_ALGORITHM = F.ID_ALGORITHM)
+INNER JOIN FUNCTION G ON (B.ID_FUNCTION = G.ID_FUNCTION)
+INNER JOIN DEVICE H ON (G.ID_DEVICE = H.ID_DEVICE)
+WHERE
+F.DS_ALGORITHM = 'MATMUL_DISLIB'
+AND B.NR_ITERATIONS = 5
+AND E.DS_DATASET IN ('S_2GB_1','S_2GB_3')
+AND D.ID_RESOURCE = 1
+AND C.ID_PARAMETER_TYPE = 1
+--ORDER BY A.ID_EXPERIMENT
+
+UNION ALL
+
+--EXTRA EXPERIMENT (SPARSE DATASET) -- KEEP IT??
 SELECT
 A.id_experiment,
 A.nr_algorithm_iteration,
@@ -520,11 +591,11 @@ SELECT * FROM FUNCTION
 SELECT * FROM ALGORITHM
 SELECT * FROM CONFIGURATION
 SELECT * FROM RESOURCE WHERE ID_RESOURCE = 1
-SELECT * FROM DATASET WHERE ID_DATASET IN (3,4,5,8) --DS_DATASET IN ('S_2GB_1','S_2GB_2','S_8GB_1','S_32GB_1')
+SELECT * FROM DATASET WHERE ID_DATASET IN (3,4,5,8,13) --DS_DATASET IN ('S_2GB_1','S_2GB_2','S_8GB_1','S_32GB_1','S_2GB_3')
 SELECT * FROM PARAMETER_TYPE WHERE ID_PARAMETER_TYPE IN (1,2,5,6)
 SELECT * FROM PARAMETER WHERE ID_RESOURCE = 1 AND ID_DATASET IN (3,4,5,8) AND ID_PARAMETER_TYPE IN (1,2,5,6)
 SELECT null as ID_EXPERIMENT, null as ID_PARAMETER, null as VL_TOTAL_EXECUTION_TIME, null as VL_INTER_TASK_EXECUTION_TIME, null as VL_INTRA_TASK_EXECUTION_TIME_FULL_FUNC, null as VL_INTRA_TASK_EXECUTION_TIME_DEVICE_FUNC, null as VL_COMMUNICATION_TIME, null as DT_PROCESSING FROM EXPERIMENT limit 1--NOT USED
-SELECT A.* FROM EXPERIMENT_RAW A INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER) WHERE ID_RESOURCE = 1 AND ID_DATASET IN (3,4,5,8) AND ID_PARAMETER_TYPE IN (1,2,5,6)
+SELECT A.* FROM EXPERIMENT_RAW A INNER JOIN PARAMETER B ON (A.ID_PARAMETER = B.ID_PARAMETER) WHERE ID_RESOURCE = 1 AND ID_DATASET IN (3,4,5,8,13) AND ID_PARAMETER_TYPE IN (1,2,5,6)
 
 -- MATMUL_FMA
 SELECT * FROM DEVICE

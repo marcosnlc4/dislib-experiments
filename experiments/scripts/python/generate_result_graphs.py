@@ -2824,12 +2824,12 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                         & (df["nr_iterations"] == int(nr_iterations)) # FIXED VALUE
                         & (df["ds_resource"] == ds_resource.upper()) # FIXED VALUE
                         # & (df["ds_dataset"].isin(["S_1MB_1","S_10MB_1","S_100MB_1","S_1GB_1","S_10GB_1","S_100GB_1"])) # FIXED VALUE
-                        & (df["ds_dataset"] == "S_10GB_1")
+                        # & (df["ds_dataset"] == "S_10GB_1")
                         # & (df["vl_grid_row_dimension"] == 2)
                         # & (df["ds_dataset"].isin(["S_10GB_1"]))
                         # & (df["ds_device"] == "GPU")
-                        # & (df["ds_dataset"].isin(["S_10GB_1","S_1GB_3"])) #mode 1555 only
-                        & (df["ds_parameter_type"] == "VAR_GRID_ROW_14")
+                        & (df["ds_dataset"].isin(["S_1GB_1","S_1GB_3"])) #mode 1555 only
+                        & (df["ds_parameter_type"] == "VAR_GRID_ROW_5")
                         ]
         # # # General filtering and sorting parameters - V3 (VAR_CORES_CLUSTER_1 and VAR_CORES_SINGLE_NODE_1)
         # df_filtered = df[
@@ -4594,7 +4594,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 1555:
 
-        matplotlib.rcParams.update({'font.size': 16})
+        matplotlib.rcParams.update({'font.size': 18})
 
         print("\nMode ",mode,": Plotting intra-task execution times x grid and block shapes, without parameter filters")
 
@@ -4646,36 +4646,99 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
             
             df_filtered_mean = df_filtered_mean[[x_value,'device_skewness','vl_intra_task_execution_time_full_func']]
             
-            plt.figure(2)
-            X_axis = np.arange(len(df_filtered_mean[x_value].drop_duplicates()))
-            plt.bar(X_axis - 0.2, df_filtered_mean[(df_filtered_mean.device_skewness=="CPU NOT SKEWED")]["vl_intra_task_execution_time_full_func"], 0.3, label = "Dataset 0% Skewed", color='C0', alpha = 0.25, zorder=3)
-            plt.bar(X_axis + 0.2, df_filtered_mean[(df_filtered_mean.device_skewness=="CPU SKEWED")]["vl_intra_task_execution_time_full_func"], 0.3, label = "Dataset 50% Skewed", color='C0', alpha = 0.25, hatch='oo', zorder=3)
-            plt.xticks(X_axis, df_filtered_mean[x_value].drop_duplicates(), rotation=90)
-            plt.xlabel(x_value_title)
-            plt.ylabel('User Code Exec. Time CPU (s)')
-            # plt.title('$T_{w\_intra}$ Time x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
-            plt.grid(zorder=0,axis='y')
-            plt.figlegend(loc='upper center', ncol=2, frameon=False)
-            plt.ylim([0, 2.5])
-            # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=len(df_filtered_mean[x_value].drop_duplicates()))
-            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_CPU_avg_intra_task_composition_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
-            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_CPU_avg_intra_task_composition_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
+            # plt.figure(2)
+            # X_axis = np.arange(len(df_filtered_mean[x_value].drop_duplicates()))
+            # plt.bar(X_axis - 0.2, df_filtered_mean[(df_filtered_mean.device_skewness=="CPU NOT SKEWED")]["vl_intra_task_execution_time_full_func"], 0.3, label = "Dataset 0% Skewed", color='C0', alpha = 0.5, zorder=3)
+            # plt.bar(X_axis + 0.2, df_filtered_mean[(df_filtered_mean.device_skewness=="CPU SKEWED")]["vl_intra_task_execution_time_full_func"], 0.3, label = "Dataset 50% Skewed", color='C0', alpha = 0.5, hatch='oo', zorder=3)
+            # plt.xticks(X_axis, df_filtered_mean[x_value].drop_duplicates(), rotation=30)
+            # plt.xlabel(x_value_title)
+            # plt.ylabel('User Code Exec. Time CPU (s)')
+            # # plt.title('$T_{w\_intra}$ Time x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
+            # plt.grid(zorder=0,axis='y')
+            # # plt.figlegend(loc=(0.18,0.78), ncol=1, frameon=False)
+            # plt.ylim([0, 2.5])
+            # # plt.yscale("log")
+            # # fig.autofmt_xdate(rotation=30, ha='right')  # Rotate the entire x-axis labels
+            # plt.xticks(rotation=30, ha='right')
+            # # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=len(df_filtered_mean[x_value].drop_duplicates()))
+            # # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_CPU_avg_intra_task_composition_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_CPU_avg_intra_task_composition_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
 
 
             plt.figure(3)
             X_axis = np.arange(len(df_filtered_mean[x_value].drop_duplicates()))
-            plt.bar(X_axis - 0.2, df_filtered_mean[(df_filtered_mean.device_skewness=="GPU NOT SKEWED")]["vl_intra_task_execution_time_full_func"], 0.3, label = "Dataset 0% Skewed", color='C0', alpha = 0.25, zorder=3)
-            plt.bar(X_axis + 0.2, df_filtered_mean[(df_filtered_mean.device_skewness=="GPU SKEWED")]["vl_intra_task_execution_time_full_func"], 0.3, label = "Dataset 50% Skewed", color='C0', alpha = 0.25, hatch='oo', zorder=3)
-            plt.xticks(X_axis, df_filtered_mean[x_value].drop_duplicates(), rotation=90)
-            plt.xlabel(x_value_title)
+            plt.bar(X_axis - 0.2, df_filtered_mean[(df_filtered_mean.device_skewness=="GPU NOT SKEWED")]["vl_intra_task_execution_time_full_func"], 0.3, label = "Dataset 0% Skewed", color='C0', alpha = 0.5, zorder=3)
+            plt.bar(X_axis + 0.2, df_filtered_mean[(df_filtered_mean.device_skewness=="GPU SKEWED")]["vl_intra_task_execution_time_full_func"], 0.3, label = "Dataset 50% Skewed", color='C0', alpha = 0.5, hatch='oo', zorder=3)
+            plt.xticks(X_axis, df_filtered_mean[x_value].drop_duplicates(), rotation=30)
+            # plt.xlabel(x_value_title)
             plt.ylabel('User Code Exec. Time GPU (s)')
             # plt.title('$T_{w\_intra}$ Time x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
             plt.grid(zorder=0,axis='y')
-            plt.figlegend(loc='upper center', ncol=2, frameon=False)
+            # plt.figlegend(loc=(0.18,0.78), ncol=1, frameon=False)
             plt.ylim([0, 2.5])
+            # plt.yscale("log")
+            # fig.autofmt_xdate(rotation=30, ha='right')  # Rotate the entire x-axis labels
+            plt.xticks(rotation=30, ha='right')
             # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=len(df_filtered_mean[x_value].drop_duplicates()))
-            plt.savefig(dst_path_figs+'mode_'+str(mode)+'_GPU_avg_intra_task_composition_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
+            # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_GPU_avg_intra_task_composition_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
             plt.savefig(dst_path_figs+'mode_'+str(mode)+'_GPU_avg_intra_task_composition_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
+
+
+    # FOR DATA SKEWNESS
+    elif mode == 1556:
+
+        matplotlib.rcParams.update({'font.size': 18})
+
+        print("\nMode ",mode,": Plotting intra-task execution times x grid and block shapes, without parameter filters")
+
+        ds_dataset = df_filtered["ds_dataset"].unique()
+        ds_dataset = '(' + ', '.join(ds_dataset) + ')'
+
+        x_value = 'vl_concat_block_size_mb_grid_row_x_column_dimension'
+
+        x_value_title = 'Block Size MB (Grid Shape)'
+
+        df_filtered_mean = df_filtered.groupby([x_value,'device_skewness'], as_index=False).mean()
+
+        df_filtered_mean.sort_values(by=['vl_grid_row_dimension'], ascending=[False], inplace=True)
+        
+        df_filtered_mean = df_filtered_mean[[x_value,'device_skewness','vl_total_execution_time','vl_intra_task_execution_time_full_func','vl_intra_task_execution_time_device_func']]
+        
+        X_axis = np.arange(len(df_filtered_mean[x_value].drop_duplicates()))
+        
+        fig, axs = plt.subplots(2, 1, figsize=(7, 8), sharey='row', sharex='col')
+
+        # Plot the first chart (top - Bar chart)
+        axs[0].bar(X_axis - 0.2,df_filtered_mean[(df_filtered_mean.device_skewness=="CPU NOT SKEWED")]["vl_intra_task_execution_time_full_func"], 0.3, label = "Dataset 0% Skewed", color='C0', alpha = 0.5, zorder=3)
+        axs[0].bar(X_axis + 0.2,df_filtered_mean[(df_filtered_mean.device_skewness=="CPU SKEWED")]["vl_intra_task_execution_time_full_func"], 0.3, label = "Dataset 50% Skewed", color='red', alpha = 0.5, hatch='oo', zorder=3)
+        axs[0].set_ylabel('Usr. Code Time CPU (s)')  # Add y-axis label
+        axs[0].grid(zorder=0,axis='y')
+        axs[0].set_ylim([0, 3])
+        axs[0].set_title('K-means', pad=20)
+        axs[0].set_xticks(X_axis, df_filtered_mean[x_value].drop_duplicates(), rotation=30)
+
+        # Plot the second chart (bottom - Bar chart)
+        axs[1].bar(X_axis - 0.2, df_filtered_mean[(df_filtered_mean.device_skewness=="GPU NOT SKEWED")]["vl_intra_task_execution_time_full_func"], 0.3, color='C0', alpha = 0.5, zorder=3)
+        axs[1].bar(X_axis + 0.2, df_filtered_mean[(df_filtered_mean.device_skewness=="GPU SKEWED")]["vl_intra_task_execution_time_full_func"], 0.3, color='red', alpha = 0.5, hatch='oo', zorder=3)
+        axs[1].set_ylabel('Usr. Code Time GPU (s)')  # Add y-axis label
+        axs[1].set_xlabel('Block size MB (Grid Dimension)')
+        axs[1].grid(zorder=0,axis='y')
+        axs[1].set_ylim([0,  3])
+        axs[1].set_xticks(X_axis, df_filtered_mean[x_value].drop_duplicates(), rotation=30)
+
+
+        # Adjust layout to prevent clipping of titles and labels
+        # plt.tight_layout()
+
+        fig.autofmt_xdate(rotation=30, ha='right')
+
+        # Adjust spacing
+        plt.subplots_adjust(wspace=0.01, hspace=0.25)
+        
+        # Show the plots
+        # plt.show()
+        plt.savefig(dst_path_figs+'FIG11.png',bbox_inches='tight',dpi=100)
+        plt.savefig(dst_path_figs+'FIG11.pdf',bbox_inches='tight',dpi=100)
 
 
 

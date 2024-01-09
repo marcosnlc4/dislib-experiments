@@ -3362,11 +3362,11 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                         # & (df["ds_parameter_type"].isin(["VAR_GRID_ROW_5","VAR_GRID_ROW_6","VAR_GRID_ROW_7"])) # FIXED VALUE
                         # & (df["ds_dataset"] == "S_10GB_1")
                         # for mode == 102
-                        # & (df["ds_dataset"].isin(["S_1GB_1","S_1GB_3"]))
-                        # & (df["ds_parameter_type"] == "VAR_GRID_ROW_5")
+                        & (df["ds_dataset"].isin(["S_1GB_1","S_1GB_3"]))
+                        & (df["ds_parameter_type"] == "VAR_GRID_ROW_5")
                         # for mode == 15 AND 16
-                        & (df["ds_parameter_type"].isin(["VAR_GRID_ROW_11","VAR_GRID_ROW_8","VAR_GRID_ROW_5","VAR_GRID_ROW_14"])) # FIXED VALUE
-                        & (df["ds_dataset"] == "S_10GB_1")
+                        # & (df["ds_parameter_type"].isin(["VAR_GRID_ROW_11","VAR_GRID_ROW_8","VAR_GRID_ROW_5","VAR_GRID_ROW_14"])) # FIXED VALUE
+                        # & (df["ds_dataset"] == "S_10GB_1")
                         ]
         
         # # # General filtering and sorting parameters - V3 (VAR_CORES_CLUSTER_1 and VAR_CORES_SINGLE_NODE_1)
@@ -4182,27 +4182,29 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         #     }
 
 
-        data = {'Task User Code \n (Parallel Fraction)':
+        data = {'\nTask User Code \n (Parallel Fraction)':
                 {'CPU': 0.03,
                 'GPU': 0.01},
-            'Task User Code \n (Total Execution)':
+            '\nTask User Code \n (Total Execution)':
                 {'CPU': 0.08,
                 'GPU': 0.06},
-            'Parallel Tasks':
+            '\nParallel Tasks':
                 {'CPU': 15.33,
                 'GPU': 18.34},
             }
         
-        matplotlib.rcParams.update({'font.size': 12})
-        fig = plt.figure()
+        matplotlib.rcParams.update({'font.size': 18})
+        fig = plt.figure(figsize=(8.8, 4.8))
+        # fig = plt.figure(figsize=(8.8, 5.8))#default 6.4 x 4.8
         ax = fig.add_subplot(1,1,1)
         label_group_bar(ax, data)
         fig.subplots_adjust(bottom=0.1)
-        ax.grid(False)
+        ax.grid(True,axis='y')
         plt.yscale("log")
         plt.ylim(top=5e1)
         ax.spines[['right', 'top']].set_visible(False)
         # plt.show()
+        # matplotlib.rcParams.update({'font.size': 22})
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_''_experiments_total_exec_time_parameter_type_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
 
 
@@ -4987,7 +4989,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
             plt.ylabel('User Code Exec. Time CPU (s)')
             # plt.title('$T_{w\_intra}$ Time x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
             plt.grid(zorder=0,axis='y')
-            plt.figlegend(loc='upper center', ncol=2, frameon=False)
+            plt.figlegend(loc='Best', ncol=2, frameon=False)
             plt.ylim([0, 2.5])
             # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=len(df_filtered_mean[x_value].drop_duplicates()))
             plt.savefig(dst_path_figs+'mode_'+str(mode)+'_CPU_avg_intra_task_composition_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
@@ -5003,7 +5005,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
             plt.ylabel('User Code Exec. Time GPU (s)')
             # plt.title('$T_{w\_intra}$ Time x '+x_value_title+' ' + ds_dataset,fontstyle='italic',fontweight="bold")
             plt.grid(zorder=0,axis='y')
-            plt.figlegend(loc='upper center', ncol=2, frameon=False)
+            plt.figlegend(loc='Best', ncol=2, frameon=False)
             plt.ylim([0, 2.5])
             # plt.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), fancybox=True, shadow=True, ncol=len(df_filtered_mean[x_value].drop_duplicates()))
             plt.savefig(dst_path_figs+'mode_'+str(mode)+'_GPU_avg_intra_task_composition_time_per_'+x_value+'_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
@@ -5577,7 +5579,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         fig, axs = plt.subplots(2, 3, figsize=(18, 8), sharey='row', sharex='col')
 
         # Plot the first chart (top-left - Bar chart)
-        axs[0, 0].bar(df1[x_value],df1['speedup_gpu_intra_task_execution_time_full_func'], color='C0', alpha = 0.25, label='Usr. Code')
+        axs[0, 0].bar(df1[x_value],df1['speedup_gpu_intra_task_execution_time_full_func'], color='C0', alpha = 0.5, label='Usr. Code')
         axs[0, 0].legend(loc=(-0.000,0.99), frameon=False, labelspacing=0.01, ncol=3, borderpad=0.1)
         axs[0, 0].set_ylabel('GPU Speedup over CPU')  # Add y-axis label
         axs[0, 0].set_ylim([0, 8])
@@ -5585,13 +5587,13 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         axs[0, 0].set_title(left_title, pad=25)
 
         # Plot the second chart (top-center - Bar chart)
-        axs[0, 1].bar(df2[x],df2['speedup_gpu_intra_task_execution_time_full_func'],color='C0', alpha = 0.25)
+        axs[0, 1].bar(df2[x],df2['speedup_gpu_intra_task_execution_time_full_func'],color='C0', alpha = 0.5)
         axs[0, 1].set_ylim([0, 8])
         axs[0, 1].grid(zorder=0,axis='y')
         axs[0, 1].set_title(center_title, pad=25)
 
         # Plot the third chart (top-right - Bar chart)
-        axs[0, 2].bar(df3[x],df3['speedup_gpu_intra_task_execution_time_full_func'],color='C0', alpha = 0.25)
+        axs[0, 2].bar(df3[x],df3['speedup_gpu_intra_task_execution_time_full_func'],color='C0', alpha = 0.5)
         axs[0, 2].set_ylim([0, 8])
         axs[0, 2].grid(zorder=0,axis='y')
         axs[0, 2].set_title(right_title, pad=25)
@@ -5639,7 +5641,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         plt.tight_layout()
 
         # Adjust spacing
-        plt.subplots_adjust(wspace=0.01, hspace=0.15)
+        plt.subplots_adjust(wspace=0.01, hspace=0.25)
         
         # Show the plots
         # plt.show()
@@ -5826,32 +5828,32 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
         matplotlib.rcParams.update({'font.size': 18})
 
-        # # Matmul Speedup
-        # # 8 GB 
-        # df_filtered_left_top = df_filtered[(df_filtered.ds_algorithm=='Matmul') & (df_filtered.ds_dataset=='S_8GB_1')]
-        # # 32 GB
-        # df_filtered_right_top = df_filtered[(df_filtered.ds_algorithm=='Matmul') & (df_filtered.ds_dataset=='S_32GB_1')]
-        # # Matmul Time
-        # # 8 GB 
-        # df_filtered_left_bottom = df_filtered[(df_filtered.ds_algorithm=='Matmul') & (df_filtered.ds_dataset=='S_8GB_1')]
-        # # 32 GB
-        # df_filtered_right_bottom = df_filtered[(df_filtered.ds_algorithm=='Matmul') & (df_filtered.ds_dataset=='S_32GB_1')]
-        # left_title = 'Dataset size 8 GB'
-        # right_title = 'Dataset size 32 GB'
+        # Matmul Speedup
+        # 8 GB 
+        df_filtered_left_top = df_filtered[(df_filtered.ds_algorithm=='Matmul') & (df_filtered.ds_dataset=='S_8GB_1')]
+        # 32 GB
+        df_filtered_right_top = df_filtered[(df_filtered.ds_algorithm=='Matmul') & (df_filtered.ds_dataset=='S_32GB_1')]
+        # Matmul Time
+        # 8 GB 
+        df_filtered_left_bottom = df_filtered[(df_filtered.ds_algorithm=='Matmul') & (df_filtered.ds_dataset=='S_8GB_1')]
+        # 32 GB
+        df_filtered_right_bottom = df_filtered[(df_filtered.ds_algorithm=='Matmul') & (df_filtered.ds_dataset=='S_32GB_1')]
+        left_title = 'Dataset size 8 GB'
+        right_title = 'Dataset size 32 GB'
 
 
-        # K-means Speedup
-        # 10 GB 
-        df_filtered_left_top = df_filtered[(df_filtered.ds_algorithm=='K-means') & (df_filtered.ds_dataset=='S_10GB_1')]
-        # 100 GB
-        df_filtered_right_top = df_filtered[(df_filtered.ds_algorithm=='K-means') & (df_filtered.ds_dataset=='S_100GB_1')]
-        # K-means Time
-        # 10 GB 
-        df_filtered_left_bottom = df_filtered[(df_filtered.ds_algorithm=='K-means') & (df_filtered.ds_dataset=='S_10GB_1')]
-        # 100 GB
-        df_filtered_right_bottom = df_filtered[(df_filtered.ds_algorithm=='K-means') & (df_filtered.ds_dataset=='S_100GB_1')]
-        left_title = 'Dataset size 10 GB'
-        right_title = 'Dataset size 100 GB'
+        # # K-means Speedup
+        # # 10 GB 
+        # df_filtered_left_top = df_filtered[(df_filtered.ds_algorithm=='K-means') & (df_filtered.ds_dataset=='S_10GB_1')]
+        # # 100 GB
+        # df_filtered_right_top = df_filtered[(df_filtered.ds_algorithm=='K-means') & (df_filtered.ds_dataset=='S_100GB_1')]
+        # # K-means Time
+        # # 10 GB 
+        # df_filtered_left_bottom = df_filtered[(df_filtered.ds_algorithm=='K-means') & (df_filtered.ds_dataset=='S_10GB_1')]
+        # # 100 GB
+        # df_filtered_right_bottom = df_filtered[(df_filtered.ds_algorithm=='K-means') & (df_filtered.ds_dataset=='S_100GB_1')]
+        # left_title = 'Dataset size 10 GB'
+        # right_title = 'Dataset size 100 GB'
 
 
         # Speedups
@@ -5872,29 +5874,35 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         fig, axs = plt.subplots(2, 2, figsize=(12, 8), sharey='row', sharex='col')
 
         # Plot the first chart (top-left - Bar chart)
-        axs[0, 0].bar(X_axis_1 - 0.3, df1['speedup_gpu_intra_task_execution_time_device_func'], 0.3, label='P. Frac.', color='C2', alpha = 0.25)
-        axs[0, 0].bar(X_axis_1 + 0.0, df1['speedup_gpu_intra_task_execution_time_full_func'], 0.3, label='Usr. Code', color='C0', alpha = 0.25, hatch='///')
-        axs[0, 0].bar(X_axis_1 + 0.3, df1['speedup_gpu_total_execution_time'], 0.3, label='P. Task', color='C1', alpha = 0.25, hatch='\\\\\\')
+        axs[0, 0].bar(X_axis_1 - 0.3, df1['speedup_gpu_intra_task_execution_time_device_func'], 0.3, label='P. Frac.', color='C2', alpha = 0.5)
+        axs[0, 0].bar(X_axis_1 + 0.0, df1['speedup_gpu_intra_task_execution_time_full_func'], 0.3, label='Usr. Code', color='C0', alpha = 0.5, hatch='///')
+        axs[0, 0].bar(X_axis_1 + 0.3, df1['speedup_gpu_total_execution_time'], 0.3, label='P. Task', color='C1', alpha = 0.5, hatch='\\\\\\')
         axs[0, 0].legend(loc=(-0.000,0.99), frameon=False, labelspacing=0.01, ncol=3, borderpad=0.1)
         axs[0, 0].set_ylabel('GPU Speedup over CPU')  # Add y-axis label
-        axs[0, 0].set_ylim([-5, 30])
+        #MATMUL
+        axs[0, 1].set_ylim([-5, 30])
+        #KMEANS
+        # axs[0, 1].set_ylim([-5, 20])
         axs[0, 0].grid(zorder=0,axis='y')
         axs[0, 0].set_title(left_title, pad=25)
 
         # Plot the second chart (top-right - Bar chart)
-        axs[0, 1].bar(X_axis_2 - 0.3, df2['speedup_gpu_intra_task_execution_time_device_func'], 0.3, color='C2', alpha = 0.25)
-        axs[0, 1].bar(X_axis_2 + 0.0, df2['speedup_gpu_intra_task_execution_time_full_func'], 0.3, color='C0', alpha = 0.25, hatch='///')
-        axs[0, 1].bar(X_axis_2 + 0.3, df2['speedup_gpu_total_execution_time'], 0.3, color='C1', alpha = 0.25, hatch='\\\\\\')
+        axs[0, 1].bar(X_axis_2 - 0.3, df2['speedup_gpu_intra_task_execution_time_device_func'], 0.3, color='C2', alpha = 0.5)
+        axs[0, 1].bar(X_axis_2 + 0.0, df2['speedup_gpu_intra_task_execution_time_full_func'], 0.3, color='C0', alpha = 0.5, hatch='///')
+        axs[0, 1].bar(X_axis_2 + 0.3, df2['speedup_gpu_total_execution_time'], 0.3, color='C1', alpha = 0.5, hatch='\\\\\\')
+        #MATMUL
         axs[0, 1].set_ylim([-5, 30])
+        #KMEANS
+        # axs[0, 1].set_ylim([-5, 20])
         axs[0, 1].grid(zorder=0,axis='y')
         axs[0, 1].set_title(right_title, pad=25)
 
         # Plot the third chart (bottom-left - Line chart)
         axs[1, 0].plot(df3[x], df3['vl_intra_task_execution_time_device_func'], color='C2', linestyle = '-', label='P. Frac.', linewidth=2.5)
         #MATMUL
-        # axs[1, 0].plot(df3[x], df3['vl_intra_task_overhead'], color='C0', linestyle = '-.', label='CPU-GPU\nComm.', zorder=3, linewidth=2.5)
+        axs[1, 0].plot(df3[x], df3['vl_intra_task_overhead'], color='C0', linestyle = '-.', label='CPU-GPU Comm.', zorder=3, linewidth=2.5)
         #KMEANS
-        axs[1, 0].plot(df3[x], df3['vl_intra_task_overhead'], color='C0', linestyle = '-.', label='S. Frac. +\nCPU-GPU Comm.', zorder=3, linewidth=2.5)
+        # axs[1, 0].plot(df3[x], df3['vl_intra_task_overhead'], color='C0', linestyle = '-.', label='S. Frac. +CPU-GPU Comm.', zorder=3, linewidth=2.5)
         axs[1, 0].plot(df3[x], df3['vl_inter_overhead'], color='C1', linestyle = '--', label='(De-)Serializ.', zorder=3, linewidth=2.5)
         axs[1, 0].legend(loc=(-0.000,0.99), frameon=False, labelspacing=0.01, ncol=3, borderpad=0.1)
         axs[1, 0].set_xlabel('Block size MB (Grid Dimension)')  # Add x-axis label
@@ -5907,9 +5915,9 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         # Plot the fourth chart (bottom-right - Line chart)
         axs[1, 1].plot(df4[x], df4['vl_intra_task_execution_time_device_func'], color='C2', linestyle = '-', label='P. Frac.', linewidth=2.5)
         #MATMUL
-        # axs[1, 1].plot(df4[x], df4['vl_intra_task_overhead'], color='C0', linestyle = '-.', label='CPU-GPU\nComm.', zorder=3, linewidth=2.5)
+        axs[1, 1].plot(df4[x], df4['vl_intra_task_overhead'], color='C0', linestyle = '-.', label='CPU-GPU Comm.', zorder=3, linewidth=2.5)
         #KMEANS
-        axs[1, 1].plot(df4[x], df4['vl_intra_task_overhead'], color='C0', linestyle = '-.', label='S. Frac. +\nCPU-GPU Comm.', zorder=3, linewidth=2.5)
+        # axs[1, 1].plot(df4[x], df4['vl_intra_task_overhead'], color='C0', linestyle = '-.', label='S. Frac. +CPU-GPU Comm.', zorder=3, linewidth=2.5)
         axs[1, 1].plot(df4[x], df4['vl_inter_overhead'], color='C1', linestyle = '--', label='(De-)Serial.', zorder=3, linewidth=2.5)
         axs[1, 1].set_xlabel('Block size MB (Grid Dimension)')  # Add x-axis label
         axs[1, 1].set_yscale('log')
@@ -5922,7 +5930,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         plt.tight_layout()
 
         # Adjust spacing
-        plt.subplots_adjust(wspace=0.01, hspace=0.25)
+        plt.subplots_adjust(wspace=0.01, hspace=0.3)
         
         # Adjust x-axis labels
         fig.autofmt_xdate(rotation=30, ha='right')
@@ -6129,40 +6137,44 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
 
         # # CORRELATION MATRIX (PEARSON OR SPEARMAN)
-        matplotlib.rcParams.update({'font.size': 16})
+        matplotlib.rcParams.update({'font.size': 20})
         # chart_width = 19.2
         # chart_height = 14.4
 
-        # # Create a figure with a fixed size
-        # fig = plt.figure(figsize=(chart_width, chart_height))
+        chart_width = 30
+        chart_height = 20
 
-        # # Define the size and position of the plot area within the chart
-        # left_margin = 0.22
-        # bottom_margin = 0.12
-        # plot_width = 0.6
-        # plot_height = 0.4
+        # Create a figure with a fixed size
+        fig = plt.figure(figsize=(chart_width, chart_height))
 
-        # # Calculate the position of the plot area
-        # plot_left = left_margin
-        # plot_bottom = bottom_margin
-        # plot_right = left_margin + plot_width
-        # plot_top = bottom_margin + plot_height
+        # Define the size and position of the plot area within the chart
+        left_margin = 0.22
+        bottom_margin = 0.12
+        plot_width = 0.6
+        plot_height = 0.4
+
+        # Calculate the position of the plot area
+        plot_left = left_margin
+        plot_bottom = bottom_margin
+        plot_right = left_margin + plot_width
+        plot_top = bottom_margin + plot_height
 
         # # Create the plot within the defined plot area
-        # ax = fig.add_axes([plot_left, plot_bottom, plot_width, plot_height])
+        ax = fig.add_axes([plot_left, plot_bottom, plot_width, plot_height])
 
         print("\nMode ",mode,": Plotting Correlation Matrix")
 
         ax = plt.gca()
-        corrMatrix = df_filtered.corr(method='spearman')   
+        corrMatrix = df_filtered.corr(method='spearman')
         # CORRELATION MATRIX
         print(corrMatrix)
         # matrix = np.triu(np.ones_like(corrMatrix))
         # sns.heatmap(corrMatrix, annot=True, fmt='.3f',mask=matrix)
-        sns.heatmap(corrMatrix, annot=True, fmt='.3f', cmap='coolwarm')
+        sns.heatmap(corrMatrix, annot=True, fmt='.3f', cmap='coolwarm', annot_kws={'size': 16})
         plt.xticks(rotation=30, ha='right')
-        plt.show()
-        # plt.savefig(dst_path_figs+'mode_pearson.png',bbox_inches='tight',dpi=100)
+        # plt.show()
+        plt.savefig(dst_path_figs+'mode_pearson.png',bbox_inches='tight',dpi=100)
+        plt.savefig(dst_path_figs+'mode_pearson.pdf',bbox_inches='tight',dpi=100)
 
         # # BAR CHART
         # corrArray = corrMatrix['vl_execution_time']
@@ -6372,16 +6384,16 @@ def label_group_bar(ax, data):
     scale = 1. / ly
     for pos in range(ly + 1):  # change xrange to range for python3
         add_line(ax, pos * scale, -.1)
-    ypos = -.2
+    ypos = -.25
     while groups:
         group = groups.pop()
         pos = 0
         for label, rpos in group:
             lxpos = (pos + .5 * rpos) * scale
             ax.text(lxpos, ypos, label, ha='center', transform=ax.transAxes)
-            add_line(ax, pos * scale, ypos)
+            add_line(ax, pos * scale, -.2)
             pos += rpos
-        add_line(ax, pos * scale, ypos)
+        add_line(ax, pos * scale, -.2)
         ypos -= .1
 
 

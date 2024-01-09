@@ -1689,10 +1689,11 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                     # & (df["ds_dataset"].isin(["S_2GB_1"]))
                     # & (df["ds_dataset"].isin(["S_2GB_1","S_2GB_2"])) #mode 155 and 1555 only
                     # & (df["ds_dataset"] != "S_128MB_1")
+                    #MODE == 100
                     & (df["ds_dataset"] == "S_8GB_1")
+                    & (df["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_1")
                     # & (df["ds_device"] == "GPU")
                     # VAR_GRID_SHAPE_MATMUL_1, VAR_GRID_SHAPE_MATMUL_2
-                    & (df["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_1")
                     # MATMUL_FUNC, ADD_FUNC
                     # & (df["ds_function"] == "MATMUL_FUNC")
                     # & (df["vl_concat_block_size_mb_grid_row_x_column_dimension"] != "8 (16 x 16)")
@@ -2333,10 +2334,10 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         fig, axs = plt.subplots(1, 2, figsize=(10, 4))
 
         # Plot the first chart (top-left - Bar chart)
-        axs[0].bar(df1[x_value],df1['speedup_gpu_intra_task_execution_time_full_func'], color='C0', alpha = 0.25, label='Usr. Code')
+        axs[0].bar(df1[x_value],df1['speedup_gpu_intra_task_execution_time_full_func'], color='C0', alpha = 0.5, label='Usr. Code')
         axs[0].legend(loc='upper left', frameon=False, labelspacing=0.01, ncol=3, borderpad=0.1)
         axs[0].set_ylabel('GPU Speedup over CPU')  # Add y-axis label
-        axs[0].set_xlabel('Block size MB', loc='left')  # Add x-axis label
+        axs[0].set_xlabel('Block size MB')  # Add x-axis label
         axs[0].set_ylim([0, 25])
         axs[0].grid(zorder=0,axis='y')
 
@@ -2345,7 +2346,8 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         axs[1].plot(df2[x],df2['vl_intra_task_execution_time_device_func_gpu'], color='C2', linestyle = 'solid', label='P. Frac. GPU', zorder=3, linewidth=2.5)
         axs[1].plot(df2[x],df2['vl_communication_time_gpu'],color='C4', linestyle = 'solid', label='CPU-GPU Comm.', zorder=3, linewidth=2.5)
         axs[1].legend(loc='upper left', frameon=False, labelspacing=0.01, ncol=1, borderpad=0.1)
-        axs[1].set_ylabel('Average Time per Task (s)')  # Add y-axis label
+        axs[1].set_ylabel('Avg. Time per Task (s)')  # Add y-axis label
+        axs[1].set_xlabel('Block size MB')  # Add x-axis label
         axs[1].set_ylim([1e-2, 1e4])
         axs[1].set_yscale('log')
         axs[1].grid(zorder=0,axis='y')

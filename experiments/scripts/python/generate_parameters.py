@@ -67,7 +67,7 @@ def main():
                     --AND C.DS_DATASET IN ('S_32GB_1')
                     (SELECT X.DS_PARAMETER_TYPE FROM PARAMETER_TYPE X WHERE X.ID_PARAMETER_TYPE = A.ID_PARAMETER_TYPE) in ('VAR_GRID_SHAPE_MATMUL_1')
                     AND B.DS_RESOURCE = 'MINOTAURO_9_NODES_1_CORE'
-                    AND C.DS_DATASET IN ('S_8GB_1')
+                    AND C.DS_DATASET IN ('S_2GB_3')
                     ORDER BY A.ID_PARAMETER;"""
     
     # Get dataframe from query
