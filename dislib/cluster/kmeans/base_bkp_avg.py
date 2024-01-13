@@ -610,8 +610,6 @@ def add_mix_kernel(y_len):
 #########
 # EXAMPLE PSEUDO CODE K-MEANS (REVISED PAPER)
 #########
-
-
 def fit(self, x, y=None):
     self.random_state = check_random_state(self.random_state)
     self._init_centers(x.shape[1], x._sparse)
@@ -652,5 +650,66 @@ def _partial_sum_gpu(blocks, centers):
 
     return partials
 
+
+
+
+#########
+# EXAMPLE PSEUDO CODE MATMUL (REVISED PAPER)
+#########
+def _multiply_block_groups(hblock, vblock, transpose_a=False,
+                           transpose_b=False):
+    blocks = deque()
+
+    if dislib.__gpu_available__:
+        matmul_func = _matmul_gpu
+        add_func = _add_gpu
+    else:
+        matmul_func = _matmul_with_transpose
+        add_func = _add_cpu
+
+    for blocki, blockj in zip(hblock, vblock):
+        blocks.append(
+            matmul_func(blocki, blockj, transpose_a, transpose_b)
+        )
+
+    while len(blocks) > 1:
+        block1 = blocks.popleft()
+        block2 = blocks.popleft()
+        blocks.append(add_func(block1, block2))
+
+        compss_delete_object(block1)
+        compss_delete_object(block2)
+
+    return blocks[0]
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ]
+)
+@task(returns=np.array)
+def _matmul_gpu(a, b, transpose_a, transpose_b):
+
+    a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
+    if transpose_a:
+        a_gpu = cp.transpose(a_gpu)
+    if transpose_b:
+        b_gpu = cp.transpose(b_gpu)
+    res = cp.asnumpy(cp.matmul(a_gpu, b_gpu))
+    a_gpu, b_gpu = None, None
+    return res
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ]
+)
+@task(returns=np.array)
+def _add_gpu(block1, block2):
+
+    block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
+    res = cp.asnumpy(cp.add(block1_gpu, block2_gpu))
+    block1_gpu, block2_gpu = None, None
+    return res
 
 

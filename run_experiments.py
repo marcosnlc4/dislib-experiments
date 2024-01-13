@@ -91,16 +91,16 @@ def main():
     #                             ].sort_values(by=["id_parameter"])
 
     # Filtering and sorting parameters (TEST)
-    df_parameters = df_parameters[(df_parameters["id_parameter"] != 56) & (df_parameters["id_parameter"] != 65) & (df_parameters["id_parameter"] != 66) & (df_parameters["id_parameter"] != 67) & (df_parameters["id_parameter"] != 68) & (df_parameters["id_parameter"] != 69) & (df_parameters["id_parameter"] != 70) & (df_parameters["id_parameter"] != 71) & (df_parameters["id_parameter"] != 72)].sort_values(by=["id_parameter"])
+    # df_parameters = df_parameters[(df_parameters["id_parameter"] != 56) & (df_parameters["id_parameter"] != 65) & (df_parameters["id_parameter"] != 66) & (df_parameters["id_parameter"] != 67) & (df_parameters["id_parameter"] != 68) & (df_parameters["id_parameter"] != 69) & (df_parameters["id_parameter"] != 70) & (df_parameters["id_parameter"] != 71) & (df_parameters["id_parameter"] != 72)].sort_values(by=["id_parameter"])
     # df_parameters = df_parameters[(df_parameters["id_parameter"] == 11841) | (df_parameters["id_parameter"] == 11842)]
     # df_parameters = df_parameters[(df_parameters["id_parameter"] == 7531)]
 
     # Filtering and sorting parameters (MATMUL_DISLIB)
-    # df_parameters = df_parameters[
-    #                                  (df_parameters["ds_algorithm"] == "MATMUL_DISLIB") # FIXED VALUE
-    #                                  & ((df_parameters["cd_configuration"] == 1) | (df_parameters["cd_configuration"] == 4)) # FIXED VALUE
-    #                                  & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
-    #                                  & ((df_parameters["id_function"] == 1) | (df_parameters["id_function"] == 2)) # FIXED VALUE (gpu version is called inside task, as matmul has two device functions (matmul and add))  
+    df_parameters = df_parameters[
+                                     (df_parameters["ds_algorithm"] == "MATMUL_DISLIB") # FIXED VALUE
+                                     & ((df_parameters["cd_configuration"] == 1) | (df_parameters["cd_configuration"] == 4)) # FIXED VALUE
+                                     & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
+                                     & ((df_parameters["id_function"] == 1) | (df_parameters["id_function"] == 2)) # FIXED VALUE (gpu version is called inside task, as matmul has two device functions (matmul and add))  
     #                                 #  & (df_parameters["ds_dataset"].isin(["S_128MB_1","S_512MB_1","S_2GB_1","S_8GB_1","S_32GB_1"])) # FIXED VALUE
     #                                 #  & (df_parameters["ds_dataset"] == "S_128MB_1") #1
     #                                 #  & (df_parameters["ds_dataset"] == "S_512MB_1") #2
@@ -114,7 +114,7 @@ def main():
     #                                 #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_4") # 4 (TRANSPOSE - LOCAL DISK - es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS)
     #                                  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_5") # 1 (NO TRANSPOSE - GPFS - es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS)
     #                                 #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_6") # 1 (NO TRANSPOSE - LOCAL DISK - es.bsc.compss.scheduler.orderstrict.fifo.FifoTS)
-    #                              ].sort_values(by=["id_parameter"])
+                                 ].sort_values(by=["id_parameter"])
     # df_parameters = df_parameters[(df_parameters["id_parameter"] == 1873) | (df_parameters["id_parameter"] == 1875) | (df_parameters["id_parameter"] == 1877) | (df_parameters["id_parameter"] == 1879) | (df_parameters["id_parameter"] == 1881) | (df_parameters["id_parameter"] == 1883) | (df_parameters["id_parameter"] == 1885) | (df_parameters["id_parameter"] == 1887)]
 
 

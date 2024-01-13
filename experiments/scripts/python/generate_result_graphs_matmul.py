@@ -1687,15 +1687,15 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                     # & (df["ds_dataset"].isin(["S_128MB_1","S_512MB_1","S_2GB_1","S_8GB_1","S_32GB_1"])) # FIXED VALUE
                     # & (df["vl_grid_row_dimension"] == 2)
                     # & (df["ds_dataset"].isin(["S_2GB_1"]))
-                    # & (df["ds_dataset"].isin(["S_2GB_1","S_2GB_2"])) #mode 155 and 1555 only
+                    & (df["ds_dataset"].isin(["S_2GB_1","S_2GB_2"])) #mode 155 and 1555 only
                     # & (df["ds_dataset"] != "S_128MB_1")
-                    & (df["ds_dataset"] == "S_8GB_1")
+                    # & (df["ds_dataset"] == "S_8GB_1")
                     # & (df["ds_device"] == "GPU")
                     # VAR_GRID_SHAPE_MATMUL_1, VAR_GRID_SHAPE_MATMUL_2
-                    & (df["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_5")
+                    & (df["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_1")
                     # MATMUL_FUNC, ADD_FUNC
                     & (df["ds_function"] == "MATMUL_FUNC")
-                    # & (df["vl_concat_block_size_mb_grid_row_x_column_dimension"] != "8 (16 x 16)")
+                    & (df["vl_concat_block_size_mb_grid_row_x_column_dimension"] != "8 (16 x 16)")
                     # & (df["vl_block_memory_size_percent_dataset"] != 0.4)
                     ]
 
@@ -2017,7 +2017,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
 
     elif mode == 1555:
 
-        matplotlib.rcParams.update({'font.size': 16})
+        matplotlib.rcParams.update({'font.size': 18})
 
         print("\nMode ",mode,": Plotting intra-task execution times x grid and block shapes, without parameter filters")
 

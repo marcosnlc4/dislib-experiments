@@ -3362,11 +3362,11 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
                         # & (df["ds_parameter_type"].isin(["VAR_GRID_ROW_5","VAR_GRID_ROW_6","VAR_GRID_ROW_7"])) # FIXED VALUE
                         # & (df["ds_dataset"] == "S_10GB_1")
                         # for mode == 102
-                        & (df["ds_dataset"].isin(["S_1GB_1","S_1GB_3"]))
-                        & (df["ds_parameter_type"] == "VAR_GRID_ROW_5")
+                        # & (df["ds_dataset"].isin(["S_1GB_1","S_1GB_3"]))
+                        # & (df["ds_parameter_type"] == "VAR_GRID_ROW_5")
                         # for mode == 15 AND 16
-                        # & (df["ds_parameter_type"].isin(["VAR_GRID_ROW_11","VAR_GRID_ROW_8","VAR_GRID_ROW_5","VAR_GRID_ROW_14"])) # FIXED VALUE
-                        # & (df["ds_dataset"] == "S_10GB_1")
+                        & (df["ds_parameter_type"].isin(["VAR_GRID_ROW_11","VAR_GRID_ROW_8","VAR_GRID_ROW_5","VAR_GRID_ROW_14"])) # FIXED VALUE
+                        & (df["ds_dataset"] == "S_10GB_1")
                         ]
         
         # # # General filtering and sorting parameters - V3 (VAR_CORES_CLUSTER_1 and VAR_CORES_SINGLE_NODE_1)
@@ -5645,7 +5645,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         
         # Show the plots
         # plt.show()
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'.pdf',bbox_inches='tight',dpi=100)
+        # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'.pdf',bbox_inches='tight',dpi=100)
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_experiment_1_spd_user_code'+x_value+'_'+ds_algorithm+'_'+'.png',bbox_inches='tight',dpi=100)
  
     elif mode == 101:
@@ -5938,7 +5938,7 @@ def generate_graph(df, dst_path_figs, ds_algorithm, ds_resource, nr_iterations, 
         # Show the plots
         # plt.show()
         plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.png',bbox_inches='tight',dpi=100)
-        plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
+        # plt.savefig(dst_path_figs+'mode_'+str(mode)+'_overview_avg_execution_times_'+ds_algorithm+'_'+ds_resource+'_nr_it_'+str(nr_iterations)+'.pdf',bbox_inches='tight',dpi=100)
 
 
 
