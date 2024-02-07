@@ -317,7 +317,19 @@ class Array(object):
         if sparse:
             ret = sp.bmat(blocks, format=b0.getformat(), dtype=b0.dtype)
         else:
-            ret = np.block(blocks)
+            #GPU CACHE
+            if type(b0) == cp.ndarray:
+                try:
+                    blocks = cp.asarray(np.block(blocks))
+                    ret = cp.concatenate(cp.concatenate(blocks, axis=1), axis=1)
+                except:
+                    for i in range(len(blocks)):
+                        for j in range(len(blocks[i])):
+                            blocks[i][j] = cp.asnumpy(blocks[i][j])
+                    ret = cp.asarray(np.block(blocks))
+            #CPU CACHE
+            else:
+                ret = np.block(blocks)
 
         return ret
 
@@ -1169,7 +1181,7 @@ def array(x, block_size):
     return arr
 
 
-def random_array(shape, block_size, random_state=None):
+def random_array(shape, block_size, random_state=None, data_skewness=0.0, id_device=1):
     """ Returns a distributed array of random floats in the open interval [0.0,
     1.0). Values are from the "continuous uniform" distribution over the
     stated interval.
@@ -1183,6 +1195,10 @@ def random_array(shape, block_size, random_state=None):
     random_state : int or RandomState, optional (default=None)
         Seed or numpy.random.RandomState instance to generate the random
         numbers.
+    data_skewness : float, optional (default=0.0)
+        Data skewness in percentage
+    id_device : float, optional (default=1)
+        CPU=1, GPU=2
 
     Returns
     -------
@@ -1190,7 +1206,7 @@ def random_array(shape, block_size, random_state=None):
         Distributed array of random floats.
     """
     r_state = check_random_state(random_state)
-    return _full(shape, block_size, False, _random_block_wrapper, r_state)
+    return _full(shape, block_size, False, _random_block_wrapper, r_state, data_skewness, id_device)
 
 
 def identity(n, block_size, dtype=None):
@@ -1404,6 +1420,223 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
     return Array(blocks, top_left_shape=out_tlbshape, reg_shape=out_bshape,
                  shape=out_shape, sparse=x._sparse)
 
+@task(returns=1)
+def generate_block(size, num_blocks, random_state=None, set_to_zero=False, bid=0):
+    """
+    Generate a square block of given size.
+    :param size: <Integer> Block size
+    :param num_blocks: <Integer> Number of blocks
+    :param seed: <Integer> Random seed
+    :param set_to_zero: <Boolean> Set block to zeros
+    :return: Block
+    """
+    r_state = check_random_state(random_state)
+    seed = r_state.randint(np.iinfo(np.int32).max) + bid
+    np.random.seed(seed)
+    if not set_to_zero:
+        b = np.random.random((size, size)).astype(np.float64)
+    else:
+        b = np.zeros((size, size)).astype(np.float64)
+    return b
+
+def dot(A, B, C, id_device, id_parameter, nr_algorithm_iteration):
+    """
+    A COMPSs blocked matmul algorithm.
+    :param A: Block A
+    :param B: Block B
+    :param C: Result Block
+    :id_device: int (default=1)
+        Flag to define the device function implementation according to resource (CPU: 1, GPU: 2, GPU intra: 3)
+    :id_parameter: int (default=0)
+        Variable to identify the parameter id
+    :nr_algorithm_iteration: int (default=0)
+        Variable to identify the number of the execution of the algorithm
+    :return: None
+    """
+
+    iteration = 0
+
+    if id_device == 1 or id_device == 5:
+        fused_multiply_add = fused_multiply_add_cpu
+    elif id_device == 2 or id_device == 6:
+        fused_multiply_add = fused_multiply_add_gpu
+    elif id_device == 3:
+        fused_multiply_add = fused_multiply_add_cpu_intra_time
+    elif id_device == 4:
+        fused_multiply_add = fused_multiply_add_gpu_intra_time
+    else:
+        raise ValueError("Invalid id_device")
+
+    if id_device == 3 or id_device == 4:
+
+        nr_task = 0
+        n, m = len(A), len(B[0])
+        # as many rows as A, as many columns as B
+        for i in range(n):
+            for j in range(m):
+                for k in range(n):
+                    fused_multiply_add(A[i][k], B[k][j], C[i][j], id_parameter, nr_algorithm_iteration, iteration, nr_task)
+                    nr_task += 1
+    
+    elif id_device == 5 or id_device == 6:
+
+        n, m = len(A), len(B[0])
+        # as many rows as A, as many columns as B
+        for i in range(n):
+            for j in range(m):
+
+                compss_barrier()
+                start_inter_time_cpu = time.perf_counter()
+                for k in range(n):
+                    fused_multiply_add(A[i][k], B[k][j], C[i][j])
+
+                compss_barrier()
+                end_inter_time_cpu = time.perf_counter()
+
+                # open the log file in the append mode
+                f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+                # create a csv writer
+                writer = csv.writer(f)
+
+                # write the time data 
+                data = [id_parameter, nr_algorithm_iteration, iteration, var_null, var_null, var_null, start_inter_time_cpu, end_inter_time_cpu, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
+                writer.writerow(data)
+                f.close()
+
+
+    else:
+        compss_barrier()
+        start_total_execution_time = time.perf_counter()
+
+        n, m = len(A), len(B[0])
+        # as many rows as A, as many columns as B
+        for i in range(n):
+            for j in range(m):
+                for k in range(n):
+                    fused_multiply_add(A[i][k], B[k][j], C[i][j])
+
+        compss_barrier()
+        end_total_execution_time = time.perf_counter()
+
+        # open the log file in the append mode
+        f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+        # create a csv writer
+        writer = csv.writer(f)
+
+        # write the time data 
+        data = [id_parameter, nr_algorithm_iteration, var_null, var_null, start_total_execution_time, end_total_execution_time, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
+        writer.writerow(data)
+        f.close()
+
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(C=INOUT)
+def fused_multiply_add_cpu(A, B, C):
+    """
+    Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
+    :param A: Block A
+    :param B: Block B
+    :param C: Result Block
+    :return: None
+    """
+    C += np.dot(A, B)
+
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(C=INOUT)
+def fused_multiply_add_cpu_intra_time(A, B, C, id_parameter, nr_algorithm_iteration, iteration, nr_task):
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    start_intra_device = time.perf_counter()
+
+    C += np.dot(A, B)
+
+    end_intra_device = time.perf_counter()
+    intra_task_execution_device_func = end_intra_device - start_intra_device
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ]
+)
+@task(C=INOUT)
+def fused_multiply_add_gpu(A, B, C):
+    """
+    Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
+    :param A: Block A
+    :param B: Block B
+    :param C: Result Block
+    :return: None
+    """
+    C += cp.asnumpy(cp.dot(cp.asarray(A), cp.asarray(B)))
+
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ]
+)
+@task(C=INOUT)
+def fused_multiply_add_gpu_intra_time(A, B, C, id_parameter, nr_algorithm_iteration, iteration, nr_task):
+    """
+    Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
+    :param A: Block A
+    :param B: Block B
+    :param C: Result Block
+    :return: None
+    """
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    # creating CUDA events for intra device time measurement
+    start_gpu_intra_device = cp.cuda.Event()
+    end_gpu_intra_device = cp.cuda.Event()
+
+    # Measure communication time 1
+    start_communication_time_1 = time.perf_counter()
+    A_gpu, B_gpu, C_gpu = cp.asarray(A), cp.asarray(B), cp.asarray(C)
+    end_communication_time_1 = time.perf_counter()
+
+    # Measure intra task execution time (device function) 
+    start_gpu_intra_device.record()
+
+    C_gpu += cp.dot(A_gpu, B_gpu)
+
+    end_gpu_intra_device.record()
+    end_gpu_intra_device.synchronize()
+    intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+
+    # Measure communication time 2
+    start_communication_time_2 = time.perf_counter()
+    C_temp = cp.asnumpy(C_gpu)
+    end_communication_time_2 = time.perf_counter()
+
+    # print('C_temp')
+    # print(C_temp)
+
+    C += np.dot(A, B)
+    # C = C + cp.asnumpy(C_gpu)
+
+    # print('C')
+    # print(C)
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
 
 def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False, id_device=1, id_parameter=0, nr_algorithm_iteration=0):
     """ Matrix multiplication with a possible transpose of the input.
@@ -2123,9 +2356,15 @@ def _apply_elementwise(func, x, *args, **kwargs):
     return Array(blocks, x._top_left_shape, x._reg_shape, x.shape, x._sparse)
 
 
-def _random_block_wrapper(block_size, r_state):
+def _random_block_wrapper(block_size, r_state, data_skewness, id_device):
     seed = r_state.randint(np.iinfo(np.int32).max)
-    return _random_block(block_size, seed)
+
+    if id_device == 1:
+        random_block_func = _random_block
+    else:
+        random_block_func = _random_block_gpu
+
+    return random_block_func(block_size, seed, data_skewness)
 
 
 @constraint(computing_units="${ComputingUnits}")
@@ -2211,18 +2450,41 @@ def _transpose(blocks, out_blocks):
             out_blocks[i][j] = blocks[i][j].transpose()
 
 #CPU
-@constraint(computing_units="${ComputingUnits}")
+@constraint(computing_units="${ComputingUnitsCPU}")
 @task(returns=np.array, cache_returns=True)
-def _random_block(shape, seed):
+def _random_block(shape, seed, data_skewness):
     np.random.seed(seed)
-    return np.random.random(shape).astype(np.float64)
+    if data_skewness == 0.0:
+        return np.random.random(shape).astype(np.float64)
+    else:
+        # Generate a random array with the specified shape
+        random_array = np.random.random(shape).astype(np.float64)
 
-# #GPU
-# @constraint(computing_units="${ComputingUnits}")
-# @task(returns=cp.array, cache_returns=True)
-# def _random_block(shape, seed):
-#     cp.random.seed(seed)
-#     return cp.random.random(shape).astype(cp.float64)
+        # Calculate the skewness threshold
+        skew_threshold = np.percentile(random_array, data_skewness*100)
+
+        # Apply skewness using a threshold
+        return np.where(random_array < skew_threshold, random_array * 0.5, random_array).astype(np.float64)
+
+#GPU
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ])
+@task(returns=cp.array, cache_returns=True)
+def _random_block_gpu(shape, seed, data_skewness):
+    cp.random.seed(seed)
+    if data_skewness == 0.0:
+        return cp.random.rand(*shape, dtype=cp.float64)
+    else:
+        # Generate a random array with the specified shape
+        random_array = cp.random.rand(*shape, dtype=cp.float64)
+
+        # Calculate the skewness threshold
+        skew_threshold = cp.percentile(random_array, data_skewness*100)
+
+        # Apply skewness using a threshold
+        return cp.where(random_array < skew_threshold, random_array * 0.5, random_array).astype(cp.float64)
 
 
 @constraint(computing_units="${ComputingUnits}")
