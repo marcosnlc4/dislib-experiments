@@ -6,8 +6,8 @@ import cupy as cp
 import numpy as np
 from pycompss.api.api import compss_barrier, compss_wait_on, compss_delete_object
 from pycompss.api.constraint import constraint
-from pycompss.api.parameter import Cache, Type, COLLECTION_IN, Depth, \
-    COLLECTION_OUT, INOUT
+from pycompss.api.parameter import Type, COLLECTION_IN, Depth, \
+    COLLECTION_OUT, INOUT, Cache
 from pycompss.api.task import task
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
@@ -2466,7 +2466,7 @@ def _random_block(shape, seed, data_skewness):
         # Apply skewness using a threshold
         return np.where(random_array < skew_threshold, random_array * 0.5, random_array).astype(np.float64)
 
-#GPU
+# # GPU WITHOUT IS_DISTRIBUTED PARAMETER
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
@@ -2485,6 +2485,27 @@ def _random_block_gpu(shape, seed, data_skewness):
 
         # Apply skewness using a threshold
         return cp.where(random_array < skew_threshold, random_array * 0.5, random_array).astype(cp.float64)
+    
+
+# # # GPU WITH IS_DISTRIBUTED PARAMETER
+# @constraint(processors=[
+#                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+#                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+#             ])
+# @task(returns=cp.array, cache_returns=True, is_distributed=True)
+# def _random_block_gpu(shape, seed, data_skewness):
+#     cp.random.seed(seed)
+#     if data_skewness == 0.0:
+#         return cp.random.rand(*shape, dtype=cp.float64)
+#     else:
+#         # Generate a random array with the specified shape
+#         random_array = cp.random.rand(*shape, dtype=cp.float64)
+
+#         # Calculate the skewness threshold
+#         skew_threshold = cp.percentile(random_array, data_skewness*100)
+
+#         # Apply skewness using a threshold
+#         return cp.where(random_array < skew_threshold, random_array * 0.5, random_array).astype(cp.float64)
 
 
 @constraint(computing_units="${ComputingUnits}")

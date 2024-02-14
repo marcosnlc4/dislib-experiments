@@ -10412,7 +10412,7 @@ SELECT
 
 
 -- ######## SCRIPTS FOR MICRO-EXPERIMENT WITH KMEANS CACHE (FOR TEST DB ONLY)
-
+--SET search_path = schema_kmeans;
 
 select * from experiment_raw where id_parameter = 14425
 delete from experiment_raw where id_parameter = 14426

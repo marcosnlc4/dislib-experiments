@@ -13,7 +13,7 @@ import dislib
 from pycompss.api.api import compss_barrier
 from pycompss.api.api import compss_wait_on
 from pycompss.api.constraint import constraint
-from pycompss.api.parameter import Cache, COLLECTION_IN, Depth, Type
+from pycompss.api.parameter import COLLECTION_IN, Depth, Type, Cache, Weight
 from pycompss.api.task import task
 from scipy.sparse import csr_matrix
 from sklearn.base import BaseEstimator
@@ -397,12 +397,14 @@ def _decode_helper(obj):
             return random_state
     return obj
 
+
+# # WITH WEIGHT PARAMETER
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ])
-@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True}, centers={Cache: False}, 
-      returns=np.array, cache_returns=False, is_distributed=True)
+@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True, Weight: "100000"}, centers={Cache: False}, 
+      returns=np.array, cache_returns=False)
 def _partial_sum_gpu(blocks, centers):
 
     partials = np.zeros((centers.shape[0], 2), dtype=object)
@@ -430,12 +432,46 @@ def _partial_sum_gpu(blocks, centers):
     return partials
 
 
+# # WITH IS_DISTRIBUTED PARAMETER
+# @constraint(processors=[
+#                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+#                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+#             ])
+# @task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True}, centers={Cache: False}, 
+#       returns=np.array, cache_returns=False, is_distributed=True)
+# def _partial_sum_gpu(blocks, centers):
+
+#     partials = np.zeros((centers.shape[0], 2), dtype=object)
+
+#     if len(blocks[0]) == 1:
+#         arr = blocks[0][0]
+#     else:
+#         arr = Array._merge_blocks(blocks)
+
+#     arr_gpu, centers_gpu = cp.asarray(arr), cp.asarray(centers)
+#     arr = None
+
+#     close_centers_gpu = distance_gpu(arr_gpu, centers_gpu).argmin(axis=1)
+#     centers_gpu = None
+
+#     close_centers = cp.asnumpy(close_centers_gpu)
+#     arr = cp.asnumpy(arr_gpu)
+#     close_centers_gpu, arr_gpu = None, None
+
+#     for center_idx, _ in enumerate(centers):
+#         indices = np.argwhere(close_centers == center_idx).flatten()
+#         partials[center_idx][0] = np.sum(arr[indices], axis=0)
+#         partials[center_idx][1] = indices.shape[0]
+
+#     return partials
+
+# # WITH WEIGHT PARAMETER
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ])
-@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True}, centers={Cache: False}, 
-      returns=np.array, cache_returns=False, is_distributed=True)
+@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True, Weight: "100000"}, centers={Cache: False}, 
+      returns=np.array, cache_returns=False)
 def _partial_sum_gpu_intra_time(blocks, centers, id_parameter, nr_algorithm_iteration, iteration, row):
     # open the log file in the append mode
     f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
@@ -496,8 +532,76 @@ def _partial_sum_gpu_intra_time(blocks, centers, id_parameter, nr_algorithm_iter
 
     return partials
 
+
+# # WITH IS_DISTRIBUTED PARAMETER
+# @constraint(processors=[
+#                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+#                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+#             ])
+# @task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True}, centers={Cache: False}, 
+#       returns=np.array, cache_returns=False, is_distributed=True)
+# def _partial_sum_gpu_intra_time(blocks, centers, id_parameter, nr_algorithm_iteration, iteration, row):
+#     # open the log file in the append mode
+#     f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+#     # create a csv writer
+#     writer = csv.writer(f)
+
+#     # creating CUDA events for intra device time measurement
+#     start_gpu_intra_device = cp.cuda.Event()
+#     end_gpu_intra_device = cp.cuda.Event()
+
+#     # Measure additional time 1
+#     start_additional_time_1 = time.perf_counter()
+#     partials = np.zeros((centers.shape[0], 2), dtype=object)
+#     if len(blocks[0]) == 1:
+#         arr = blocks[0][0]
+#     else:
+#         arr = Array._merge_blocks(blocks)
+#     end_additional_time_1 = time.perf_counter()
+
+#     # Measure communication time 1
+#     start_communication_time_1 = time.perf_counter()
+#     arr_gpu, centers_gpu = cp.asarray(arr), cp.asarray(centers)
+#     end_communication_time_1 = time.perf_counter()
+#     arr = None
+
+
+#     # Measure intra task execution time (device function) 
+#     start_gpu_intra_device.record()
+#     close_centers_gpu = distance_gpu(arr_gpu, centers_gpu).argmin(axis=1)
+#     end_gpu_intra_device.record()
+#     end_gpu_intra_device.synchronize()
+#     intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+#     centers_gpu = None
+
+
+#     # Measure communication time 2
+#     start_communication_time_2 = time.perf_counter()
+#     close_centers = cp.asnumpy(close_centers_gpu)
+#     arr = cp.asnumpy(arr_gpu)
+#     end_communication_time_2 = time.perf_counter()
+
+#     # Measure additional time 2
+#     start_additional_time_2 = time.perf_counter()
+#     close_centers_gpu, arr_gpu = None, None
+
+#     for center_idx, _ in enumerate(centers):
+#         indices = np.argwhere(close_centers == center_idx).flatten()
+#         partials[center_idx][0] = np.sum(arr[indices], axis=0)
+#         partials[center_idx][1] = indices.shape[0]
+
+#     end_additional_time_2 = time.perf_counter()
+
+#     # write the time data
+#     data = [id_parameter, nr_algorithm_iteration, iteration, row, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, start_additional_time_1, end_additional_time_1, start_additional_time_2, end_additional_time_2, datetime.datetime.now()]
+#     writer.writerow(data)
+#     f.close()
+
+#     return partials
+
 @constraint(computing_units="${ComputingUnitsCPU}")
-@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True}, centers={Cache: False}, 
+@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True, Weight: "100000"}, centers={Cache: False}, 
       returns=np.array, cache_returns=False)
 def _partial_sum(blocks, centers):
 
@@ -514,7 +618,7 @@ def _partial_sum(blocks, centers):
     return partials
 
 @constraint(computing_units="${ComputingUnitsCPU}")
-@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True}, centers={Cache: False}, 
+@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True, Weight: "100000"}, centers={Cache: False}, 
       returns=np.array, cache_returns=False)
 def _partial_sum_intra_time(blocks, centers, id_parameter, nr_algorithm_iteration, iteration, row):
     # open the log file in the append mode
