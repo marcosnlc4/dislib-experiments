@@ -70,8 +70,8 @@ def main():
     #                                 (df_parameters["ds_algorithm"] == "KMEANS") # FIXED VALUE
     #                                 & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
     #                                 & (df_parameters["ds_dataset"] == "S_10GB_1")
-    #                                 & (df_parameters["ds_parameter_type"] == "VAR_CORES_CLUSTER_1") # 1
-    #                                 & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_16_CORES") # 1
+    #                                 # & (df_parameters["ds_parameter_type"] == "VAR_CORES_CLUSTER_1") # 1
+    #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_2_NODES_16_CORES") # 1
     #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_3_NODES_16_CORES") # 1
     #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_4_NODES_16_CORES") # 1
     #                                 # & (df_parameters["ds_resource"] == "MINOTAURO_5_NODES_16_CORES") # 1
@@ -91,31 +91,35 @@ def main():
     #                             ].sort_values(by=["id_parameter"])
 
     # Filtering and sorting parameters (TEST)
+    #K-means CPU Cache
+    df_parameters = df_parameters[(df_parameters["id_parameter"] == 14425)]
+    # #K-means GPU cache
+    # df_parameters = df_parameters[(df_parameters["id_parameter"] == 14426)]
     # df_parameters = df_parameters[(df_parameters["id_parameter"] != 56) & (df_parameters["id_parameter"] != 65) & (df_parameters["id_parameter"] != 66) & (df_parameters["id_parameter"] != 67) & (df_parameters["id_parameter"] != 68) & (df_parameters["id_parameter"] != 69) & (df_parameters["id_parameter"] != 70) & (df_parameters["id_parameter"] != 71) & (df_parameters["id_parameter"] != 72)].sort_values(by=["id_parameter"])
     # df_parameters = df_parameters[(df_parameters["id_parameter"] == 11841) | (df_parameters["id_parameter"] == 11842)]
     # df_parameters = df_parameters[(df_parameters["id_parameter"] == 7531)]
 
-    # Filtering and sorting parameters (MATMUL_DISLIB)
-    df_parameters = df_parameters[
-                                     (df_parameters["ds_algorithm"] == "MATMUL_DISLIB") # FIXED VALUE
-                                     & ((df_parameters["cd_configuration"] == 1) | (df_parameters["cd_configuration"] == 4)) # FIXED VALUE
-                                     & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
-                                     & ((df_parameters["id_function"] == 1) | (df_parameters["id_function"] == 2)) # FIXED VALUE (gpu version is called inside task, as matmul has two device functions (matmul and add))  
-    #                                 #  & (df_parameters["ds_dataset"].isin(["S_128MB_1","S_512MB_1","S_2GB_1","S_8GB_1","S_32GB_1"])) # FIXED VALUE
-    #                                 #  & (df_parameters["ds_dataset"] == "S_128MB_1") #1
-    #                                 #  & (df_parameters["ds_dataset"] == "S_512MB_1") #2
-    #                                  & (df_parameters["ds_dataset"] == "S_2GB_1") #3
-    #                                 #  & (df_parameters["ds_dataset"] == "S_8GB_1") #4
-    #                                 #  & (df_parameters["ds_dataset"] == "S_32GB_1") #5
-    #                                  & (df_parameters["ds_resource"] == "MINOTAURO_9_NODES_1_CORE")
-    #                                 #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_1") # 1 (NO TRANSPOSE - GPFS - es.bsc.compss.scheduler.orderstrict.fifo.FifoTS)
-    #                                 #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_2") # 2 (NO TRANSPOSE - LOCAL DISK - es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS)
-    #                                 #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_3") # 3 (TRANSPOSE - GPFS - es.bsc.compss.scheduler.orderstrict.fifo.FifoTS)
-    #                                 #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_4") # 4 (TRANSPOSE - LOCAL DISK - es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS)
-    #                                  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_5") # 1 (NO TRANSPOSE - GPFS - es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS)
-    #                                 #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_6") # 1 (NO TRANSPOSE - LOCAL DISK - es.bsc.compss.scheduler.orderstrict.fifo.FifoTS)
-                                 ].sort_values(by=["id_parameter"])
-    # df_parameters = df_parameters[(df_parameters["id_parameter"] == 1873) | (df_parameters["id_parameter"] == 1875) | (df_parameters["id_parameter"] == 1877) | (df_parameters["id_parameter"] == 1879) | (df_parameters["id_parameter"] == 1881) | (df_parameters["id_parameter"] == 1883) | (df_parameters["id_parameter"] == 1885) | (df_parameters["id_parameter"] == 1887)]
+    # # Filtering and sorting parameters (MATMUL_DISLIB)
+    # df_parameters = df_parameters[
+    #                                  (df_parameters["ds_algorithm"] == "MATMUL_DISLIB") # FIXED VALUE
+    #                                  & ((df_parameters["cd_configuration"] == 1) | (df_parameters["cd_configuration"] == 4)) # FIXED VALUE
+    #                                  & (df_parameters["nr_iterations"] == 5) # FIXED VALUE
+    #                                  & ((df_parameters["id_function"] == 1) | (df_parameters["id_function"] == 2)) # FIXED VALUE (gpu version is called inside task, as matmul has two device functions (matmul and add))  
+    # #                                 #  & (df_parameters["ds_dataset"].isin(["S_128MB_1","S_512MB_1","S_2GB_1","S_8GB_1","S_32GB_1"])) # FIXED VALUE
+    # #                                 #  & (df_parameters["ds_dataset"] == "S_128MB_1") #1
+    # #                                 #  & (df_parameters["ds_dataset"] == "S_512MB_1") #2
+    # #                                  & (df_parameters["ds_dataset"] == "S_2GB_1") #3
+    # #                                 #  & (df_parameters["ds_dataset"] == "S_8GB_1") #4
+    # #                                 #  & (df_parameters["ds_dataset"] == "S_32GB_1") #5
+    # #                                  & (df_parameters["ds_resource"] == "MINOTAURO_9_NODES_1_CORE")
+    # #                                 #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_1") # 1 (NO TRANSPOSE - GPFS - es.bsc.compss.scheduler.orderstrict.fifo.FifoTS)
+    # #                                 #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_2") # 2 (NO TRANSPOSE - LOCAL DISK - es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS)
+    # #                                 #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_3") # 3 (TRANSPOSE - GPFS - es.bsc.compss.scheduler.orderstrict.fifo.FifoTS)
+    # #                                 #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_4") # 4 (TRANSPOSE - LOCAL DISK - es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS)
+    # #                                  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_5") # 1 (NO TRANSPOSE - GPFS - es.bsc.compss.scheduler.lookahead.successors.fifolocality.FifoLocalityTS)
+    # #                                 #  & (df_parameters["ds_parameter_type"] == "VAR_GRID_SHAPE_MATMUL_6") # 1 (NO TRANSPOSE - LOCAL DISK - es.bsc.compss.scheduler.orderstrict.fifo.FifoTS)
+    #                              ].sort_values(by=["id_parameter"])
+    # # df_parameters = df_parameters[(df_parameters["id_parameter"] == 1873) | (df_parameters["id_parameter"] == 1875) | (df_parameters["id_parameter"] == 1877) | (df_parameters["id_parameter"] == 1879) | (df_parameters["id_parameter"] == 1881) | (df_parameters["id_parameter"] == 1883) | (df_parameters["id_parameter"] == 1885) | (df_parameters["id_parameter"] == 1887)]
 
 
     # defining the structure of the log file
@@ -210,8 +214,11 @@ def main():
             if ds_algorithm == "KMEANS":
 
                 # generate and load data into a ds-array
-                dis_x = ds.random_array((vl_dataset_row_dimension, vl_dataset_column_dimension), (vl_block_row_dimension, vl_block_column_dimension), random_state=nr_random_state, data_skewness=vl_data_skewness)
-                
+                if ds_device == "GPU":
+                    dis_x = ds.random_array((vl_dataset_row_dimension, vl_dataset_column_dimension), (vl_block_row_dimension, vl_block_column_dimension), random_state=nr_random_state, data_skewness=vl_data_skewness, id_device=2)
+                else:
+                    dis_x = ds.random_array((vl_dataset_row_dimension, vl_dataset_column_dimension), (vl_block_row_dimension, vl_block_column_dimension), random_state=nr_random_state, data_skewness=vl_data_skewness, id_device=1)
+
                 if ds_device == "GPU":
 
                     # execution 1 - extract intra execution times with CUDA events
@@ -251,7 +258,7 @@ def main():
 
                 # write the time data 
                 var_null = 'NULL'
-                data = [id_parameter, i, var_null, var_null, total_execution_time, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
+                data = [id_parameter, i, var_null, var_null, total_execution_time, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
                 writer.writerow(data)
                 f.close()
 

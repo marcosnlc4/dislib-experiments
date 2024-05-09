@@ -32,10 +32,13 @@ def open_connection():
         # Open a cursor to perform database operations
         cur = conn.cursor()
 
-        # Set schema
+        # Set schema (production)
         # cur.execute("SET search_path = user_dev,schema_dev;") #KMEANS
         # cur.execute("SET search_path = user_dev,schema_dev_matmul;") #MATMUL
-        cur.execute("SET search_path = user_dev,schema_dev_matmul_fma;") #MATMUL FMA
+        # cur.execute("SET search_path = user_dev,schema_dev_matmul_fma;") #MATMUL FMA
+
+        # Set schema (test)
+        cur.execute("SET search_path = schema_kmeans;") #KMEANS
 
     except (Exception, psycopg2.DatabaseError) as error:
         print(error)

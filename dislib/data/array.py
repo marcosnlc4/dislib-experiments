@@ -7,7 +7,7 @@ import numpy as np
 from pycompss.api.api import compss_barrier, compss_wait_on, compss_delete_object
 from pycompss.api.constraint import constraint
 from pycompss.api.parameter import Type, COLLECTION_IN, Depth, \
-    COLLECTION_OUT, INOUT
+    COLLECTION_OUT, INOUT, Cache
 from pycompss.api.task import task
 from scipy import sparse as sp
 from scipy.sparse import issparse, csr_matrix
@@ -317,7 +317,19 @@ class Array(object):
         if sparse:
             ret = sp.bmat(blocks, format=b0.getformat(), dtype=b0.dtype)
         else:
-            ret = np.block(blocks)
+            #GPU CACHE
+            if type(b0) == cp.ndarray:
+                try:
+                    blocks = cp.asarray(np.block(blocks))
+                    ret = cp.concatenate(cp.concatenate(blocks, axis=1), axis=1)
+                except:
+                    for i in range(len(blocks)):
+                        for j in range(len(blocks[i])):
+                            blocks[i][j] = cp.asnumpy(blocks[i][j])
+                    ret = cp.asarray(np.block(blocks))
+            #CPU CACHE
+            else:
+                ret = np.block(blocks)
 
         return ret
 
@@ -1169,7 +1181,7 @@ def array(x, block_size):
     return arr
 
 
-def random_array(shape, block_size, random_state=None, data_skewness=0.0):
+def random_array(shape, block_size, random_state=None, data_skewness=0.0, id_device=1):
     """ Returns a distributed array of random floats in the open interval [0.0,
     1.0). Values are from the "continuous uniform" distribution over the
     stated interval.
@@ -1185,6 +1197,8 @@ def random_array(shape, block_size, random_state=None, data_skewness=0.0):
         numbers.
     data_skewness : float, optional (default=0.0)
         Data skewness in percentage
+    id_device : float, optional (default=1)
+        CPU=1, GPU=2
 
     Returns
     -------
@@ -1192,7 +1206,7 @@ def random_array(shape, block_size, random_state=None, data_skewness=0.0):
         Distributed array of random floats.
     """
     r_state = check_random_state(random_state)
-    return _full(shape, block_size, False, _random_block_wrapper, r_state, data_skewness)
+    return _full(shape, block_size, False, _random_block_wrapper, r_state, data_skewness, id_device)
 
 
 def identity(n, block_size, dtype=None):
@@ -1749,7 +1763,7 @@ def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False, id_device=1
 
 
 @constraint(computing_units="${ComputingUnitsCPU}")
-@task(returns=np.array)
+@task(a={Cache: True}, b={Cache: True}, returns=np.array, cache_returns=True)
 def _matmul_with_transpose(a, b, transpose_a, transpose_b):
     res = (a.T if transpose_a else a) @ (b.T if transpose_b else b)
     return res
@@ -1780,11 +1794,10 @@ def _matmul_with_transpose_intra_time(a, b, id_parameter, nr_algorithm_iteration
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ]
 )
-@task(returns=np.array)
-def _add_gpu(block1, block2):
+@task(block1_gpu={Cache: True}, block2_gpu={Cache: True}, returns=cp.array, cache_returns=True)
+def _add_gpu(block1_gpu, block2_gpu):
 
-    block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
-    res = cp.asnumpy(cp.add(block1_gpu, block2_gpu))
+    res = cp.add(block1_gpu, block2_gpu)
     block1_gpu, block2_gpu = None, None
     return res
 
@@ -1833,7 +1846,7 @@ def _add_gpu_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, it
     return res
 
 @constraint(computing_units="${ComputingUnitsCPU}")
-@task(returns=np.array)
+@task(block1={Cache: True}, block2={Cache: True}, returns=np.array, cache_returns=True)
 def _add_cpu(block1, block2):
 
     res = block1 + block2
@@ -1866,7 +1879,7 @@ def _add_cpu_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, it
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ]
 )
-@task(returns=np.array)
+@task(block1={Cache: True}, block2={Cache: True}, returns=cp.array, cache_returns=True)
 def _matmul_gpu(a, b, transpose_a, transpose_b):
 
     a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
@@ -1874,7 +1887,7 @@ def _matmul_gpu(a, b, transpose_a, transpose_b):
         a_gpu = cp.transpose(a_gpu)
     if transpose_b:
         b_gpu = cp.transpose(b_gpu)
-    res = cp.asnumpy(cp.matmul(a_gpu, b_gpu))
+    res = cp.matmul(a_gpu, b_gpu)
     a_gpu, b_gpu = None, None
     return res
 
@@ -2039,7 +2052,7 @@ def _multiply_block_groups(hblock, vblock, id_device, id_parameter, nr_algorithm
             compss_delete_object(block2)
 
     iteration += 1
-    return blocks[0], nr_task_matmul_func, nr_task_add_func
+    return cp.asnumpy(blocks[0]), nr_task_matmul_func, nr_task_add_func
 
 
 def matsubtract(a: Array, b: Array):
@@ -2343,9 +2356,15 @@ def _apply_elementwise(func, x, *args, **kwargs):
     return Array(blocks, x._top_left_shape, x._reg_shape, x.shape, x._sparse)
 
 
-def _random_block_wrapper(block_size, r_state, data_skewness):
+def _random_block_wrapper(block_size, r_state, data_skewness, id_device):
     seed = r_state.randint(np.iinfo(np.int32).max)
-    return _random_block(block_size, seed, data_skewness)
+
+    if id_device == 1:
+        random_block_func = _random_block
+    else:
+        random_block_func = _random_block_gpu
+
+    return random_block_func(block_size, seed, data_skewness)
 
 
 @constraint(computing_units="${ComputingUnits}")
@@ -2430,9 +2449,9 @@ def _transpose(blocks, out_blocks):
         for j in range(len(blocks[i])):
             out_blocks[i][j] = blocks[i][j].transpose()
 
-
-@constraint(computing_units="${ComputingUnits}")
-@task(returns=np.array)
+#CPU
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(returns=np.array, cache_returns=True)
 def _random_block(shape, seed, data_skewness):
     np.random.seed(seed)
     if data_skewness == 0.0:
@@ -2446,6 +2465,47 @@ def _random_block(shape, seed, data_skewness):
 
         # Apply skewness using a threshold
         return np.where(random_array < skew_threshold, random_array * 0.5, random_array).astype(np.float64)
+
+# # GPU WITHOUT IS_DISTRIBUTED PARAMETER
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ])
+@task(returns=cp.array, cache_returns=True)
+def _random_block_gpu(shape, seed, data_skewness):
+    cp.random.seed(seed)
+    if data_skewness == 0.0:
+        return cp.random.rand(*shape, dtype=cp.float64)
+    else:
+        # Generate a random array with the specified shape
+        random_array = cp.random.rand(*shape, dtype=cp.float64)
+
+        # Calculate the skewness threshold
+        skew_threshold = cp.percentile(random_array, data_skewness*100)
+
+        # Apply skewness using a threshold
+        return cp.where(random_array < skew_threshold, random_array * 0.5, random_array).astype(cp.float64)
+    
+
+# # # GPU WITH IS_DISTRIBUTED PARAMETER
+# @constraint(processors=[
+#                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+#                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+#             ])
+# @task(returns=cp.array, cache_returns=True, is_distributed=True)
+# def _random_block_gpu(shape, seed, data_skewness):
+#     cp.random.seed(seed)
+#     if data_skewness == 0.0:
+#         return cp.random.rand(*shape, dtype=cp.float64)
+#     else:
+#         # Generate a random array with the specified shape
+#         random_array = cp.random.rand(*shape, dtype=cp.float64)
+
+#         # Calculate the skewness threshold
+#         skew_threshold = cp.percentile(random_array, data_skewness*100)
+
+#         # Apply skewness using a threshold
+#         return cp.where(random_array < skew_threshold, random_array * 0.5, random_array).astype(cp.float64)
 
 
 @constraint(computing_units="${ComputingUnits}")
