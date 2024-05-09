@@ -1,0 +1,203 @@
+# FOR CPU CODE
+
+import line_profiler
+import numpy as np
+
+def compute_operational_intensity(func, input_args):
+    """
+    Compute the operational intensity (OI) of a function based on line profiling.
+
+    Parameters:
+        func (callable): The function to be profiled.
+        input_args (tuple): Input arguments for the function.
+
+    Returns:
+        float: Operational intensity (OI) in Instructions/Byte.
+    """
+    profiler = line_profiler.LineProfiler()
+    profiler.add_function(func)
+    profiler.enable_by_count()
+
+    # Run the function with profiling
+    func(*input_args)
+
+    # Get the profiling results
+    stats = profiler.get_stats()
+    total_instructions = stats.functions[func]['total_tt']
+    total_bytes_accessed = sum(stats.bytes_memory.values())
+
+    # Compute operational intensity (OI)
+    if total_bytes_accessed > 0:
+        oi = total_instructions / total_bytes_accessed
+    else:
+        oi = float('inf')  # Handle division by zero (very large OI if no memory access)
+
+    profiler.disable_by_count()
+    return oi
+
+def compute_memory_intensity(func, input_args):
+    """
+    Compute the memory intensity (MI) of a function based on line profiling.
+
+    Parameters:
+        func (callable): The function to be profiled.
+        input_args (tuple): Input arguments for the function.
+
+    Returns:
+        float: Memory intensity (MI) in Bytes/Operation.
+    """
+    profiler = line_profiler.LineProfiler()
+    profiler.add_function(func)
+    profiler.enable_by_count()
+
+    # Run the function with profiling
+    func(*input_args)
+
+    # Get the profiling results
+    stats = profiler.get_stats()
+    total_operations = stats.functions[func]['calls']
+    total_bytes_accessed = sum(stats.bytes_memory.values())
+
+    # Compute memory intensity (MI)
+    if total_operations > 0:
+        mi = total_bytes_accessed / total_operations
+    else:
+        mi = float('inf')  # Handle division by zero (very large MI if no operations)
+
+    profiler.disable_by_count()
+    return mi
+
+def classify_algorithm(operational_intensity, memory_intensity):
+    """
+    Classify an algorithm as compute-bound or memory-bound using the roofline model.
+
+    Parameters:
+        operational_intensity (float): Operational intensity (OI) of the algorithm.
+        memory_intensity (float): Memory intensity (MI) of the algorithm.
+
+    Returns:
+        str: Classification result ('Compute-bound' or 'Memory-bound').
+    """
+    # Define thresholds for classification
+    # Example for GPU K80: https://www.nvidia.com/content/dam/en-zz/Solutions/Data-Center/tesla-product-literature/TeslaK80-datasheet.pdf
+    compute_bound_threshold = 1.0  # Threshold for operational intensity (OI)
+    memory_bound_threshold = 0.5    # Threshold for memory intensity (MI)
+
+    # Classify based on the provided intensities
+    if operational_intensity >= compute_bound_threshold:
+        return 'Compute-bound'
+    elif memory_intensity >= memory_bound_threshold:
+        return 'Memory-bound'
+    else:
+        return 'Unclassified'  # Neither compute-bound nor memory-bound
+
+# Example function to profile (compute-intensive example)
+def example_function(size):
+    data = np.random.rand(size)
+    result = np.sum(data)
+    return result
+
+if __name__ == '__main__':
+    # Profile the example_function and compute operational intensity (OI)
+    input_size = 1000000  # Example input size
+    oi_value = compute_operational_intensity(example_function, (input_size,))
+
+    # Profile the example_function again to compute memory intensity (MI)
+    mi_value = compute_memory_intensity(example_function, (input_size,))
+
+    # Classify the algorithm based on computed OI and MI
+    classification = classify_algorithm(oi_value, mi_value)
+    print(f"The algorithm is classified as: {classification}")
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# FOR GPU CODE
+import cupy as cp
+import cupyx.prof
+import numpy as np
+
+def compute_operational_intensity(func, input_args):
+    """
+    Compute the operational intensity (OI) of a GPU kernel based on profiling.
+
+    Parameters:
+        func (callable): The GPU kernel function to be profiled.
+        input_args (tuple): Input arguments for the GPU kernel.
+
+    Returns:
+        float: Operational intensity (OI) in FLOPs/Byte.
+    """
+    # Run the GPU kernel with profiling
+    with cupyx.prof.time_range("Kernel"):
+        func(*input_args)
+
+    # Get the profiling results
+    stats = cupyx.prof.time_range_stack
+    kernel_time = stats.pop().time()
+    total_flops = cp.cuda.get_flop_count()
+
+    # Compute operational intensity (OI)
+    if total_flops > 0:
+        oi = total_flops / kernel_time
+    else:
+        oi = float('inf')  # Handle division by zero (very large OI if no FLOPs)
+
+    return oi
+
+def classify_algorithm(operational_intensity, memory_intensity):
+    """
+    Classify a GPU-based algorithm as compute-bound or memory-bound using the roofline model.
+
+    Parameters:
+        operational_intensity (float): Operational intensity (OI) of the algorithm.
+        memory_intensity (float): Memory intensity (MI) of the algorithm.
+
+    Returns:
+        str: Classification result ('Compute-bound' or 'Memory-bound').
+    """
+    # Define thresholds for classification
+    compute_bound_threshold = 1.0  # Threshold for operational intensity (OI)
+    memory_bound_threshold = 0.5    # Threshold for memory intensity (MI)
+
+    # Classify based on the provided intensities
+    if operational_intensity >= compute_bound_threshold:
+        return 'Compute-bound'
+    elif memory_intensity >= memory_bound_threshold:
+        return 'Memory-bound'
+    else:
+        return 'Unclassified'  # Neither compute-bound nor memory-bound
+
+# Example GPU kernel (CuPy-based)
+def example_kernel(data):
+    result = cp.sum(data)
+    return result
+
+if __name__ == '__main__':
+    # Generate random data on GPU
+    input_size = 1000000  # Example input size
+    data_gpu = cp.random.rand(input_size)
+
+    # Profile the example_kernel and compute operational intensity (OI)
+    oi_value = compute_operational_intensity(example_kernel, (data_gpu,))
+
+    # Assume memory intensity (MI) is not directly measured (simplified example)
+    # We can estimate memory intensity based on the specific memory access pattern and data size
+
+    # Classify the GPU-based algorithm based on computed OI and assumed MI
+    classification = classify_algorithm(oi_value, 0.3)  # Assuming memory intensity (MI)
+    print(f"The GPU-based algorithm is classified as: {classification}")
