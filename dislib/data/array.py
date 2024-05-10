@@ -1879,7 +1879,7 @@ def _add_cpu_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, it
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ]
 )
-@task(block1={Cache: True}, block2={Cache: True}, returns=cp.array, cache_returns=True)
+@task(a={Cache: True}, b={Cache: True}, returns=cp.array, cache_returns=True)
 def _matmul_gpu(a, b, transpose_a, transpose_b):
 
     a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
