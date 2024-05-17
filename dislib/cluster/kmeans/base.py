@@ -5,8 +5,6 @@ import time
 import csv
 
 import numpy as np
-import cupy as cp
-
 import datetime
 
 import dislib
@@ -57,11 +55,14 @@ class KMeans(BaseEstimator):
     verbose: boolean, optional (default=False)
         Whether to print progress information.
     id_device: int (default=1)
-        Flag to define the device function implementation according to resource (CPU: 1, GPU: 2, GPU intra: 3)
+        Flag to define the device type (CPU: 1, GPU: 2)
+    id_cache: int (default=1)
+        Flag to define the cache type (COLD: 1, HOT: 2)
     id_parameter: int (default=0)
         Variable to identify the parameter id
     nr_algorithm_iteration: int (default=0)
         Variable to identify the number of the execution of the algorithm
+
 
     Attributes
     ----------
@@ -92,6 +93,7 @@ class KMeans(BaseEstimator):
     def __init__(self, n_clusters=8, init='random', max_iter=10, tol=1e-4,
                  arity=50, random_state=None, verbose=False,
                  id_device=1,
+                 id_cache=1,
                  id_parameter=0, 
                  nr_algorithm_iteration=0):
         self.n_clusters = n_clusters
@@ -102,6 +104,7 @@ class KMeans(BaseEstimator):
         self.verbose = verbose
         self.id_parameter = id_parameter
         self.id_device = id_device
+        self.id_cache = id_cache
         self.nr_algorithm_iteration = nr_algorithm_iteration
         self.init = init
 
@@ -125,52 +128,31 @@ class KMeans(BaseEstimator):
         old_centers = None
         iteration = 0
 
-        if self.id_device == 1 or self.id_device == 5:
-            partial_sum_func = _partial_sum
-        elif self.id_device == 2 or self.id_device == 6:
-            partial_sum_func = _partial_sum_gpu
-        elif self.id_device == 3:
-            partial_sum_func = _partial_sum_intra_time
+        if self.id_device == 1 and self.id_cache == 1:
+            partial_sum_func = _partial_sum_cpu_cold
+        elif self.id_device == 1 and self.id_cache == 2:
+            partial_sum_func = _partial_sum_cpu_hot
+        elif self.id_device == 2 and self.id_cache == 1:
+            partial_sum_func = _partial_sum_gpu_cold
+        elif self.id_device == 2 and self.id_cache == 2:
+            partial_sum_func = _partial_sum_gpu_hot
         elif self.id_device == 4:
-            partial_sum_func = _partial_sum_gpu_intra_time
+            partial_sum_func = _partial_sum_gpu_cold_intra_time
+        elif self.id_device == 44:
+            partial_sum_func = _partial_sum_gpu_hot_intra_time
         else:
-            raise ValueError("Invalid id_device")
+            raise ValueError("Error. Invalid combination id_device+id_cache")
 
         while not self._converged(old_centers, iteration):
             old_centers = self.centers.copy()
             partials = []
-            
+
             if self.id_device == 3 or self.id_device == 4:
                 nr_task = 0
                 for row in x._iterator(axis=0):
                     partial = partial_sum_func(row._blocks, old_centers, self.id_parameter, self.nr_algorithm_iteration, iteration, nr_task)
                     partials.append(partial)
                     nr_task += 1
-            
-            elif self.id_device == 5 or self.id_device == 6:
-                compss_barrier()
-                start_inter_time_cpu = time.perf_counter()
-
-                for row in x._iterator(axis=0):
-                    partial = partial_sum_func(row._blocks, old_centers)
-                    partials.append(partial)
-
-                compss_barrier()
-                end_inter_time_cpu = time.perf_counter()
-
-                # inter_task_execution_time = end_inter_cpu - start_inter_cpu
-
-                # open the log file in the append mode
-                f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
-
-                # create a csv writer
-                writer = csv.writer(f)
-
-                # write the time data 
-                data = [self.id_parameter, self.nr_algorithm_iteration, iteration, var_null, var_null, var_null, start_inter_time_cpu, end_inter_time_cpu, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
-                writer.writerow(data)
-                f.close()
-
             else:
                 for row in x._iterator(axis=0):
                     partial = partial_sum_func(row._blocks, old_centers)
@@ -397,32 +379,92 @@ def _decode_helper(obj):
             return random_state
     return obj
 
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: False}, centers={Cache: False},
+      returns=np.array, cache_returns=False)
+def _partial_sum_cpu_cold(blocks, centers):
+    partials = np.zeros((centers.shape[0], 2), dtype=object)
+    arr = Array._merge_blocks(blocks)
 
-# # WITH WEIGHT PARAMETER
+    close_centers = pairwise_distances(arr, centers).argmin(axis=1)
+
+    for center_idx, _ in enumerate(centers):
+        indices = np.argwhere(close_centers == center_idx).flatten()
+        partials[center_idx][0] = np.sum(arr[indices], axis=0)
+        partials[center_idx][1] = indices.shape[0]
+
+    return partials
+
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True}, centers={Cache: False},
+      returns=np.array, cache_returns=False)
+def _partial_sum_cpu_hot(blocks, centers):
+    partials = np.zeros((centers.shape[0], 2), dtype=object)
+    arr = Array._merge_blocks(blocks)
+
+    close_centers = pairwise_distances(arr, centers).argmin(axis=1)
+
+    for center_idx, _ in enumerate(centers):
+        indices = np.argwhere(close_centers == center_idx).flatten()
+        partials[center_idx][0] = np.sum(arr[indices], axis=0)
+        partials[center_idx][1] = indices.shape[0]
+
+    return partials
+
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ])
-@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True, Weight: 100000}, centers={Cache: False}, 
+@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: False}, centers={Cache: False},
       returns=np.array, cache_returns=False)
-def _partial_sum_gpu(blocks, centers):
+def _partial_sum_gpu_cold(blocks, centers):
+    import cupy as cp
 
     partials = np.zeros((centers.shape[0], 2), dtype=object)
-
     if len(blocks[0]) == 1:
         arr = blocks[0][0]
     else:
         arr = Array._merge_blocks(blocks)
-
-    arr_gpu, centers_gpu = cp.asarray(arr), cp.asarray(centers)
+    arr_gpu = cp.asarray(arr).astype(cp.float32)
+    centers_gpu = cp.asarray(centers).astype(cp.float32)
     arr = None
 
-    close_centers_gpu = distance_gpu(arr_gpu, centers_gpu).argmin(axis=1)
-    centers_gpu = None
+    close_centers_gpu = cp.argmin(distance_gpu(arr_gpu, centers_gpu), axis=1)
+    arr = cp.asnumpy(arr_gpu)
+    arr_gpu, centers_gpu = None, None
 
     close_centers = cp.asnumpy(close_centers_gpu)
+
+    for center_idx, _ in enumerate(centers):
+        indices = np.argwhere(close_centers == center_idx).flatten()
+        partials[center_idx][0] = np.sum(arr[indices], axis=0)
+        partials[center_idx][1] = indices.shape[0]
+
+    return partials
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ])
+@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True}, centers={Cache: False},
+      returns=np.array, cache_returns=False)
+def _partial_sum_gpu_hot(blocks, centers):
+    import cupy as cp
+
+    partials = np.zeros((centers.shape[0], 2), dtype=object)
+    if len(blocks[0]) == 1:
+        arr = blocks[0][0]
+    else:
+        arr = Array._merge_blocks(blocks)
+    arr_gpu = cp.asarray(arr).astype(cp.float32)
+    centers_gpu = cp.asarray(centers).astype(cp.float32)
+    arr = None
+
+    close_centers_gpu = cp.argmin(distance_gpu(arr_gpu, centers_gpu), axis=1)
     arr = cp.asnumpy(arr_gpu)
-    close_centers_gpu, arr_gpu = None, None
+    arr_gpu, centers_gpu = None, None
+
+    close_centers = cp.asnumpy(close_centers_gpu)
 
     for center_idx, _ in enumerate(centers):
         indices = np.argwhere(close_centers == center_idx).flatten()
@@ -432,47 +474,15 @@ def _partial_sum_gpu(blocks, centers):
     return partials
 
 
-# # WITH IS_DISTRIBUTED PARAMETER
-# @constraint(processors=[
-#                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
-#                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
-#             ])
-# @task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True}, centers={Cache: False}, 
-#       returns=np.array, cache_returns=False, is_distributed=True)
-# def _partial_sum_gpu(blocks, centers):
-
-#     partials = np.zeros((centers.shape[0], 2), dtype=object)
-
-#     if len(blocks[0]) == 1:
-#         arr = blocks[0][0]
-#     else:
-#         arr = Array._merge_blocks(blocks)
-
-#     arr_gpu, centers_gpu = cp.asarray(arr), cp.asarray(centers)
-#     arr = None
-
-#     close_centers_gpu = distance_gpu(arr_gpu, centers_gpu).argmin(axis=1)
-#     centers_gpu = None
-
-#     close_centers = cp.asnumpy(close_centers_gpu)
-#     arr = cp.asnumpy(arr_gpu)
-#     close_centers_gpu, arr_gpu = None, None
-
-#     for center_idx, _ in enumerate(centers):
-#         indices = np.argwhere(close_centers == center_idx).flatten()
-#         partials[center_idx][0] = np.sum(arr[indices], axis=0)
-#         partials[center_idx][1] = indices.shape[0]
-
-#     return partials
-
-# # WITH WEIGHT PARAMETER
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ])
-@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True, Weight: 100000}, centers={Cache: False}, 
+@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: False}, centers={Cache: False},
       returns=np.array, cache_returns=False)
-def _partial_sum_gpu_intra_time(blocks, centers, id_parameter, nr_algorithm_iteration, iteration, row):
+def _partial_sum_gpu_cold_intra_time(blocks, centers, id_parameter, nr_algorithm_iteration, iteration, row):
+    import cupy as cp
+
     # open the log file in the append mode
     f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
 
@@ -494,35 +504,32 @@ def _partial_sum_gpu_intra_time(blocks, centers, id_parameter, nr_algorithm_iter
 
     # Measure communication time 1
     start_communication_time_1 = time.perf_counter()
-    arr_gpu, centers_gpu = cp.asarray(arr), cp.asarray(centers)
+    arr_gpu = cp.asarray(arr).astype(cp.float32)
+    centers_gpu = cp.asarray(centers).astype(cp.float32)
     end_communication_time_1 = time.perf_counter()
     arr = None
 
-
     # Measure intra task execution time (device function) 
     start_gpu_intra_device.record()
-    close_centers_gpu = distance_gpu(arr_gpu, centers_gpu).argmin(axis=1)
+    close_centers_gpu = cp.argmin(distance_gpu(arr_gpu, centers_gpu), axis=1)
     end_gpu_intra_device.record()
     end_gpu_intra_device.synchronize()
     intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
-    centers_gpu = None
-
 
     # Measure communication time 2
     start_communication_time_2 = time.perf_counter()
-    close_centers = cp.asnumpy(close_centers_gpu)
     arr = cp.asnumpy(arr_gpu)
+    close_centers = cp.asnumpy(close_centers_gpu)
     end_communication_time_2 = time.perf_counter()
 
     # Measure additional time 2
     start_additional_time_2 = time.perf_counter()
-    close_centers_gpu, arr_gpu = None, None
+    arr_gpu, centers_gpu = None, None
 
     for center_idx, _ in enumerate(centers):
         indices = np.argwhere(close_centers == center_idx).flatten()
         partials[center_idx][0] = np.sum(arr[indices], axis=0)
         partials[center_idx][1] = indices.shape[0]
-
     end_additional_time_2 = time.perf_counter()
 
     # write the time data
@@ -532,115 +539,58 @@ def _partial_sum_gpu_intra_time(blocks, centers, id_parameter, nr_algorithm_iter
 
     return partials
 
-
-# # WITH IS_DISTRIBUTED PARAMETER
-# @constraint(processors=[
-#                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
-#                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
-#             ])
-# @task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True}, centers={Cache: False}, 
-#       returns=np.array, cache_returns=False, is_distributed=True)
-# def _partial_sum_gpu_intra_time(blocks, centers, id_parameter, nr_algorithm_iteration, iteration, row):
-#     # open the log file in the append mode
-#     f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
-
-#     # create a csv writer
-#     writer = csv.writer(f)
-
-#     # creating CUDA events for intra device time measurement
-#     start_gpu_intra_device = cp.cuda.Event()
-#     end_gpu_intra_device = cp.cuda.Event()
-
-#     # Measure additional time 1
-#     start_additional_time_1 = time.perf_counter()
-#     partials = np.zeros((centers.shape[0], 2), dtype=object)
-#     if len(blocks[0]) == 1:
-#         arr = blocks[0][0]
-#     else:
-#         arr = Array._merge_blocks(blocks)
-#     end_additional_time_1 = time.perf_counter()
-
-#     # Measure communication time 1
-#     start_communication_time_1 = time.perf_counter()
-#     arr_gpu, centers_gpu = cp.asarray(arr), cp.asarray(centers)
-#     end_communication_time_1 = time.perf_counter()
-#     arr = None
-
-
-#     # Measure intra task execution time (device function) 
-#     start_gpu_intra_device.record()
-#     close_centers_gpu = distance_gpu(arr_gpu, centers_gpu).argmin(axis=1)
-#     end_gpu_intra_device.record()
-#     end_gpu_intra_device.synchronize()
-#     intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
-#     centers_gpu = None
-
-
-#     # Measure communication time 2
-#     start_communication_time_2 = time.perf_counter()
-#     close_centers = cp.asnumpy(close_centers_gpu)
-#     arr = cp.asnumpy(arr_gpu)
-#     end_communication_time_2 = time.perf_counter()
-
-#     # Measure additional time 2
-#     start_additional_time_2 = time.perf_counter()
-#     close_centers_gpu, arr_gpu = None, None
-
-#     for center_idx, _ in enumerate(centers):
-#         indices = np.argwhere(close_centers == center_idx).flatten()
-#         partials[center_idx][0] = np.sum(arr[indices], axis=0)
-#         partials[center_idx][1] = indices.shape[0]
-
-#     end_additional_time_2 = time.perf_counter()
-
-#     # write the time data
-#     data = [id_parameter, nr_algorithm_iteration, iteration, row, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, start_additional_time_1, end_additional_time_1, start_additional_time_2, end_additional_time_2, datetime.datetime.now()]
-#     writer.writerow(data)
-#     f.close()
-
-#     return partials
-
-@constraint(computing_units="${ComputingUnitsCPU}")
-@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True}, centers={Cache: False}, 
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ])
+@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True}, centers={Cache: False},
       returns=np.array, cache_returns=False)
-def _partial_sum(blocks, centers):
+def _partial_sum_gpu_hot_intra_time(blocks, centers, id_parameter, nr_algorithm_iteration, iteration, row):
+    import cupy as cp
 
-    partials = np.zeros((centers.shape[0], 2), dtype=object)
-    arr = Array._merge_blocks(blocks)
-
-    close_centers = pairwise_distances(arr, centers).argmin(axis=1)
-
-    for center_idx, _ in enumerate(centers):
-        indices = np.argwhere(close_centers == center_idx).flatten()
-        partials[center_idx][0] = np.sum(arr[indices], axis=0)
-        partials[center_idx][1] = indices.shape[0]
-
-    return partials
-
-@constraint(computing_units="${ComputingUnitsCPU}")
-@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True}, centers={Cache: False}, 
-      returns=np.array, cache_returns=False)
-def _partial_sum_intra_time(blocks, centers, id_parameter, nr_algorithm_iteration, iteration, row):
     # open the log file in the append mode
     f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
 
     # create a csv writer
     writer = csv.writer(f)
 
+    # creating CUDA events for intra device time measurement
+    start_gpu_intra_device = cp.cuda.Event()
+    end_gpu_intra_device = cp.cuda.Event()
+
     # Measure additional time 1
     start_additional_time_1 = time.perf_counter()
     partials = np.zeros((centers.shape[0], 2), dtype=object)
-    arr = Array._merge_blocks(blocks)
+    if len(blocks[0]) == 1:
+        arr = blocks[0][0]
+    else:
+        arr = Array._merge_blocks(blocks)
     end_additional_time_1 = time.perf_counter()
 
+    # Measure communication time 1
+    start_communication_time_1 = time.perf_counter()
+    arr_gpu = cp.asarray(arr).astype(cp.float32)
+    centers_gpu = cp.asarray(centers).astype(cp.float32)
+    end_communication_time_1 = time.perf_counter()
+    arr = None
+
     # Measure intra task execution time (device function) 
-    start_intra_device = time.perf_counter()
-    close_centers = pairwise_distances(arr, centers).argmin(axis=1)
-    end_intra_device = time.perf_counter()
-    intra_task_execution_device_func = end_intra_device - start_intra_device
+    start_gpu_intra_device.record()
+    close_centers_gpu = cp.argmin(distance_gpu(arr_gpu, centers_gpu), axis=1)
+    end_gpu_intra_device.record()
+    end_gpu_intra_device.synchronize()
+    intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+
+    # Measure communication time 2
+    start_communication_time_2 = time.perf_counter()
+    arr = cp.asnumpy(arr_gpu)
+    close_centers = cp.asnumpy(close_centers_gpu)
+    end_communication_time_2 = time.perf_counter()
 
     # Measure additional time 2
     start_additional_time_2 = time.perf_counter()
+    arr_gpu, centers_gpu = None, None
+
     for center_idx, _ in enumerate(centers):
         indices = np.argwhere(close_centers == center_idx).flatten()
         partials[center_idx][0] = np.sum(arr[indices], axis=0)
@@ -648,7 +598,7 @@ def _partial_sum_intra_time(blocks, centers, id_parameter, nr_algorithm_iteratio
     end_additional_time_2 = time.perf_counter()
 
     # write the time data
-    data = [id_parameter, nr_algorithm_iteration, iteration, row, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, start_additional_time_1, end_additional_time_1, start_additional_time_2, end_additional_time_2, datetime.datetime.now()]
+    data = [id_parameter, nr_algorithm_iteration, iteration, row, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, start_additional_time_1, end_additional_time_1, start_additional_time_2, end_additional_time_2, datetime.datetime.now()]
     writer.writerow(data)
     f.close()
 
@@ -673,30 +623,30 @@ def _predict(blocks, centers):
     return pairwise_distances(arr, centers).argmin(axis=1).reshape(-1, 1)
 
 
-# def distance_gpu(a_gpu, b_gpu):
-#     sq_sum_ker = get_sq_sum_kernel()
-#     aa_gpu, bb_gpu = cp.empty(a_gpu.shape[0], dtype=cp.float32), cp.empty(b_gpu.shape[0], dtype=cp.float32)
-#     sq_sum_ker(a_gpu, aa_gpu, axis=1)
-#     sq_sum_ker(b_gpu, bb_gpu, axis=1)
-
-#     size = len(aa_gpu) * len(bb_gpu)
-#     dist_gpu = cp.empty((len(aa_gpu), len(bb_gpu)), dtype=cp.float32)
-#     add_mix_kernel(len(b_gpu))(aa_gpu, bb_gpu, dist_gpu, size=size, block_size=1024)
-#     aa_gpu, bb_gpu = None, None
-
-#     dist_gpu += -2.0 * cp.dot(a_gpu, b_gpu.T)
-
-#     return dist_gpu
-
 def distance_gpu(a_gpu, b_gpu):
-    XX = cp.einsum('ij,ij->i', a_gpu, a_gpu)[:, cp.newaxis]
-    YY = cp.einsum('ij,ij->i', b_gpu, b_gpu)[cp.newaxis, :]
-    distances = cp.sqrt(XX + YY - 2 * cp.dot(a_gpu, b_gpu.T))
-    return distances
+    import cupy as cp
 
+    sq_sum_ker = get_sq_sum_kernel()
+
+    aa_gpu = cp.empty(a_gpu.shape[0], dtype=cp.float32)
+    bb_gpu = cp.empty(b_gpu.shape[0], dtype=cp.float32)
+
+    sq_sum_ker(a_gpu, aa_gpu, axis=1)
+    sq_sum_ker(b_gpu, bb_gpu, axis=1)
+
+    size = len(aa_gpu) * len(bb_gpu)
+    dist_gpu = cp.empty((len(aa_gpu), len(bb_gpu)), dtype=cp.float32)
+    add_mix_kernel(len(b_gpu))(aa_gpu, bb_gpu, dist_gpu, size=size)
+    aa_gpu, bb_gpu = None, None
+
+    dist_gpu += -2.0 * cp.dot(a_gpu, b_gpu.T)
+
+    return dist_gpu
 
 
 def get_sq_sum_kernel():
+    import cupy as cp
+
     return cp.ReductionKernel(
         'T x',  # input params
         'T y',  # output params
@@ -707,8 +657,11 @@ def get_sq_sum_kernel():
         'sqsum'  # kernel name
     )
 
+
 def add_mix_kernel(y_len):
-  return cp.ElementwiseKernel(
-      'raw T x, raw T y', 'raw T z',
-      f'z[i] = x[i / {y_len}] + y[i % {y_len}]',
-      'add_mix')
+    import cupy as cp
+
+    return cp.ElementwiseKernel(
+        'raw T x, raw T y', 'raw T z',
+        f'z[i] = x[i / {y_len}] + y[i % {y_len}]',
+        'add_mix')

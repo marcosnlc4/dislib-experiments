@@ -13,8 +13,8 @@ if __name__ == '__main__':
     input_matrix_rows = 40
     input_matrix_columns = 40
     start_random_state = 170
-    block_row_size = 10
-    block_column_size = 10
+    block_row_size = 20
+    block_column_size = 20
     transpose_a = transpose_b = bl_transpose = False
     start = time.perf_counter()
 
@@ -22,32 +22,47 @@ if __name__ == '__main__':
     block_size = (block_row_size, block_column_size)
 
     # DATASET GENERATION
-    # start = time.perf_counter()
-    # x = ds.random_array(shape, block_size, random_state=start_random_state)
-    # print("==== TIME DATA GENERATION ==== ", time.perf_counter()-start)
+    start = time.perf_counter()
+    # CPU COLD
+    x = ds.random_array(shape, block_size, random_state=start_random_state, id_device=1, id_cache=1)
+    # # CPU HOT
+    # x = ds.random_array(shape, block_size, random_state=start_random_state, id_device=1, id_cache=2)
+    # # GPU COLD
+    # x = ds.random_array(shape, block_size, random_state=start_random_state, id_device=2, id_cache=1)
+    # # GPU HOT
+    # x = ds.random_array(shape, block_size, random_state=start_random_state, id_device=2, id_cache=2)
+    print("==== TIME DATA GENERATION ==== ", time.perf_counter()-start)
 
-    x_np = np.random.random(shape)
-    x = ds.array(x_np, block_size=block_size)
+    # x_np = np.random.random(shape)
+    # x = ds.array(x_np, block_size=block_size)
 
     
     nr_iterations = 0
     
     for i in range(nr_iterations + 1):
 
-        # Run Matmul using dislib - CPU
-        print("\nSTART CPU\n")
-        # compss_barrier()
-        # start = time.perf_counter()
-        result = ds.matmul(x, x, transpose_a, transpose_b, id_device=1, id_parameter=0, nr_algorithm_iteration=0)
-        # compss_barrier()
-        # print("==== TIME CPU ==== ", time.perf_counter()-start)
-        print("\END CPU\n")
+        # # Run Matmul using dislib - CPU
+        # print("\nSTART CPU\n")
+        # # compss_barrier()
+        # # start = time.perf_counter()
+        # result = ds.matmul(x, x, transpose_a, transpose_b, id_device=1, id_parameter=0, nr_algorithm_iteration=0)
+        # # compss_barrier()
+        # # print("==== TIME CPU ==== ", time.perf_counter()-start)
+        # print("\END CPU\n")
         
 
-        ## Run Matmul using dislib - GPU 
-        #print("\nSTART GPU\n")
-        #compss_barrier()
-        #start = time.perf_counter()
-        #result = ds.matmul(x, x, transpose_a, transpose_b, id_device=2, id_parameter=0, nr_algorithm_iteration=0)
-        #compss_barrier()
-        #print("==== TIME GPU ==== ", time.perf_counter()-start)
+        # # Run Matmul using dislib - GPU 
+        # print("\nSTART GPU\n")
+        # compss_barrier()
+        # start = time.perf_counter()
+        # result = ds.matmul(x, x, transpose_a, transpose_b, id_device=1, id_cache=1, cd_function=1, id_parameter=0, nr_algorithm_iteration=0)
+        # compss_barrier()
+        # print("==== TIME GPU ==== ", time.perf_counter()-start)
+
+        # Run Matmul using dislib - TEST CASES 
+        print("\nSTART\n")
+        compss_barrier()
+        start = time.perf_counter()
+        result = ds.matmul(x, x, transpose_a, transpose_b, id_device=1, id_cache=1, cd_function=1, id_parameter=0, nr_algorithm_iteration=0)
+        compss_barrier()
+        print("==== TIME ==== ", time.perf_counter()-start)

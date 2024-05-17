@@ -234,6 +234,123 @@ class Array(object):
         return Array(blocks, self._top_left_shape, self._reg_shape,
                      self.shape, self._sparse)
 
+    def __isub__(self, other):
+        if self.shape[1] != other.shape[1] or (other.shape[0] != 1 and
+                                               (other.shape[0] != self.shape[0]
+                                               or other._reg_shape[0] !=
+                                               self._reg_shape[0])):
+            raise NotImplementedError("Reverse subtraction not "
+                                      "implemented for the "
+                                      "given objects")
+
+        if other.shape[0] == self.shape[0] and other._reg_shape[0]\
+                == self._reg_shape[0]:
+            if other.shape[0] == self.shape[0] and \
+                    other._reg_shape[0] == self._reg_shape[0]:
+                if self._reg_shape[1] != other._reg_shape[1]:
+                    raise ValueError("incorrect block sizes for the requested "
+                                     f"subtraction ("
+                                     f"{self._reg_shape[0]}"", "
+                                     f"{self._reg_shape[1]} !="
+                                     f"{other._reg_shape[0]}"", "
+                                     f"{other._reg_shape[1]})")
+
+                if self._top_left_shape != other._top_left_shape:
+                    raise ValueError("Incompatible block sizes of the "
+                                     "top left block of the matrices"
+                                     "b._top_left_shape != b._top_left_shape")
+            # matrix - matrix
+            blocks = []
+
+            for hblock, others in zip(self._iterator("rows"),
+                                      other._iterator("rows")):
+                out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+                _combine_blocks(hblock._blocks, others._blocks,
+                                Array._subtract, out_blocks)
+                blocks.append(out_blocks)
+            compss_delete_object(self._blocks)
+            self._blocks = blocks
+
+            return self
+        # matrix - vector
+        blocks = []
+
+        for hblock in self._iterator("rows"):
+            out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+            _combine_blocks(hblock._blocks, other._blocks,
+                            Array._subtract, out_blocks)
+            blocks.append(out_blocks)
+
+        compss_delete_object(self._blocks)
+        self._blocks = blocks
+
+        return self
+
+    def __add__(self, other):
+        if self.shape[1] != other.shape[1] or other.shape[0] != 1:
+            raise NotImplementedError("Addition not implemented for the "
+                                      "given objects")
+
+        # matrix + vector
+        blocks = []
+
+        for hblock in self._iterator("rows"):
+            out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+            _combine_blocks(hblock._blocks, other._blocks,
+                            Array._add, out_blocks)
+            blocks.append(out_blocks)
+
+        return Array(blocks, self._top_left_shape, self._reg_shape,
+                     self.shape, self._sparse)
+
+    def __iadd__(self, other):
+        if self.shape[1] != other.shape[1] or (other.shape[0] != 1 and
+                                               (other.shape[0] != self.shape[0]
+                                               or other._reg_shape[0] !=
+                                               self._reg_shape[0])):
+            raise NotImplementedError("Self addition not implemented for the "
+                                      "given objects")
+
+        if other.shape[0] == self.shape[0] and \
+                other._reg_shape[0] == self._reg_shape[0]:
+            if self._reg_shape[1] != other._reg_shape[1]:
+                raise ValueError("incorrect block sizes for the requested "
+                                 f"addition ("
+                                 f"{self._reg_shape[0]}"", "
+                                 f"{self._reg_shape[1]} !="
+                                 f"{other._reg_shape[0]}"", "
+                                 f"{other._reg_shape[1]})")
+
+            if self._top_left_shape != other._top_left_shape:
+                raise ValueError("Incompatible block sizes of the "
+                                 "top left block of the matrices"
+                                 "b._top_left_shape != b._top_left_shape")
+            # matrix + matrix
+            blocks = []
+
+            for hblock, others in zip(self._iterator("rows"),
+                                      other._iterator("rows")):
+                out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+                _combine_blocks(hblock._blocks, others._blocks,
+                                Array._add, out_blocks)
+                blocks.append(out_blocks)
+            compss_delete_object(self._blocks)
+            self._blocks = blocks
+
+            return self
+        # matrix + vector
+        blocks = []
+
+        for hblock in self._iterator("rows"):
+            out_blocks = [object() for _ in range(hblock._n_blocks[1])]
+            _combine_blocks(hblock._blocks, other._blocks,
+                            Array._add, out_blocks)
+            blocks.append(out_blocks)
+        compss_delete_object(self._blocks)
+        self._blocks = blocks
+
+        return self
+
     def __truediv__(self, other):
         if not np.isscalar(other):
             raise NotImplementedError("Non scalar division not supported")
@@ -284,6 +401,22 @@ class Array(object):
             return csr_matrix(a - b)
         else:
             return a - b
+
+    @staticmethod
+    def _add(a, b):
+        sparse = issparse(a)
+
+        # needed because subtract with scipy.sparse does not support
+        # broadcasting
+        if sparse:
+            a = a.toarray()
+        if issparse(b):
+            b = b.toarray()
+
+        if sparse:
+            return csr_matrix(a + b)
+        else:
+            return a + b
 
     @staticmethod
     def _power(x_np, power):
@@ -1128,6 +1261,59 @@ class Array(object):
         self._blocks[i][j] = new_block
         compss_delete_object(ref)
 
+    def delete(self, i=None, j=None):
+        """
+        Deletes several columns and/or rows and returns the ds-array with
+        the blocks containing adjusted.
+
+        Parameters
+        ----------
+        i : list of ints
+            Row or rows to remove from the ds-array
+        j : list of ints
+            Column or columns to remove from the ds-array
+
+        Returns
+        -------
+        array : ds-array
+            ds-array without the deleted elements
+        """
+        adjusted_blocks = None
+        if i is not None:
+            if not isinstance(i, list):
+                i = [i]
+            indexes_i = np.array(i)
+            new_blocks, number_elements_block = _delete_rows(
+                self, indexes_i)
+            adjusted_blocks = _place_rows_correctly(
+                self, new_blocks, number_elements_block)
+        else:
+            indexes_i = np.array([])
+        if adjusted_blocks is not None:
+            self._blocks = adjusted_blocks
+        if j is not None:
+            if not isinstance(j, list):
+                j = [j]
+            indexes_j = np.array(j)
+            new_blocks, number_elements_block = _delete_columns(self,
+                                                                indexes_j)
+            adjusted_blocks = _place_columns_correctly(self,
+                                                       new_blocks,
+                                                       number_elements_block,
+                                                       indexes_i)
+        if i is not None and j is not None:
+            shape = (self.shape[0] - len(i), self.shape[1] - len(j))
+        elif i is not None:
+            shape = (self.shape[0] - len(i), self.shape[1])
+        elif j is not None:
+            shape = (self.shape[0], self.shape[1] - len(j))
+        else:
+            raise ValueError("There is not column or row should be deleted.")
+        return Array(blocks=adjusted_blocks,
+                     top_left_shape=self._top_left_shape,
+                     reg_shape=self._reg_shape,
+                     shape=shape, sparse=False)
+
 
 def array(x, block_size):
     """
@@ -1181,7 +1367,7 @@ def array(x, block_size):
     return arr
 
 
-def random_array(shape, block_size, random_state=None, data_skewness=0.0, id_device=1):
+def random_array(shape, block_size, random_state=None, id_device=1, id_cache=1):
     """ Returns a distributed array of random floats in the open interval [0.0,
     1.0). Values are from the "continuous uniform" distribution over the
     stated interval.
@@ -1195,10 +1381,10 @@ def random_array(shape, block_size, random_state=None, data_skewness=0.0, id_dev
     random_state : int or RandomState, optional (default=None)
         Seed or numpy.random.RandomState instance to generate the random
         numbers.
-    data_skewness : float, optional (default=0.0)
-        Data skewness in percentage
     id_device : float, optional (default=1)
         CPU=1, GPU=2
+    id_cache : float, optional (default=1)
+        COLD=1, HOT=2
 
     Returns
     -------
@@ -1206,7 +1392,7 @@ def random_array(shape, block_size, random_state=None, data_skewness=0.0, id_dev
         Distributed array of random floats.
     """
     r_state = check_random_state(random_state)
-    return _full(shape, block_size, False, _random_block_wrapper, r_state, data_skewness, id_device)
+    return _full(shape, block_size, False, _random_block_wrapper, r_state, id_device, id_cache)
 
 
 def identity(n, block_size, dtype=None):
@@ -1326,6 +1512,7 @@ def _empty_array(shape, block_size):
                  top_left_shape=block_size,
                  reg_shape=block_size, shape=shape, sparse=False)
 
+
 def full(shape, block_size, fill_value, dtype=None):
     """ Returns a ds-array of 'shape' filled with 'fill_value'.
 
@@ -1420,225 +1607,225 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
     return Array(blocks, top_left_shape=out_tlbshape, reg_shape=out_bshape,
                  shape=out_shape, sparse=x._sparse)
 
-@task(returns=1)
-def generate_block(size, num_blocks, random_state=None, set_to_zero=False, bid=0):
-    """
-    Generate a square block of given size.
-    :param size: <Integer> Block size
-    :param num_blocks: <Integer> Number of blocks
-    :param seed: <Integer> Random seed
-    :param set_to_zero: <Boolean> Set block to zeros
-    :return: Block
-    """
-    r_state = check_random_state(random_state)
-    seed = r_state.randint(np.iinfo(np.int32).max) + bid
-    np.random.seed(seed)
-    if not set_to_zero:
-        b = np.random.random((size, size)).astype(np.float64)
-    else:
-        b = np.zeros((size, size)).astype(np.float64)
-    return b
+##### LEGACY CODE MATMUL FMA (TODO: ADD SUPPORT CPU-GPU-COLD-HOT)
+# @task(returns=1)
+# def generate_block(size, num_blocks, random_state=None, set_to_zero=False, bid=0):
+#     """
+#     Generate a square block of given size.
+#     :param size: <Integer> Block size
+#     :param num_blocks: <Integer> Number of blocks
+#     :param seed: <Integer> Random seed
+#     :param set_to_zero: <Boolean> Set block to zeros
+#     :return: Block
+#     """
+#     r_state = check_random_state(random_state)
+#     seed = r_state.randint(np.iinfo(np.int32).max) + bid
+#     np.random.seed(seed)
+#     if not set_to_zero:
+#         b = np.random.random((size, size)).astype(np.float64)
+#     else:
+#         b = np.zeros((size, size)).astype(np.float64)
+#     return b
 
-def dot(A, B, C, id_device, id_parameter, nr_algorithm_iteration):
-    """
-    A COMPSs blocked matmul algorithm.
-    :param A: Block A
-    :param B: Block B
-    :param C: Result Block
-    :id_device: int (default=1)
-        Flag to define the device function implementation according to resource (CPU: 1, GPU: 2, GPU intra: 3)
-    :id_parameter: int (default=0)
-        Variable to identify the parameter id
-    :nr_algorithm_iteration: int (default=0)
-        Variable to identify the number of the execution of the algorithm
-    :return: None
-    """
+# def dot(A, B, C, id_device, id_parameter, nr_algorithm_iteration):
+#     """
+#     A COMPSs blocked matmul algorithm.
+#     :param A: Block A
+#     :param B: Block B
+#     :param C: Result Block
+#     :id_device: int (default=1)
+#         Flag to define the device function implementation according to resource (CPU: 1, GPU: 2, GPU intra: 3)
+#     :id_parameter: int (default=0)
+#         Variable to identify the parameter id
+#     :nr_algorithm_iteration: int (default=0)
+#         Variable to identify the number of the execution of the algorithm
+#     :return: None
+#     """
 
-    iteration = 0
+#     iteration = 0
 
-    if id_device == 1 or id_device == 5:
-        fused_multiply_add = fused_multiply_add_cpu
-    elif id_device == 2 or id_device == 6:
-        fused_multiply_add = fused_multiply_add_gpu
-    elif id_device == 3:
-        fused_multiply_add = fused_multiply_add_cpu_intra_time
-    elif id_device == 4:
-        fused_multiply_add = fused_multiply_add_gpu_intra_time
-    else:
-        raise ValueError("Invalid id_device")
+#     if id_device == 1 or id_device == 5:
+#         fused_multiply_add = fused_multiply_add_cpu
+#     elif id_device == 2 or id_device == 6:
+#         fused_multiply_add = fused_multiply_add_gpu
+#     elif id_device == 3:
+#         fused_multiply_add = fused_multiply_add_cpu_intra_time
+#     elif id_device == 4:
+#         fused_multiply_add = fused_multiply_add_gpu_intra_time
+#     else:
+#         raise ValueError("Invalid id_device")
 
-    if id_device == 3 or id_device == 4:
+#     if id_device == 3 or id_device == 4:
 
-        nr_task = 0
-        n, m = len(A), len(B[0])
-        # as many rows as A, as many columns as B
-        for i in range(n):
-            for j in range(m):
-                for k in range(n):
-                    fused_multiply_add(A[i][k], B[k][j], C[i][j], id_parameter, nr_algorithm_iteration, iteration, nr_task)
-                    nr_task += 1
+#         nr_task = 0
+#         n, m = len(A), len(B[0])
+#         # as many rows as A, as many columns as B
+#         for i in range(n):
+#             for j in range(m):
+#                 for k in range(n):
+#                     fused_multiply_add(A[i][k], B[k][j], C[i][j], id_parameter, nr_algorithm_iteration, iteration, nr_task)
+#                     nr_task += 1
     
-    elif id_device == 5 or id_device == 6:
+#     elif id_device == 5 or id_device == 6:
 
-        n, m = len(A), len(B[0])
-        # as many rows as A, as many columns as B
-        for i in range(n):
-            for j in range(m):
+#         n, m = len(A), len(B[0])
+#         # as many rows as A, as many columns as B
+#         for i in range(n):
+#             for j in range(m):
 
-                compss_barrier()
-                start_inter_time_cpu = time.perf_counter()
-                for k in range(n):
-                    fused_multiply_add(A[i][k], B[k][j], C[i][j])
+#                 compss_barrier()
+#                 start_inter_time_cpu = time.perf_counter()
+#                 for k in range(n):
+#                     fused_multiply_add(A[i][k], B[k][j], C[i][j])
 
-                compss_barrier()
-                end_inter_time_cpu = time.perf_counter()
+#                 compss_barrier()
+#                 end_inter_time_cpu = time.perf_counter()
 
-                # open the log file in the append mode
-                f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+#                 # open the log file in the append mode
+#                 f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
 
-                # create a csv writer
-                writer = csv.writer(f)
+#                 # create a csv writer
+#                 writer = csv.writer(f)
 
-                # write the time data 
-                data = [id_parameter, nr_algorithm_iteration, iteration, var_null, var_null, var_null, start_inter_time_cpu, end_inter_time_cpu, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
-                writer.writerow(data)
-                f.close()
-
-
-    else:
-        compss_barrier()
-        start_total_execution_time = time.perf_counter()
-
-        n, m = len(A), len(B[0])
-        # as many rows as A, as many columns as B
-        for i in range(n):
-            for j in range(m):
-                for k in range(n):
-                    fused_multiply_add(A[i][k], B[k][j], C[i][j])
-
-        compss_barrier()
-        end_total_execution_time = time.perf_counter()
-
-        # open the log file in the append mode
-        f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
-
-        # create a csv writer
-        writer = csv.writer(f)
-
-        # write the time data 
-        data = [id_parameter, nr_algorithm_iteration, var_null, var_null, start_total_execution_time, end_total_execution_time, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
-        writer.writerow(data)
-        f.close()
-
-@constraint(computing_units="${ComputingUnitsCPU}")
-@task(C=INOUT)
-def fused_multiply_add_cpu(A, B, C):
-    """
-    Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
-    :param A: Block A
-    :param B: Block B
-    :param C: Result Block
-    :return: None
-    """
-    C += np.dot(A, B)
-
-@constraint(computing_units="${ComputingUnitsCPU}")
-@task(C=INOUT)
-def fused_multiply_add_cpu_intra_time(A, B, C, id_parameter, nr_algorithm_iteration, iteration, nr_task):
-    # open the log file in the append mode
-    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
-
-    # create a csv writer
-    writer = csv.writer(f)
-
-    start_intra_device = time.perf_counter()
-
-    C += np.dot(A, B)
-
-    end_intra_device = time.perf_counter()
-    intra_task_execution_device_func = end_intra_device - start_intra_device
-
-    # write the time data
-    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
-    writer.writerow(data)
-    f.close()
+#                 # write the time data 
+#                 data = [id_parameter, nr_algorithm_iteration, iteration, var_null, var_null, var_null, start_inter_time_cpu, end_inter_time_cpu, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
+#                 writer.writerow(data)
+#                 f.close()
 
 
-@constraint(processors=[
-                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
-                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
-            ]
-)
-@task(C=INOUT)
-def fused_multiply_add_gpu(A, B, C):
-    """
-    Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
-    :param A: Block A
-    :param B: Block B
-    :param C: Result Block
-    :return: None
-    """
-    C += cp.asnumpy(cp.dot(cp.asarray(A), cp.asarray(B)))
+#     else:
+#         compss_barrier()
+#         start_total_execution_time = time.perf_counter()
+
+#         n, m = len(A), len(B[0])
+#         # as many rows as A, as many columns as B
+#         for i in range(n):
+#             for j in range(m):
+#                 for k in range(n):
+#                     fused_multiply_add(A[i][k], B[k][j], C[i][j])
+
+#         compss_barrier()
+#         end_total_execution_time = time.perf_counter()
+
+#         # open the log file in the append mode
+#         f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+#         # create a csv writer
+#         writer = csv.writer(f)
+
+#         # write the time data 
+#         data = [id_parameter, nr_algorithm_iteration, var_null, var_null, start_total_execution_time, end_total_execution_time, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
+#         writer.writerow(data)
+#         f.close()
+
+# @constraint(computing_units="${ComputingUnitsCPU}")
+# @task(C=INOUT)
+# def fused_multiply_add_cpu(A, B, C):
+#     """
+#     Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
+#     :param A: Block A
+#     :param B: Block B
+#     :param C: Result Block
+#     :return: None
+#     """
+#     C += np.dot(A, B)
+
+# @constraint(computing_units="${ComputingUnitsCPU}")
+# @task(C=INOUT)
+# def fused_multiply_add_cpu_intra_time(A, B, C, id_parameter, nr_algorithm_iteration, iteration, nr_task):
+#     # open the log file in the append mode
+#     f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+#     # create a csv writer
+#     writer = csv.writer(f)
+
+#     start_intra_device = time.perf_counter()
+
+#     C += np.dot(A, B)
+
+#     end_intra_device = time.perf_counter()
+#     intra_task_execution_device_func = end_intra_device - start_intra_device
+
+#     # write the time data
+#     data = [id_parameter, nr_algorithm_iteration, iteration, nr_task, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
+#     writer.writerow(data)
+#     f.close()
 
 
-@constraint(processors=[
-                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
-                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
-            ]
-)
-@task(C=INOUT)
-def fused_multiply_add_gpu_intra_time(A, B, C, id_parameter, nr_algorithm_iteration, iteration, nr_task):
-    """
-    Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
-    :param A: Block A
-    :param B: Block B
-    :param C: Result Block
-    :return: None
-    """
-    # open the log file in the append mode
-    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+# @constraint(processors=[
+#                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+#                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+#             ]
+# )
+# @task(C=INOUT)
+# def fused_multiply_add_gpu(A, B, C):
+#     """
+#     Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
+#     :param A: Block A
+#     :param B: Block B
+#     :param C: Result Block
+#     :return: None
+#     """
+#     C += cp.asnumpy(cp.dot(cp.asarray(A), cp.asarray(B)))
 
-    # create a csv writer
-    writer = csv.writer(f)
 
-    # creating CUDA events for intra device time measurement
-    start_gpu_intra_device = cp.cuda.Event()
-    end_gpu_intra_device = cp.cuda.Event()
+# @constraint(processors=[
+#                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+#                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+#             ]
+# )
+# @task(C=INOUT)
+# def fused_multiply_add_gpu_intra_time(A, B, C, id_parameter, nr_algorithm_iteration, iteration, nr_task):
+#     """
+#     Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
+#     :param A: Block A
+#     :param B: Block B
+#     :param C: Result Block
+#     :return: None
+#     """
+#     # open the log file in the append mode
+#     f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
 
-    # Measure communication time 1
-    start_communication_time_1 = time.perf_counter()
-    A_gpu, B_gpu, C_gpu = cp.asarray(A), cp.asarray(B), cp.asarray(C)
-    end_communication_time_1 = time.perf_counter()
+#     # create a csv writer
+#     writer = csv.writer(f)
 
-    # Measure intra task execution time (device function) 
-    start_gpu_intra_device.record()
+#     # creating CUDA events for intra device time measurement
+#     start_gpu_intra_device = cp.cuda.Event()
+#     end_gpu_intra_device = cp.cuda.Event()
 
-    C_gpu += cp.dot(A_gpu, B_gpu)
+#     # Measure communication time 1
+#     start_communication_time_1 = time.perf_counter()
+#     A_gpu, B_gpu, C_gpu = cp.asarray(A), cp.asarray(B), cp.asarray(C)
+#     end_communication_time_1 = time.perf_counter()
 
-    end_gpu_intra_device.record()
-    end_gpu_intra_device.synchronize()
-    intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+#     # Measure intra task execution time (device function) 
+#     start_gpu_intra_device.record()
 
-    # Measure communication time 2
-    start_communication_time_2 = time.perf_counter()
-    C_temp = cp.asnumpy(C_gpu)
-    end_communication_time_2 = time.perf_counter()
+#     C_gpu += cp.dot(A_gpu, B_gpu)
 
-    # print('C_temp')
-    # print(C_temp)
+#     end_gpu_intra_device.record()
+#     end_gpu_intra_device.synchronize()
+#     intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
 
-    C += np.dot(A, B)
-    # C = C + cp.asnumpy(C_gpu)
+#     # Measure communication time 2
+#     start_communication_time_2 = time.perf_counter()
+#     C_temp = cp.asnumpy(C_gpu)
+#     end_communication_time_2 = time.perf_counter()
 
-    # print('C')
-    # print(C)
+#     # print('C_temp')
+#     # print(C_temp)
 
-    # write the time data
-    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, 0, 0, 0, 0, datetime.datetime.now()]
-    writer.writerow(data)
-    f.close()
+#     C += np.dot(A, B)
+#     # C = C + cp.asnumpy(C_gpu)
 
-def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False, id_device=1, id_parameter=0, nr_algorithm_iteration=0):
+#     # print('C')
+#     # print(C)
+
+#     # write the time data
+#     data = [id_parameter, nr_algorithm_iteration, iteration, nr_task, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, 0, 0, 0, 0, datetime.datetime.now()]
+#     writer.writerow(data)
+#     f.close()
+def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False, id_device=1, id_cache=1, cd_function=1, id_parameter=0, nr_algorithm_iteration=0):
     """ Matrix multiplication with a possible transpose of the input.
 
         Parameters
@@ -1652,7 +1839,11 @@ def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False, id_device=1
         transpose_b : any
             Transpose of the second matrix before multiplication.
         id_device: int (default=1)
-            Flag to define the device function implementation according to resource (CPU: 1, GPU: 2, GPU intra: 3)
+            Flag to define the device type (CPU: 1, GPU: 2, GPU intra: 3)
+        id_cache: int (default=1)
+            Flag to define the cache type (COLD: 1, HOT: 2)
+        cd_function: int (default=1)
+            Function code to distinguish multiples CPU-GPU tasks within algorithms (default=1)   
         id_parameter: int (default=0)
             Variable to identify the parameter id
         nr_algorithm_iteration: int (default=0)
@@ -1717,7 +1908,7 @@ def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False, id_device=1
                 vblock = [b_blocks[k][j] for k in range(len(b_blocks))]
 
                 blocks[i][j], nr_task_matmul_func, nr_task_add_func = _multiply_block_groups(hblock, vblock,
-                                                    id_device, id_parameter, nr_algorithm_iteration,
+                                                    id_device, id_cache, cd_function, id_parameter, nr_algorithm_iteration,
                                                     nr_task_matmul_func, nr_task_add_func,
                                                     transpose_a, transpose_b)
 
@@ -1734,7 +1925,7 @@ def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False, id_device=1
         data = [id_parameter, nr_algorithm_iteration, var_null, var_null, start_total_execution_time, end_total_execution_time, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
         writer.writerow(data)
         f.close()
-        
+
     else:
         nr_task_matmul_func = 0
         nr_task_add_func = 0
@@ -1745,7 +1936,7 @@ def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False, id_device=1
                 vblock = [b_blocks[k][j] for k in range(len(b_blocks))]
 
                 blocks[i][j], nr_task_matmul_func, nr_task_add_func = _multiply_block_groups(hblock, vblock,
-                                                    id_device, id_parameter, nr_algorithm_iteration,
+                                                    id_device, id_cache, cd_function, id_parameter, nr_algorithm_iteration,
                                                     nr_task_matmul_func, nr_task_add_func,
                                                     transpose_a, transpose_b)
 
@@ -1761,312 +1952,211 @@ def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False, id_device=1
     return Array(blocks=blocks, top_left_shape=new_block_size,
                  reg_shape=new_block_size, shape=new_shape, sparse=a._sparse)
 
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(a={Cache: False}, b={Cache: False}, returns=np.array, cache_returns=True)
+def _matmul_cpu_cold(a, b, transpose_a, transpose_b):
+    return (a.T if transpose_a else a) @ (b.T if transpose_b else b)
 
 @constraint(computing_units="${ComputingUnitsCPU}")
 @task(a={Cache: True}, b={Cache: True}, returns=np.array, cache_returns=True)
-def _matmul_with_transpose(a, b, transpose_a, transpose_b):
-    res = (a.T if transpose_a else a) @ (b.T if transpose_b else b)
+def _matmul_cpu_hot(a, b, transpose_a, transpose_b):
+    return (a.T if transpose_a else a) @ (b.T if transpose_b else b)
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ])
+@task(a={Cache: False}, b={Cache: False}, returns=cp.array, cache_returns=True)
+def _matmul_gpu_cold(a, b, transpose_a, transpose_b):
+    import cupy as cp
+
+    a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
+
+    if transpose_a:
+        a_gpu = cp.transpose(a_gpu)
+    if transpose_b:
+        b_gpu = cp.transpose(b_gpu)
+
+    res = cp.matmul(a_gpu, b_gpu)
+    del a_gpu, b_gpu
+    return res
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ])
+@task(a={Cache: True}, b={Cache: True}, returns=cp.array, cache_returns=True)
+def _matmul_gpu_hot(a, b, transpose_a, transpose_b):
+    import cupy as cp
+
+    a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
+
+    if transpose_a:
+        a_gpu = cp.transpose(a_gpu)
+    if transpose_b:
+        b_gpu = cp.transpose(b_gpu)
+
+    res = cp.matmul(a_gpu, b_gpu)
+    del a_gpu, b_gpu
     return res
 
 @constraint(computing_units="${ComputingUnitsCPU}")
-@task(returns=np.array)
-def _matmul_with_transpose_intra_time(a, b, id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, transpose_a, transpose_b):
-    # open the log file in the append mode
-    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
-
-    # create a csv writer
-    writer = csv.writer(f)
-
-    start_intra_device = time.perf_counter()
-    res = (a.T if transpose_a else a) @ (b.T if transpose_b else b)
-    end_intra_device = time.perf_counter()
-    intra_task_execution_device_func = end_intra_device - start_intra_device
-
-    # write the time data
-    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
-    writer.writerow(data)
-    f.close()
-
-    return res
-
-@constraint(processors=[
-                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
-                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
-            ]
-)
-@task(block1_gpu={Cache: True}, block2_gpu={Cache: True}, returns=cp.array, cache_returns=True)
-def _add_gpu(block1_gpu, block2_gpu):
-
-    res = cp.add(block1_gpu, block2_gpu)
-    block1_gpu, block2_gpu = None, None
-    return res
-
-@constraint(processors=[
-                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
-                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
-            ]
-)
-@task(returns=np.array)
-def _add_gpu_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func):
-
-    # open the log file in the append mode
-    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
-
-    # create a csv writer
-    writer = csv.writer(f)
-
-    # creating CUDA events for intra device time measurement
-    start_gpu_intra_device = cp.cuda.Event()
-    end_gpu_intra_device = cp.cuda.Event()
-
-    # Measure communication time 1
-    start_communication_time_1 = time.perf_counter()
-    block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
-    end_communication_time_1 = time.perf_counter()
-
-    # Measure intra task execution time (device function) 
-    start_gpu_intra_device.record()
-    res = cp.add(block1_gpu, block2_gpu)
-    end_gpu_intra_device.record()
-    end_gpu_intra_device.synchronize()
-    intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
-
-    # Measure communication time 2
-    start_communication_time_2 = time.perf_counter()
-    res = cp.asnumpy(res)
-    end_communication_time_2 = time.perf_counter()
-
-    block1_gpu, block2_gpu = None, None
-
-    # write the time data
-    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, 0, 0, 0, 0, datetime.datetime.now()]
-    writer.writerow(data)
-    f.close()
-
-    return res
+@task(block1={Cache: False}, block2={Cache: False}, returns=np.array, cache_returns=False)
+def _add_cpu_cold(block1, block2):
+    # If task inputs are cached in CPU memory, proceed with the usual execution
+    if check_array_type(block1)==1 and check_array_type(block2)==1:
+        return block1 + block2
+    # If task inputs are cached in GPU memory, convert them to numpy arrays first
+    elif check_array_type(block1)==2 and check_array_type(block2)==2:
+        return cp.asnumpy(block1) + cp.asnumpy(block2)
+    else:
+        raise ValueError("Error. Invalid array type")
 
 @constraint(computing_units="${ComputingUnitsCPU}")
 @task(block1={Cache: True}, block2={Cache: True}, returns=np.array, cache_returns=True)
-def _add_cpu(block1, block2):
+def _add_cpu_hot(block1, block2):
+    # If task inputs are cached in CPU memory, proceed with the usual execution
+    if check_array_type(block1)==1 and check_array_type(block2)==1:
+        return block1 + block2
+    # If task inputs are cached in GPU memory, convert them to numpy arrays first
+    elif check_array_type(block1)==2 and check_array_type(block2)==2:
+        return cp.asnumpy(block1) + cp.asnumpy(block2)
+    else:
+        raise ValueError("Error. Invalid array type")
 
-    res = block1 + block2
-
-    return res
-
-@constraint(computing_units="${ComputingUnitsCPU}")
-@task(returns=np.array)
-def _add_cpu_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func):
-    # open the log file in the append mode
-    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
-
-    # create a csv writer
-    writer = csv.writer(f)
-
-    start_intra_device = time.perf_counter()
-    res = block1 + block2
-    end_intra_device = time.perf_counter()
-    intra_task_execution_device_func = end_intra_device - start_intra_device
-
-    # write the time data
-    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
-    writer.writerow(data)
-    f.close()
-
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ])
+@task(block1={Cache: False}, block2={Cache: False}, returns=cp.array, cache_returns=False)
+def _add_gpu_cold(block1, block2):
+    import cupy as cp
+    # If task inputs are cached in CPU memory, convert them to cupy array first
+    if check_array_type(block1)==1 and check_array_type(block2)==1:
+        block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
+        res = cp.add(block1_gpu, block2_gpu)
+        del block1_gpu, block2_gpu
+    # If task inputs are cached in GPU memory, proceed with the usual execution
+    elif check_array_type(block1)==2 and check_array_type(block2)==2:
+        res = cp.add(block1, block2)
     return res
 
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
-            ]
-)
-@task(a={Cache: True}, b={Cache: True}, returns=cp.array, cache_returns=True)
-def _matmul_gpu(a, b, transpose_a, transpose_b):
-
-    a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
-    if transpose_a:
-        a_gpu = cp.transpose(a_gpu)
-    if transpose_b:
-        b_gpu = cp.transpose(b_gpu)
-    res = cp.matmul(a_gpu, b_gpu)
-    a_gpu, b_gpu = None, None
+            ])
+@task(block1={Cache: True}, block2={Cache: True}, returns=cp.array, cache_returns=True)
+def _add_gpu_hot(block1, block2):
+    import cupy as cp
+    # If task inputs are cached in CPU memory, convert them to cupy array first
+    if check_array_type(block1)==1 and check_array_type(block2)==1:
+        block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
+        res = cp.add(block1_gpu, block2_gpu)
+        del block1_gpu, block2_gpu
+    # If task inputs are cached in GPU memory, proceed with the usual execution
+    elif check_array_type(block1)==2 and check_array_type(block2)==2:
+        res = cp.add(block1, block2)
     return res
 
-@constraint(processors=[
-                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
-                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
-            ]
-)
-@task(returns=np.array)
-def _matmul_gpu_intra_time(a, b, id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, transpose_a, transpose_b):
+# Check array type (1 numpy; 2 cupy)
+def check_array_type(arr):
+    if isinstance(arr, np.ndarray):
+        return 1
+    elif isinstance(arr, cp.ndarray):
+        return 2
+    else:
+        raise ValueError("Error. Invalid array type")
 
-    # open the log file in the append mode
-    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
-
-    # create a csv writer
-    writer = csv.writer(f)
-
-    # creating CUDA events for intra device time measurement
-    start_gpu_intra_device = cp.cuda.Event()
-    end_gpu_intra_device = cp.cuda.Event()
-
-    # Measure communication time 1
-    start_communication_time_1 = time.perf_counter()
-    a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
-    end_communication_time_1 = time.perf_counter()
-
-    # Measure intra task execution time (device function) 
-    start_gpu_intra_device.record()
-    if transpose_a:
-        a_gpu = cp.transpose(a_gpu)
-    if transpose_b:
-        b_gpu = cp.transpose(b_gpu)
-    res = cp.matmul(a_gpu, b_gpu)
-    end_gpu_intra_device.record()
-    end_gpu_intra_device.synchronize()
-    intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
-
-    # Measure communication time 2
-    start_communication_time_2 = time.perf_counter()
-    res = cp.asnumpy(res)
-    end_communication_time_2 = time.perf_counter()
-
-    a_gpu, b_gpu = None, None
-
-    # write the time data
-    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, 0, 0, 0, 0, datetime.datetime.now()]
-    writer.writerow(data)
-    f.close()
-
-    return res
-
-def _multiply_block_groups(hblock, vblock, id_device, id_parameter, nr_algorithm_iteration,
+def _multiply_block_groups(hblock, vblock, id_device, id_cache, cd_function, id_parameter, nr_algorithm_iteration,
                            nr_task_matmul_func, nr_task_add_func,
                            transpose_a=False, transpose_b=False):
     iteration = 0
-    
     blocks = deque()
 
-    if id_device == 1 or id_device == 5:
-        matmul_func = _matmul_with_transpose
-        add_func = _add_cpu
-    elif id_device == 2 or id_device == 6:
-        matmul_func = _matmul_gpu
-        add_func = _add_gpu
-    elif id_device == 3:
-        matmul_func = _matmul_with_transpose_intra_time
-        add_func = _add_cpu_intra_time
-    elif id_device == 4:
-        matmul_func = _matmul_gpu_intra_time
-        add_func = _add_gpu_intra_time
-    else:
-        raise ValueError("Invalid id_device")
+    #START TEST
+    cd_function=1
+    id_device=1
+    id_cache=1
+    #END TEST
 
-    if id_device == 3 or id_device == 4:
-        # nr_task_matmul_func = 0
-        for blocki, blockj in zip(hblock, vblock):
-            blocks.append(
-                matmul_func(blocki, blockj, id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, transpose_a, transpose_b)
-            )
-            nr_task_matmul_func += 1
+    # Execution modes for matmul_func
+    if cd_function == 1:
+        if id_device == 1 and id_cache == 1:
+            matmul_func = _matmul_cpu_cold
+        elif id_device == 1 and id_cache == 2:
+            matmul_func = _matmul_cpu_hot
+        elif id_device == 2 and id_cache == 1:
+            matmul_func = _matmul_gpu_cold
+        elif id_device == 2 and id_cache == 2:
+            matmul_func = _matmul_gpu_hot
+        # elif id_device == 4:
+        #     matmul_func = _matmul_gpu_cold_intra_time
+        # elif id_device == 44:
+        #     matmul_func = _matmul_gpu_hot_intra_time
+        else:
+            raise ValueError("Error. Invalid combination id_device+id_cache")
+        
+    #START TEST
+    cd_function=2
+    id_device=2
+    id_cache=2
+    #END TEST
+        
+    # Execution modes for add_func
+    if cd_function == 2:
+        if id_device == 1 and id_cache == 1:
+            add_func = _add_cpu_cold
+        elif id_device == 1 and id_cache == 2:
+            add_func = _add_cpu_hot
+        elif id_device == 2 and id_cache == 1:
+            add_func = _add_gpu_cold
+        elif id_device == 2 and id_cache == 2:
+            add_func = _add_gpu_hot
+        # elif id_device == 4:
+        #     add_func = _add_cpu_cold_intra_time
+        # elif id_device == 44:
+        #     add_func = _add_cpu_hot_intra_time
+        else:
+            raise ValueError("Error. Invalid combination id_device+id_cache")
 
-        # Use the next id_parameter with the same cd_configuration
-        id_parameter += 1
+    # if dislib.__gpu_available__ == 'gpu':#id_device == 1 and id_cache == 1 and cd_function
+    #     matmul_func = _matmul_gpu
+    #     add_func = _add_gpu
+    # else:
+    #     matmul_func = _matmul_cpu
+    #     add_func = _add_cpu
 
-        # nr_task_add_func = 0
-        while len(blocks) > 1:
-            block1 = blocks.popleft()
-            block2 = blocks.popleft()
-            blocks.append(add_func(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func))
+    for blocki, blockj in zip(hblock, vblock):
+        blocks.append(
+            matmul_func(blocki, blockj, transpose_a, transpose_b)
+        )
 
-            compss_delete_object(block1)
-            compss_delete_object(block2)
+    while len(blocks) > 1:
+        block1 = blocks.popleft()
+        block2 = blocks.popleft()
+        blocks.append(add_func(block1, block2))
 
-            nr_task_add_func += 1
-    
-    elif id_device == 5 or id_device == 6:
-        compss_barrier()
-        start_inter_time_matmul_func_cpu = time.perf_counter()
+        compss_delete_object(block1)
+        compss_delete_object(block2)
 
-        for blocki, blockj in zip(hblock, vblock):
-            blocks.append(
-                matmul_func(blocki, blockj,
-                            transpose_a, transpose_b)
-            )
-
-        compss_barrier()
-        end_inter_time_matmul_func_cpu = time.perf_counter()
-
-        # open the log file in the append mode
-        f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
-
-        # create a csv writer
-        writer = csv.writer(f)
-
-        # write the time data 
-        data = [id_parameter, nr_algorithm_iteration, iteration, var_null, var_null, var_null, start_inter_time_matmul_func_cpu, end_inter_time_matmul_func_cpu, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
-        writer.writerow(data)
-        f.close()
-
-        if len(blocks) > 1:
-            # Use the next id_parameter with the same cd_configuration
-            id_parameter += 1
-
-            compss_barrier()
-            start_inter_time_add_func_cpu = time.perf_counter()
-
-            while len(blocks) > 1:
-                block1 = blocks.popleft()
-                block2 = blocks.popleft()
-                blocks.append(add_func(block1, block2))
-
-                compss_delete_object(block1)
-                compss_delete_object(block2)
-
-            compss_barrier()
-            end_inter_time_add_func_cpu = time.perf_counter()
-
-            # open the log file in the append mode
-            f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
-
-            # create a csv writer
-            writer = csv.writer(f)
-
-            # write the time data 
-            data = [id_parameter, nr_algorithm_iteration, iteration, var_null, var_null, var_null, start_inter_time_add_func_cpu, end_inter_time_add_func_cpu, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
-            writer.writerow(data)
-            f.close()
-
-    else:
-        for blocki, blockj in zip(hblock, vblock):
-            blocks.append(
-                matmul_func(blocki, blockj,
-                            transpose_a, transpose_b)
-            )
-
-        while len(blocks) > 1:
-            block1 = blocks.popleft()
-            block2 = blocks.popleft()
-            blocks.append(add_func(block1, block2))
-
-            compss_delete_object(block1)
-            compss_delete_object(block2)
-
-    iteration += 1
-    return cp.asnumpy(blocks[0]), nr_task_matmul_func, nr_task_add_func
+    return blocks[0], nr_task_matmul_func, nr_task_add_func
 
 
 def matsubtract(a: Array, b: Array):
     """ Subtraction of two matrices.
+
         Parameters
         ----------
         a : ds-array
             First matrix.
         b : ds-array
             Second matrix.
+
         Returns
         -------
         out : ds-array
             The output array.
+
         Raises
         ------
         NotImplementedError
@@ -2076,6 +2166,7 @@ def matsubtract(a: Array, b: Array):
             If any of the block sizes does not match.
         ValueError
             If the ds-arrays have different shape.
+
         Examples
         --------
         >>> import dislib as ds
@@ -2123,16 +2214,16 @@ def matsubtract(a: Array, b: Array):
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "1"},
                 {"processorType": "GPU", "computingUnits": "1"},
-            ]
-)
+            ])
 @task(returns=np.array)
 def _subtract_gpu(block1, block2):
     import cupy as cp
-    
+
     block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
     res = cp.asnumpy(cp.subtract(block1_gpu, block2_gpu))
-    block1_gpu, block2_gpu = None, None
+    del block1_gpu, block2_gpu
     return res
+
 
 @constraint(computing_units="${ComputingUnits}")
 @task(returns=np.array)
@@ -2155,16 +2246,19 @@ def _subtract_block_groups(hblock, vblock):
 
 def matadd(a: Array, b: Array):
     """ Addition of two matrices.
+
         Parameters
         ----------
         a : ds-array
             First matrix.
         b : ds-array
             Second matrix.
+
         Returns
         -------
         out : ds-array
             The output array.
+
         Raises
         ------
         NotImplementedError
@@ -2174,6 +2268,7 @@ def matadd(a: Array, b: Array):
             If any of the block sizes does not match.
         ValueError
             If the ds-arrays have different shape.
+
         Examples
         --------
         >>> import dislib as ds
@@ -2220,16 +2315,19 @@ def matadd(a: Array, b: Array):
 
 def concat_columns(a: Array, b: Array):
     """ Matrix concatenation by columns.
+
         Parameters
         ----------
         a : ds-array
             First matrix.
         b : ds-array
             Second matrix.
+
         Returns
         -------
         out : ds-array
             The output array.
+
         Raises
         ------
         NotImplementedError
@@ -2237,6 +2335,7 @@ def concat_columns(a: Array, b: Array):
             implemented in the future.
         ValueError
             If the arrays do not match in the number of rows.
+
         Examples
         --------
         >>> import dislib as ds
@@ -2245,27 +2344,147 @@ def concat_columns(a: Array, b: Array):
         >>> if __name__ == "__main__":
         >>>     x = ds.random_array((8, 4), block_size=(2, 2))
         >>>     y = ds.random_array((8, 4), block_size=(2, 2))
-        >>>     result = ds.conc_columns(x, y)
+        >>>     result = ds.concat_columns(x, y)
         >>>     print(result.collect())
         """
     if a._shape[0] != b._shape[0]:
         raise ValueError("incompatible number of rows "
-                         f"subtract ({a._shape[0]} != {b._shape[0]}")
+                         f" for the concatenation "
+                         f"({a._shape[0]} != {b._shape[0]}")
 
     if a._reg_shape[0] != b._reg_shape[0] or a._reg_shape[1] !=\
             b._reg_shape[1]:
         raise ValueError("incorrect block sizes for the requested "
-                         f"subtract ({a._reg_shape[0], a._reg_shape[1]} "
+                         f"concatenation ({a._reg_shape[0], a._reg_shape[1]} "
                          f"!= {b._reg_shape[0], b._reg_shape[1]})")
 
-    for i in range(len(a._blocks)):
-        for j in range(len(b._blocks[0])):
-            a._blocks[i].append(b._blocks[i][j])
-
-    return Array(blocks=a._blocks,
+    blocks_concatted = [[object() for _ in range(math.ceil(
+        (a.shape[1]+b.shape[1])/a._reg_shape[1]))]
+                        for _ in range(len(a._blocks))]
+    if a.shape[1] % a._reg_shape[1] == 0:
+        for i in range(len(a._blocks)):
+            x = blocks_concatted[i][:len(a._blocks[i])]
+            _assign_block_columns(x, a._blocks[i])
+            blocks_concatted[i][:len(a._blocks[i])] = x
+            x = blocks_concatted[i][len(a._blocks[i]):]
+            _assign_block_columns(x, b._blocks[i])
+            blocks_concatted[i][len(a._blocks[i]):] = x
+    else:
+        for i in range(len(a._blocks)):
+            x = blocks_concatted[i][:len(a._blocks[i]) - 1]
+            _assign_block_columns(x, a._blocks[i][:(len(a._blocks[i]) - 1)])
+            blocks_concatted[i][:len(a._blocks[i]) - 1] = x
+            leftover_data = a._blocks[i][-1]
+            x = blocks_concatted[i][len(a._blocks[i])-1:]
+            _assign_block_columns_leftover_data(x, b._blocks[i],
+                                                a._reg_shape[1],
+                                                leftover_data)
+            blocks_concatted[i][len(a._blocks[i]) - 1:] = x
+    return Array(blocks=blocks_concatted,
                  top_left_shape=(a._reg_shape[0], a._reg_shape[1]),
                  reg_shape=(a._reg_shape[0], a._reg_shape[1]),
                  shape=(a._shape[0], a._shape[1] + b._shape[1]),
+                 sparse=a._sparse)
+
+
+def concat_rows(a, b):
+    """ Matrix concatenation by rows.
+
+        Parameters
+        ----------
+        a : ds-array
+            First matrix.
+        b : ds-array
+            Second matrix.
+
+        Returns
+        -------
+        out : ds-array
+            The output array.
+
+        Raises
+        ------
+        ValueError
+            If the arrays do not match in the number of rows.
+            If the block size is different between the arrays.
+
+        Examples
+        --------
+        >>> import dislib as ds
+        >>>
+        >>>
+        >>> if __name__ == "__main__":
+        >>>     x = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     y = ds.random_array((8, 4), block_size=(2, 2))
+        >>>     result = ds.concat_rows(x, y)
+        >>>     print(result.collect())
+        """
+    if a._shape[1] != b._shape[1]:
+        raise ValueError("incompatible number of rows "
+                         f"for the concatenation "
+                         f"({a._shape[1]} != {b._shape[1]}")
+
+    if (a._reg_shape[0] != b._reg_shape[0] or a._reg_shape[1] !=
+            b._reg_shape[1]) and b._n_blocks[0] > 1:
+        raise ValueError("incorrect block sizes for the requested "
+                         f"concatenation ({a._reg_shape[0], a._reg_shape[1]} "
+                         f"!= {b._reg_shape[0], b._reg_shape[1]})")
+
+    size_last_block_a = a.shape[0] % a._reg_shape[0]
+    if size_last_block_a == 0:
+        size_last_block_a = a._reg_shape[0]
+    size_last_block_b = b.shape[0] % b._reg_shape[0]
+    if size_last_block_b == 0:
+        size_last_block_b = a._reg_shape[0]
+    blocks_a = [[object() for _ in range(len(a._blocks[i]))]
+                for i in range(len(a._blocks) - 1)]
+    blocks_b = [[object() for _ in range(len(b._blocks[i]))]
+                for i in range(len(b._blocks) - 1)]
+    remaining_blocks = [[object() for _ in range(len(b._blocks[0]))] for i
+                        in range(math.ceil((size_last_block_a +
+                                            size_last_block_b) /
+                                           a._reg_shape[0]))]
+    blocks_concatted = blocks_a + blocks_b + remaining_blocks
+    for i in range(len(blocks_concatted)):
+        if i < (len(a._blocks) - 1):
+            _assign_blocks(blocks_concatted[i], a._blocks[i])
+        elif i == (len(a._blocks) - 1):
+            if size_last_block_a == a._reg_shape[0]:
+                _assign_blocks(blocks_concatted[i], a._blocks[i])
+            else:
+                _assign_blocks(blocks_concatted[i], a._blocks[i],
+                               b._blocks[0], a._reg_shape[0], used_data=0)
+            break
+    i += 1
+    for j in range(len(blocks_concatted) - (i)):
+        if size_last_block_a == a._reg_shape[0] and j < (len(b._blocks) - 1):
+            _assign_blocks(blocks_concatted[j + i], b._blocks[j])
+        elif size_last_block_a != a._reg_shape[0] and j < (len(b._blocks) - 1):
+            _assign_blocks(blocks_concatted[j + i], b._blocks[j],
+                           b._blocks[j + 1], a._reg_shape[0],
+                           used_data=(a._reg_shape[0] -
+                                      (a.shape[0] %
+                                       a._reg_shape[0])))
+        else:
+            if size_last_block_a != a._reg_shape[0]:
+                if size_last_block_b != b._reg_shape[0]:
+                    _assign_blocks(blocks_concatted[j + i], b._blocks[j - 1],
+                                   b._blocks[j], a._reg_shape[0],
+                                   used_data=(a._reg_shape[0] +
+                                              a._reg_shape[0] -
+                                              (a.shape[0] %
+                                               a._reg_shape[0])))
+                else:
+                    _assign_blocks(blocks_concatted[j+i], b._blocks[j],
+                                   used_data=(a._reg_shape[0] -
+                                              (a.shape[0] %
+                                               a._reg_shape[0])))
+            else:
+                _assign_blocks(blocks_concatted[j + i], b._blocks[j])
+    return Array(blocks=blocks_concatted,
+                 top_left_shape=(a._reg_shape[0], a._reg_shape[1]),
+                 reg_shape=(a._reg_shape[0], a._reg_shape[1]),
+                 shape=(a._shape[0] + b._shape[0], a._shape[1]),
                  sparse=a._sparse)
 
 
@@ -2356,15 +2575,284 @@ def _apply_elementwise(func, x, *args, **kwargs):
     return Array(blocks, x._top_left_shape, x._reg_shape, x.shape, x._sparse)
 
 
-def _random_block_wrapper(block_size, r_state, data_skewness, id_device):
+def _random_block_wrapper(block_size, r_state, id_device, id_cache):
     seed = r_state.randint(np.iinfo(np.int32).max)
-
-    if id_device == 1:
-        random_block_func = _random_block
+    if id_device == 1 and id_cache == 1:
+        random_block_func = _random_block_cpu_cold
+    elif id_device == 1 and id_cache == 2:
+        random_block_func = _random_block_cpu_hot
+    elif id_device == 2 and id_cache == 1:
+        random_block_func = _random_block_gpu_cold
+    elif id_device == 2 and id_cache == 2:
+        random_block_func = _random_block_gpu_hot
     else:
-        random_block_func = _random_block_gpu
+        raise ValueError("Error. Invalid combination id_device+id_cache")
+    
+    return random_block_func(block_size, seed)
 
-    return random_block_func(block_size, seed, data_skewness)
+
+def _delete_columns(array, indexes_j):
+    blocks = array._blocks
+    number_elements_block = []
+    for idx, block in enumerate(blocks):
+        indexes_to_delete = []
+        for idx_j, col_block in enumerate(block):
+            if idx_j == 0:
+                first_index_block = 0
+                last_index_block = array._top_left_shape[1]
+            else:
+                first_index_block = (array._top_left_shape[1] +
+                                     array._reg_shape[1] * (idx_j - 1))
+                last_index_block = (array._top_left_shape[1] +
+                                    array._reg_shape[1] * (idx_j))
+            indexes_block = indexes_j[(indexes_j >= first_index_block) &
+                                      (indexes_j < last_index_block)]
+            if len(indexes_block) > 0:
+                if ((len(indexes_block) == array._top_left_shape[1] and
+                     idx == 0 and idx_j == 0) or
+                        len(indexes_block) == array._reg_shape[1]):
+                    indexes_to_delete.append(idx_j)
+                else:
+                    if idx == 0 and idx_j == 0:
+                        number_elements_block.append(array._top_left_shape[1] -
+                                                     len(indexes_block))
+                    elif idx == 0:
+                        number_elements_block.append(array._reg_shape[1] -
+                                                     len(indexes_block))
+                    block = _delete_indexes(col_block, indexes_block,
+                                            first_index_block, axis=1)
+                    blocks[idx][idx_j] = block
+            elif idx == 0:
+                number_elements_block.append(array._reg_shape[1])
+        indexes_to_delete.reverse()
+        for idx_j in indexes_to_delete:
+            del blocks[idx][idx_j]
+    return blocks, number_elements_block
+
+
+def _place_columns_correctly(array, new_blocks,
+                             number_elements_block, indexes_i):
+    adjusted_blocks = [[object() for _ in
+                        range(math.ceil(np.sum(number_elements_block) /
+                                        array._reg_shape[1]))]
+                       for _ in range(math.ceil((array.shape[0] -
+                                                 len(indexes_i)) /
+                                                array._reg_shape[0]))]
+    index_blocks = 0
+    while index_blocks < len(adjusted_blocks):
+        acc_elements = 0
+        accumulated_blocks = new_blocks[index_blocks]
+        initial_index = 0
+        elements_to_shift = 0
+        index_cols = 0
+        for index in range(len(new_blocks[index_blocks])):
+            acc_elements += number_elements_block[index]
+            if index_blocks == 0:
+                if acc_elements >= array._top_left_shape[1]:
+                    adjusted_blocks[index_blocks][index_cols] = _fill_block(
+                        accumulated_blocks[initial_index:index + 1],
+                        elements_to_shift,
+                        array._top_left_shape[1], column=True)
+                    if acc_elements > array._top_left_shape[1]:
+                        initial_index = index
+                        acc_elements = acc_elements - array._top_left_shape[1]
+                        elements_to_shift = (number_elements_block[index] -
+                                             acc_elements)
+                    else:
+                        initial_index = index + 1
+                        acc_elements = 0
+                        elements_to_shift = 0
+                    index_cols += 1
+            else:
+                if acc_elements >= array._reg_shape[1]:
+                    adjusted_blocks[index_blocks][index_cols] = _fill_block(
+                        accumulated_blocks[initial_index:index + 1],
+                        elements_to_shift,
+                        array._reg_shape[1], column=True)
+                    if acc_elements > array._reg_shape[1]:
+                        initial_index = index
+                        acc_elements = acc_elements - array._reg_shape[1]
+                        elements_to_shift = (number_elements_block[index] -
+                                             acc_elements)
+                    else:
+                        initial_index = index + 1
+                        acc_elements = 0
+                        elements_to_shift = 0
+                    index_cols += 1
+        if acc_elements > 0:
+            adjusted_blocks[index_blocks][-1] = _fill_block(
+                accumulated_blocks[initial_index:index + 1],
+                elements_to_shift,
+                array._reg_shape[1], column=True)
+        index_blocks += 1
+    return adjusted_blocks
+
+
+def _delete_rows(array, indexes_i):
+    blocks = array._blocks
+    number_elements_block = []
+    blocks_to_delete = []
+    for idx, block in enumerate(blocks):
+        if idx == 0:
+            first_index_block = 0
+            last_index_block = array._top_left_shape[0]
+        else:
+            first_index_block = (array._top_left_shape[0] +
+                                 array._reg_shape[0] * (idx - 1))
+            last_index_block = (array._top_left_shape[0] +
+                                array._reg_shape[0] * (idx))
+        for idx_j, col_block in enumerate(blocks[idx]):
+            indexes_block = indexes_i[(indexes_i >= first_index_block) &
+                                      (indexes_i < last_index_block)]
+            if len(indexes_block) > 0:
+                if ((len(indexes_block) == array._top_left_shape[0] and
+                     idx == 0) or
+                        len(indexes_block) == array._reg_shape[0]):
+                    blocks_to_delete.append(idx)
+                    break
+                elif (idx == (len(blocks) - 1) and
+                      len(indexes_block) == array.shape[0] %
+                        array._reg_shape[0]):
+                    blocks_to_delete.append(idx)
+                    break
+                else:
+                    if idx != 0 and idx_j == 0:
+                        number_elements_block.append(
+                            array._reg_shape[0] - len(indexes_block))
+                    elif idx_j == 0:
+                        number_elements_block.append(
+                            array._top_left_shape[0] - len(indexes_block))
+                    block = _delete_indexes(col_block, indexes_block,
+                                            first_index_block, axis=0)
+                    blocks[idx][idx_j] = block
+            else:
+                if idx_j == 0:
+                    if ((idx + 1) == len(blocks) and
+                            array.shape[0] % array._reg_shape[0] != 0):
+                        number_elements_block.append(array.shape[0] %
+                                                     array._reg_shape[0])
+                    else:
+                        number_elements_block.append(array._reg_shape[0])
+    blocks_to_delete.reverse()
+    for idx_block in blocks_to_delete:
+        del blocks[idx_block]
+    return blocks, number_elements_block
+
+
+def _place_rows_correctly(array, new_blocks, number_elements_block):
+    adjusted_blocks = [[object() for _ in range(array._n_blocks[1])] for _ in
+                       range(math.ceil(np.sum(
+                            number_elements_block) / array._reg_shape[0]))]
+
+    index_blocks = 0
+    acc_elements = 0
+    elements_to_shift = 0
+    auxiliar_index = 0
+    accumulated_blocks = []
+    while index_blocks < len(adjusted_blocks):
+        if auxiliar_index < len(number_elements_block):
+            elements_last_block = number_elements_block[auxiliar_index]
+            acc_elements += number_elements_block[auxiliar_index]
+        else:
+            elements_last_block = number_elements_block[-1]
+            acc_elements += number_elements_block[-1]
+        accumulated_blocks.extend(new_blocks[auxiliar_index])
+        if index_blocks == 0:
+            if acc_elements >= array._top_left_shape[0]:
+                for idx in range(len(adjusted_blocks[index_blocks])):
+                    adjusted_blocks[index_blocks][idx] = _fill_block(
+                        accumulated_blocks[idx::array._n_blocks[1]],
+                        elements_to_shift,
+                        array._top_left_shape[0])
+                if acc_elements > array._top_left_shape[0]:
+                    accumulated_blocks = accumulated_blocks[
+                                         -array._n_blocks[1]:]
+                    acc_elements = acc_elements - array._top_left_shape[0]
+                    elements_to_shift = elements_last_block - acc_elements
+                else:
+                    acc_elements = 0
+                    accumulated_blocks = []
+                index_blocks += 1
+        else:
+            if acc_elements >= array._reg_shape[0]:
+                for idx in range(len(adjusted_blocks[index_blocks])):
+                    adjusted_blocks[index_blocks][idx] = _fill_block(
+                        accumulated_blocks[idx::array._n_blocks[1]],
+                        elements_to_shift,
+                        array._reg_shape[0])
+                if acc_elements > array._reg_shape[0]:
+                    accumulated_blocks = accumulated_blocks[
+                                         -array._n_blocks[1]:]
+                    acc_elements = acc_elements - array._reg_shape[0]
+                    elements_to_shift = elements_last_block - acc_elements
+                else:
+                    acc_elements = 0
+                    accumulated_blocks = []
+                index_blocks += 1
+        if acc_elements > 0 and ((auxiliar_index + 1) == len(new_blocks)):
+            for idx in range(len(adjusted_blocks[index_blocks])):
+                adjusted_blocks[index_blocks][idx] = _fill_block(
+                    accumulated_blocks[idx::array._n_blocks[1]],
+                    elements_to_shift,
+                    array._reg_shape[0])
+            break
+        else:
+            auxiliar_index += 1
+    return adjusted_blocks
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(blocks={Type: COLLECTION_OUT, Depth: 1},
+      a_blocks={Type: COLLECTION_IN, Depth: 1})
+def _assign_block_columns(blocks, a_blocks):
+    for i in range(len(a_blocks)):
+        blocks[i] = a_blocks[i]
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(blocks={Type: COLLECTION_OUT, Depth: 1},
+      input_block={Type: COLLECTION_IN, Depth: 1})
+def _assign_block_columns_leftover_data(blocks, input_block,
+                                        block_shape, leftover_data):
+    if leftover_data is not None:
+        total_data = np.concatenate((leftover_data, input_block[0]), axis=1)
+    else:
+        total_data = input_block[0]
+    blocks[0] = total_data[:, :block_shape]
+    leftover_data = total_data[:, block_shape:]
+    for idx, block in enumerate(input_block[1:]):
+        if leftover_data is not None:
+            total_data = np.concatenate((leftover_data, block), axis=1)
+        else:
+            total_data = block
+        blocks[idx + 1] = total_data[:, :block_shape]
+        leftover_data = total_data[:, block_shape:]
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(blocks={Type: COLLECTION_OUT, Depth: 1},
+      input_blocks={Type: COLLECTION_IN, Depth: 1},
+      input_blocks_b={Type: COLLECTION_IN, Depth: 1})
+def _assign_blocks(blocks, input_blocks, input_blocks_b=[None],
+                   reg_shape=0, used_data=0):
+    if used_data == 0:
+        if reg_shape != 0:
+            for i in range(len(blocks)):
+                concatted_data = np.concatenate((input_blocks[i],
+                                                 input_blocks_b[i]))
+                blocks[i] = concatted_data[used_data: used_data + reg_shape]
+        else:
+            for i in range(len(blocks)):
+                blocks[i] = input_blocks[i]
+    else:
+        if reg_shape != 0:
+            for i in range(len(blocks)):
+                concatted_data = np.concatenate((input_blocks[i],
+                                                 input_blocks_b[i]))
+                blocks[i] = concatted_data[used_data: used_data + reg_shape]
+        else:
+            for i in range(len(blocks)):
+                blocks[i] = input_blocks[i][used_data:]
 
 
 @constraint(computing_units="${ComputingUnits}")
@@ -2449,63 +2937,36 @@ def _transpose(blocks, out_blocks):
         for j in range(len(blocks[i])):
             out_blocks[i][j] = blocks[i][j].transpose()
 
-#CPU
+
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(returns=np.array, cache_returns=False)
+def _random_block_cpu_cold(shape, seed):
+    np.random.seed(seed)
+    return np.random.random(shape).astype(np.float64)
+
 @constraint(computing_units="${ComputingUnitsCPU}")
 @task(returns=np.array, cache_returns=True)
-def _random_block(shape, seed, data_skewness):
+def _random_block_cpu_hot(shape, seed):
     np.random.seed(seed)
-    if data_skewness == 0.0:
-        return np.random.random(shape).astype(np.float64)
-    else:
-        # Generate a random array with the specified shape
-        random_array = np.random.random(shape).astype(np.float64)
+    return np.random.random(shape).astype(np.float64)
 
-        # Calculate the skewness threshold
-        skew_threshold = np.percentile(random_array, data_skewness*100)
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ])
+@task(returns=cp.array, cache_returns=False)
+def _random_block_gpu_cold(shape, seed):
+    cp.random.seed(seed)
+    return cp.random.rand(*shape, dtype=cp.float64)
 
-        # Apply skewness using a threshold
-        return np.where(random_array < skew_threshold, random_array * 0.5, random_array).astype(np.float64)
-
-# # GPU WITHOUT IS_DISTRIBUTED PARAMETER
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ])
 @task(returns=cp.array, cache_returns=True)
-def _random_block_gpu(shape, seed, data_skewness):
+def _random_block_gpu_hot(shape, seed):
     cp.random.seed(seed)
-    if data_skewness == 0.0:
-        return cp.random.rand(*shape, dtype=cp.float64)
-    else:
-        # Generate a random array with the specified shape
-        random_array = cp.random.rand(*shape, dtype=cp.float64)
-
-        # Calculate the skewness threshold
-        skew_threshold = cp.percentile(random_array, data_skewness*100)
-
-        # Apply skewness using a threshold
-        return cp.where(random_array < skew_threshold, random_array * 0.5, random_array).astype(cp.float64)
-    
-
-# # # GPU WITH IS_DISTRIBUTED PARAMETER
-# @constraint(processors=[
-#                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
-#                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
-#             ])
-# @task(returns=cp.array, cache_returns=True, is_distributed=True)
-# def _random_block_gpu(shape, seed, data_skewness):
-#     cp.random.seed(seed)
-#     if data_skewness == 0.0:
-#         return cp.random.rand(*shape, dtype=cp.float64)
-#     else:
-#         # Generate a random array with the specified shape
-#         random_array = cp.random.rand(*shape, dtype=cp.float64)
-
-#         # Calculate the skewness threshold
-#         skew_threshold = cp.percentile(random_array, data_skewness*100)
-
-#         # Apply skewness using a threshold
-#         return cp.where(random_array < skew_threshold, random_array * 0.5, random_array).astype(cp.float64)
+    return cp.random.rand(*shape, dtype=cp.float64)
 
 
 @constraint(computing_units="${ComputingUnits}")
@@ -2557,6 +3018,7 @@ def _block_apply_axis(func, axis, blocks, *args, **kwargs):
 @task(returns=1)
 def _block_apply(func, block, *args, **kwargs):
     return func(block, *args, **kwargs)
+
 
 @constraint(computing_units="${ComputingUnits}")
 @task(block=INOUT)
@@ -2626,3 +3088,25 @@ def _combine_blocks(blocks, other, func, out_blocks):
 
     for i in range(len(out_blocks)):
         out_blocks[i] = res[:, i * bsize: (i + 1) * bsize]
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(indexes={Type: COLLECTION_IN, Depth: 1}, returns=1)
+def _delete_indexes(block, indexes, first_index_block, axis):
+    if first_index_block == 0:
+        deleted = np.delete(block, indexes, axis)
+        return deleted
+    deleted = np.delete(block, np.array(indexes) % first_index_block, axis)
+    return deleted
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(blocks_to_use={Type: COLLECTION_IN, Depth: 1}, returns=1)
+def _fill_block(blocks_to_use, elements_to_shift, reg_shape, column=False):
+    if column:
+        block = np.hstack(blocks_to_use)
+    else:
+        block = np.vstack(blocks_to_use)
+    if column:
+        return block[:, elements_to_shift:elements_to_shift + reg_shape]
+    return block[elements_to_shift:elements_to_shift+reg_shape]

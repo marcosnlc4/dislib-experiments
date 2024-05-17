@@ -183,6 +183,10 @@ database.ini
 compss_commands
 *.png
 *.csv
+log_time.csv
 launch_minotauro.sh
 launch_minotauro_local_disk.sh
+launch_minotauro_CACHE.sh
+launch_minotauro_CACHE_OLD.sh
+launch_minotauro_MANUAL.sh
 *.pdf

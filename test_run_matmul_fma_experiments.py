@@ -57,7 +57,7 @@ if __name__ == '__main__':
         print("\nSTART CPU\n")
         # compss_barrier()
         # start = time.perf_counter()
-        ds.dot(A, A, C, id_device=6, id_parameter=0, nr_algorithm_iteration=0)
+        ds.dot(A, A, C, id_device=1, id_parameter=0, nr_algorithm_iteration=0)
         # compss_barrier()
         # print("==== TIME CPU ==== ", time.perf_counter()-start)
         print("\END CPU\n")

@@ -1,6 +1,9 @@
+import json
+import os
+import pickle
+
 import numpy as np
 from pycompss.api.constraint import constraint
-from pycompss.api.api import compss_wait_on
 from pycompss.api.parameter import COLLECTION_IN, Depth, Type, COLLECTION_OUT
 from pycompss.api.task import task
 from scipy.sparse import issparse, csr_matrix
@@ -10,6 +13,8 @@ from dislib.data.array import Array
 from dislib.math.base import svd
 from math import ceil
 import dislib
+from dislib.data.util import encoder_helper, decoder_helper
+import dislib.data.util.model as utilmodel
 
 
 class PCA(BaseEstimator):
@@ -133,6 +138,108 @@ class PCA(BaseEstimator):
         """
         return self._transform_eig(x)
 
+    def save_model(self, filepath, overwrite=True, save_format="json"):
+        """Saves a model to a file.
+        The model is synchronized before saving and can be reinstantiated in
+        the exact same state, without any of the code used for model
+        definition or fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path where to save the model
+        overwrite : bool, optional (default=True)
+            Whether any existing model at the target
+            location should be overwritten.
+        save_format : str, optional (default='json')
+            Format used to save the models.
+        Examples
+        --------
+        >>> from dislib.decomposition import PCA
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> x = ds.random_array((1000, 100),
+        >>> block_size=(100, 50), random_state=0)
+        >>> pca = PCA()
+        >>> x_transformed = pca.fit_transform(x)
+        >>> pca.save_model('/tmp/model')
+        >>> load_pca = PCA()
+        >>> load_pca.load_model('/tmp/model')
+        >>> x_load_transform = load_pca.transform(x)
+        >>> assert np.allclose(x_transformed.collect(),
+        >>> x_load_transform.collect())
+        """
+
+        # Check overwrite
+        if not overwrite and os.path.isfile(filepath):
+            return
+
+        utilmodel.sync_obj(self.__dict__)
+        model_metadata = self.__dict__
+        model_metadata["model_name"] = "pca"
+
+        # Save model
+        if save_format == "json":
+            with open(filepath, "w") as f:
+                json.dump(model_metadata, f, default=_encode_helper)
+        elif save_format == "cbor":
+            if utilmodel.cbor2 is None:
+                raise ModuleNotFoundError("No module named 'cbor2'")
+            with open(filepath, "wb") as f:
+                utilmodel.cbor2.dump(model_metadata, f,
+                                     default=_encode_helper_cbor)
+        elif save_format == "pickle":
+            with open(filepath, "wb") as f:
+                pickle.dump(model_metadata, f)
+        else:
+            raise ValueError("Wrong save format.")
+
+    def load_model(self, filepath, load_format="json"):
+        """Loads a model from a file.
+        The model is reinstantiated in the exact same state in which it was
+        saved, without any of the code used for model definition or fitting.
+        Parameters
+        ----------
+        filepath : str
+            Path of the saved the model
+        load_format : str, optional (default='json')
+            Format used to load the model.
+        Examples
+        --------
+        >>> from dislib.decomposition import PCA
+        >>> import numpy as np
+        >>> import dislib as ds
+        >>> x = ds.random_array((1000, 100),
+        >>> block_size=(100, 50), random_state=0)
+        >>> pca = PCA()
+        >>> x_transformed = pca.fit_transform(x)
+        >>> pca.save_model('/tmp/model')
+        >>> load_pca = PCA()
+        >>> load_pca.load_model('/tmp/model')
+        >>> x_load_transform = load_pca.transform(x)
+        >>> assert np.allclose(x_transformed.collect(),
+        >>> x_load_transform.collect())
+        """
+        # Load model
+        if load_format == "json":
+            with open(filepath, "r") as f:
+                model_metadata = json.load(
+                    f, object_hook=_decode_helper)
+        elif load_format == "cbor":
+            if utilmodel.cbor2 is None:
+                raise ModuleNotFoundError("No module named 'cbor2'")
+            with open(filepath, "rb") as f:
+                model_metadata = utilmodel.cbor2.\
+                    load(f,
+                         object_hook=_decode_helper_cbor)
+        elif load_format == "pickle":
+            with open(filepath, "rb") as f:
+                model_metadata = pickle.load(f)
+        else:
+            raise ValueError("Wrong load format.")
+
+        for key, val in model_metadata.items():
+            setattr(self, key, val)
+
     def _fit_eig(self, x):
         scatter_matrix = _scatter_matrix(x, self.arity)
         cov_matrix = _estimate_covariance(scatter_matrix, x.shape[0])
@@ -153,15 +260,17 @@ class PCA(BaseEstimator):
             decompose_func = _decompose
 
         decompose_func(cov_matrix, self.n_components, x._reg_shape[1],
-                   val_blocks,
-                   vec_blocks)
+                       val_blocks,
+                       vec_blocks)
 
         bshape = (x._reg_shape[1], x._reg_shape[1])
 
         self.components_ = Array(vec_blocks, bshape, bshape,
                                  (shape1, x.shape[1]), False)
-        self.explained_variance_ = Array(val_blocks, bshape, bshape,
-                                         (1, shape1), False)
+
+        ex_var_bshape = (1, bshape)
+        self.explained_variance_ = Array(val_blocks, ex_var_bshape,
+                                         ex_var_bshape, (1, shape1), False)
 
         return self
 
@@ -224,6 +333,7 @@ def _subset_scatter_matrix(blocks):
 
     return np.dot(data.T, data)
 
+
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "1"},
                 {"processorType": "GPU", "computingUnits": "1"},
@@ -282,12 +392,16 @@ def _decompose(covariance_matrix, n_components, bsize, val_blocks, vec_blocks):
     signs = np.sign(eig_vec[range(len(eig_vec)), max_abs_cols])
     eig_vec *= signs[:, np.newaxis]
 
+    if len(eig_val.shape) == 1:
+        eig_val = np.expand_dims(eig_val, axis=0)
+
     for i in range(len(vec_blocks)):
-        val_blocks[0][i] = eig_val[i * bsize:(i + 1) * bsize]
+        val_blocks[0][i] = eig_val[:, i * bsize:(i + 1) * bsize]
 
         for j in range(len(vec_blocks[i])):
             vec_blocks[i][j] = \
                 eig_vec[i * bsize:(i + 1) * bsize, j * bsize:(j + 1) * bsize]
+
 
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "1"},
@@ -295,7 +409,8 @@ def _decompose(covariance_matrix, n_components, bsize, val_blocks, vec_blocks):
             ])
 @task(val_blocks={Type: COLLECTION_OUT, Depth: 2},
       vec_blocks={Type: COLLECTION_OUT, Depth: 2})
-def _decompose_gpu(covariance_matrix, n_components, bsize, val_blocks, vec_blocks):
+def _decompose_gpu(covariance_matrix, n_components, bsize,
+                   val_blocks, vec_blocks):
     import cupy as cp
 
     eig_val_gpu, eig_vec_gpu = cp.linalg.eigh(cp.asarray(covariance_matrix))
@@ -311,8 +426,10 @@ def _decompose_gpu(covariance_matrix, n_components, bsize, val_blocks, vec_block
 
     # normalize eigenvectors sign to ensure deterministic output
     max_abs_cols = cp.argmax(cp.abs(eig_vec_gpu), axis=1)
-    signs_gpu = cp.sign(eig_vec_gpu[list(range(len(eig_vec_gpu))), max_abs_cols])
-    eig_vec, signs, eig_val = cp.asnumpy(eig_vec_gpu), cp.asnumpy(signs_gpu), cp.asnumpy(eig_val_gpu)
+    s = eig_vec_gpu[list(range(len(eig_vec_gpu))), max_abs_cols]
+    signs_gpu = cp.sign(s)
+    eig_vec, signs = cp.asnumpy(eig_vec_gpu), cp.asnumpy(signs_gpu)
+    eig_val = cp.asnumpy(eig_val_gpu)
     eig_vec *= signs[:, np.newaxis]
 
     for i in range(len(vec_blocks)):
@@ -375,3 +492,33 @@ def _subset_transform_gpu(blocks, u_blocks, c_blocks, reg_shape, out_blocks):
 
     for j in range(0, len(blocks[0])):
         out_blocks[j] = res[:, j * reg_shape:(j + 1) * reg_shape]
+
+
+def _encode_helper_cbor(encoder, obj):
+    encoder.encode(_encode_helper(obj))
+
+
+def _encode_helper(obj):
+    encoded = encoder_helper(obj)
+    if encoded is not None:
+        return encoded
+    else:
+        return {
+            "class_name": "PCA",
+            "module_name": "decomposition",
+            "items": obj.__dict__,
+        }
+
+
+def _decode_helper_cbor(decoder, obj):
+    """Special decoder wrapper for dislib using cbor2."""
+    return _decode_helper(obj)
+
+
+def _decode_helper(obj):
+    if isinstance(obj, dict) and "class_name" in obj:
+        class_name = obj["class_name"]
+        decoded = decoder_helper(class_name, obj)
+        if decoded is not None:
+            return decoded
+    return obj

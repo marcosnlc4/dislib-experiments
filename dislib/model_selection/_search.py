@@ -12,8 +12,9 @@ from sklearn.model_selection import ParameterGrid, ParameterSampler
 from numpy.ma import MaskedArray
 
 from dislib.model_selection._split import infer_cv
-from dislib.model_selection._validation import check_scorer, fit_and_score, \
-    validate_score, aggregate_score_dicts
+from dislib.model_selection._validation import check_scorer, \
+    validate_score, aggregate_score_dicts, fit, score_func, \
+    sklearn_fit, sklearn_score
 
 
 class BaseSearchCV(ABC):
@@ -24,6 +25,9 @@ class BaseSearchCV(ABC):
         self.scoring = scoring
         self.cv = cv
         self.refit = refit
+        self.validation_data = []
+        self.all_out = []
+        self.all_candidate_params = []
 
     @abstractmethod
     def _run_search(self, evaluate_candidates):
@@ -44,6 +48,25 @@ class BaseSearchCV(ABC):
         **fit_params : dict of string -> object
             Parameters passed to the ``fit`` method of the estimator
         """
+
+        self.train_candidates(x, y, **fit_params)
+
+        self.score(x, y, **fit_params)
+
+        return self
+
+    def train_candidates(self, x, y, **fit_params):
+        """Run fit with all sets of parameters.
+
+        Parameters
+        ----------
+        x : ds-array
+            Training data samples.
+        y : ds-array, optional (default = None)
+            Training data labels or values.
+        **fit_params : dict of string -> object
+            Parameters passed to the ``fit`` method of the estimator
+        """
         estimator = self.estimator
         cv = infer_cv(self.cv)
 
@@ -52,35 +75,91 @@ class BaseSearchCV(ABC):
         base_estimator = clone(estimator)
 
         n_splits = None
-        all_candidate_params = []
         all_out = []
+
+        def evaluate_candidates_sklearn(candidate_params):
+            """Evaluate some parameters"""
+            candidate_params = list(candidate_params)
+
+            validation_data = []
+            fits = []
+            for parameters, (train, validation) in product(candidate_params,
+                                                           cv.split(x, y)):
+                validation_data.append(validation)
+                fits.append(sklearn_fit(clone(base_estimator), train,
+                                        parameters=parameters,
+                                        fit_params=fit_params))
+            out = [sklearn_score(estimator, validation, scorer=scorers) for
+                   estimator, validation in zip(fits, validation_data)]
+
+            nonlocal n_splits
+            n_splits = cv.get_n_splits()
+
+            self.all_candidate_params.extend(candidate_params)
+            all_out.extend(out)
 
         def evaluate_candidates(candidate_params):
             """Evaluate some parameters"""
             candidate_params = list(candidate_params)
 
-            out = [fit_and_score(clone(base_estimator), train, validation,
-                                 scorer=scorers, parameters=parameters,
-                                 fit_params=fit_params)
-                   for parameters, (train, validation)
-                   in product(candidate_params, cv.split(x, y))]
+            validation_data = []
+            fits = []
+            for parameters, (train, validation) in product(candidate_params,
+                                                           cv.split(x, y)):
+                validation_data.append(validation)
+                fits.append(fit(clone(base_estimator), train,
+                                parameters=parameters,
+                                fit_params=fit_params))
+            out = [score_func(estimator, validation, scorer=scorers) for
+                   estimator, validation in zip(fits, validation_data)]
 
             nonlocal n_splits
             n_splits = cv.get_n_splits()
 
-            all_candidate_params.extend(candidate_params)
+            self.all_candidate_params.extend(candidate_params)
             all_out.extend(out)
 
-        self._run_search(evaluate_candidates)
+        if 'sklearn' in str(type(estimator)):
+            self._run_search(evaluate_candidates_sklearn)
+        else:
+            self._run_search(evaluate_candidates)
 
-        for params_result in all_out:
+        # Store the only scorer not as a dict for single metric evaluation
+        self.scorer_ = scorers if self.multimetric_ else scorers['score']
+
+        self.n_splits_ = n_splits
+
+        self.all_out = all_out
+
+        return self
+
+    def score(self, x=None, y=None, **fit_params):
+        """Compute score for the trained sets of parameters.
+
+        Parameters
+        ----------
+        x : ds-array
+            Test data samples.
+        y : ds-array, optional (default = None)
+            Test data labels or values.
+        **fit_params : dict of string -> object
+            Parameters passed to the ``fit`` method of the estimator
+        """
+        estimator = self.estimator
+
+        scorers, refit_metric = self._infer_scorers()
+
+        base_estimator = clone(estimator)
+        self.all_out = compss_wait_on(self.all_out)
+
+        for params_result in self.all_out:
             scores = params_result[0]
             for scorer_name, score in scores.items():
                 score = compss_wait_on(score)
                 scores[scorer_name] = validate_score(score, scorer_name)
 
-        results = self._format_results(all_candidate_params, scorers,
-                                       n_splits, all_out)
+        results = self._format_results(self.all_candidate_params, scorers,
+                                       self.n_splits_, self.all_out)
 
         # For multi-metric evaluation, store the best_index_, best_params_ and
         # best_score_ iff refit is one of the scorer names
@@ -105,13 +184,15 @@ class BaseSearchCV(ABC):
         if self.refit:
             self.best_estimator_ = clone(base_estimator).set_params(
                 **self.best_params_)
+            if 'sklearn' in str(type(estimator)):
+                x = x.collect()
+                y = y.collect()
             self.best_estimator_.fit(x, y, **fit_params)
 
         # Store the only scorer not as a dict for single metric evaluation
         self.scorer_ = scorers if self.multimetric_ else scorers['score']
 
         self.cv_results_ = results
-        self.n_splits_ = n_splits
 
         return self
 

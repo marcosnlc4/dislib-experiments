@@ -1,0 +1,270 @@
+OK
+>matmul_func cpu cold
+>add_func cpu cold
+
+#START TEST
+cd_function=1
+id_device=1
+id_cache=1
+#END TEST
+
+#START TEST
+cd_function=2
+id_device=1
+id_cache=1
+#END TEST
+
+
+OK
+>matmul_func cpu hot
+>add_func cpu cold
+
+#START TEST
+cd_function=1
+id_device=1
+id_cache=2
+#END TEST
+
+#START TEST
+cd_function=2
+id_device=1
+id_cache=1
+#END TEST
+
+
+OK
+>matmul_func gpu cold
+>add_func cpu cold
+
+#START TEST
+cd_function=1
+id_device=2
+id_cache=1
+#END TEST
+
+#START TEST
+cd_function=2
+id_device=1
+id_cache=1
+#END TEST
+
+
+OK
+>matmul_func gpu hot
+>add_func cpu cold
+
+#START TEST
+cd_function=1
+id_device=2
+id_cache=2
+#END TEST
+
+#START TEST
+cd_function=2
+id_device=1
+id_cache=1
+#END TEST
+
+
+OK
+>matmul_func cpu cold
+>add_func cpu hot
+
+#START TEST
+cd_function=1
+id_device=1
+id_cache=1
+#END TEST
+
+#START TEST
+cd_function=2
+id_device=1
+id_cache=2
+#END TEST
+
+
+OK
+>matmul_func cpu hot
+>add_func cpu hot
+
+#START TEST
+cd_function=1
+id_device=1
+id_cache=2
+#END TEST
+
+#START TEST
+cd_function=2
+id_device=1
+id_cache=2
+#END TEST
+
+
+OK (BUT will add_func read cached data in this case?? YES)
+>matmul_func gpu cold
+>add_func cpu hot
+
+#START TEST
+cd_function=1
+id_device=2
+id_cache=1
+#END TEST
+
+#START TEST
+cd_function=2
+id_device=1
+id_cache=2
+#END TEST
+
+
+OK (BUT will add_func read cached data in this case?? YES)
+>matmul_func gpu hot
+>add_func cpu hot
+
+#START TEST
+cd_function=1
+id_device=2
+id_cache=2
+#END TEST
+
+#START TEST
+cd_function=2
+id_device=1
+id_cache=2
+#END TEST
+
+
+OK
+>matmul_func cpu cold
+>add_func gpu cold
+
+#START TEST
+cd_function=1
+id_device=1
+id_cache=1
+#END TEST
+
+#START TEST
+cd_function=2
+id_device=2
+id_cache=1
+#END TEST
+
+
+OK
+>matmul_func cpu hot
+>add_func gpu cold
+
+#START TEST
+cd_function=1
+id_device=1
+id_cache=2
+#END TEST
+
+#START TEST
+cd_function=2
+id_device=2
+id_cache=1
+#END TEST
+
+
+OK
+>matmul_func gpu cold
+>add_func gpu cold
+
+#START TEST
+cd_function=1
+id_device=2
+id_cache=1
+#END TEST
+
+#START TEST
+cd_function=2
+id_device=2
+id_cache=1
+#END TEST
+
+
+OK
+>matmul_func gpu hot
+>add_func gpu cold
+
+#START TEST
+cd_function=1
+id_device=2
+id_cache=2
+#END TEST
+
+#START TEST
+cd_function=2
+id_device=2
+id_cache=1
+#END TEST
+
+
+OK
+>matmul_func cpu cold
+>add_func gpu hot
+
+#START TEST
+cd_function=1
+id_device=1
+id_cache=1
+#END TEST
+
+#START TEST
+cd_function=2
+id_device=2
+id_cache=2
+#END TEST
+
+
+OK (BUT will add_func read cached data in this case?? YES)
+>matmul_func cpu hot
+>add_func gpu hot
+
+#START TEST
+cd_function=1
+id_device=1
+id_cache=2
+#END TEST
+
+#START TEST
+cd_function=2
+id_device=2
+id_cache=2
+#END TEST
+
+
+OK
+>matmul_func gpu cold
+>add_func gpu hot
+
+#START TEST
+cd_function=1
+id_device=2
+id_cache=1
+#END TEST
+
+#START TEST
+cd_function=2
+id_device=2
+id_cache=2
+#END TEST
+
+
+OK
+>matmul_func gpu hot
+>add_func gpu hot
+
+#START TEST
+cd_function=1
+id_device=2
+id_cache=2
+#END TEST
+
+#START TEST
+cd_function=2
+id_device=2
+id_cache=2
+#END TEST

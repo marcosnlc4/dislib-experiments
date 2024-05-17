@@ -226,22 +226,23 @@ class CascadeSVM(BaseEstimator):
 
     def _check_initial_parameters(self):
         gamma = self.gamma
-        assert (gamma == "auto" or type(gamma) == float
-                or type(float(gamma)) == float), "Invalid gamma"
+        assert (gamma == "auto" or isinstance(gamma, float)
+                or isinstance(float(gamma), float)), "Invalid gamma"
         kernel = self.kernel
         assert (kernel is None or kernel in self._name_to_kernel.keys()), \
             "Incorrect kernel value [%s], available kernels are %s" % (
                 kernel, self._name_to_kernel.keys())
         c = self.c
-        assert (c is None or type(c) == float or type(float(c)) == float), \
+        assert (c is None or isinstance(c, float) or
+                isinstance(float(c), float)), \
             "Incorrect C type [%s], type : %s" % (c, type(c))
         tol = self.tol
-        assert (type(tol) == float or type(float(tol)) == float), \
+        assert (isinstance(tol, float) or isinstance(float(tol), float)), \
             "Incorrect tol type [%s], type : %s" % (tol, type(tol))
         assert self.cascade_arity > 1, "Cascade arity must be greater than 1"
         assert self.max_iter > 0, "Max iterations must be greater than 0"
-        assert type(self.check_convergence) == bool, "Invalid value in " \
-                                                     "check_convergence"
+        assert isinstance(self.check_convergence, bool), "Invalid value in " \
+                                                         "check_convergence"
 
     def _reset_model(self):
         self.iterations = 0
@@ -331,16 +332,22 @@ class CascadeSVM(BaseEstimator):
 
     def _lag_fast(self, vectors, labels, coef):
         set_sl = set(labels.ravel())
-        assert len(set_sl) == 2, "Only binary problem can be handled"
-        new_sl = labels.copy()
-        new_sl[labels == 0] = -1
-
+        if len(set_sl) > 2:
+            new_sl = [labels.copy()]
+            vectors_def = vectors
+            for _ in range(len(set_sl) - 2):
+                new_sl.append(labels.copy())
+                vectors_def = np.concatenate((vectors_def, vectors))
+        else:
+            new_sl = labels.copy()
+            new_sl[labels == 0] = -1
+            vectors_def = vectors
         if issparse(coef):
             coef = coef.toarray()
 
         c1, c2 = np.meshgrid(coef, coef)
         l1, l2 = np.meshgrid(new_sl, new_sl)
-        double_sum = c1 * c2 * l1 * l2 * self._kernel_f(vectors)
+        double_sum = c1 * c2 * l1 * l2 * self._kernel_f(vectors_def)
         double_sum = double_sum.sum()
         w = -0.5 * double_sum + coef.sum()
 
@@ -437,7 +444,7 @@ class CascadeSVM(BaseEstimator):
 
         sync_obj(self.__dict__)
         model_metadata = self.__dict__
-        model_metadata["model_name"] = "kmeans"
+        model_metadata["model_name"] = "csvm"
 
         # Save model
         if save_format == "json":

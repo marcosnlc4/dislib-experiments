@@ -1,6 +1,5 @@
-from collections import deque
 import itertools
-import time
+import math
 
 import numpy as np
 import dislib
@@ -15,15 +14,18 @@ from dislib.data.array import Array, identity
 
 def kron(a, b, block_size=None):
     """ Kronecker product of two ds-arrays.
+
     Parameters
     ----------
     a, b : ds-arrays
         Input ds-arrays.
     block_size : tuple of two ints, optional
         Block size of the resulting array. Defaults to the block size of `b`.
+
     Returns
     -------
     out : ds-array
+
     Raises
     ------
     NotImplementedError
@@ -41,6 +43,11 @@ def kron(a, b, block_size=None):
     # times. This is why we need to rechunk it at the end.
     offseti = 0
 
+    if dislib.__gpu_available__:
+        kron_func = _kron_gpu
+    else:
+        kron_func = _kron
+
     for i in range(a._n_blocks[0]):
         offsetj = 0
 
@@ -50,7 +57,7 @@ def kron(a, b, block_size=None):
             for k in range(b._n_blocks[0]):
                 for q in range(b._n_blocks[1]):
                     out_blocks = Array._get_out_blocks(bshape_a)
-                    _kron(a._blocks[i][j], b._blocks[k][q], out_blocks)
+                    kron_func(a._blocks[i][j], b._blocks[k][q], out_blocks)
 
                     for m in range(bshape_a[0]):
                         for n in range(bshape_a[1]):
@@ -89,8 +96,10 @@ def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-9):
     """ Performs singular value decomposition of a ds-array via the one-sided
     block Jacobi algorithm described in Arbenz and Slapnicar [1]_ and
     Dongarra et al. [2]_.
+
     Singular value decomposition is a factorization of the form A = USV',
     where U and V are unitary matrices and S is a rectangular diagonal matrix.
+
     Parameters
     ----------
     a : ds-array, shape=(m, n)
@@ -107,6 +116,7 @@ def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-9):
         regular shape).
     eps : float, optional (default=1e-9)
         Tolerance for the convergence criterion.
+
     Returns
     -------
     u : ds-array, shape=(m, n)
@@ -115,19 +125,23 @@ def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-9):
         Diagonal entries of S.
     v : ds-array, shape=(n, n)
         V matrix. Only returned if compute_uv is True.
+
     Raises
     ------
     ValueError
         If a has less than 2 column blocks or m < n.
+
     References
     ----------
     .. [1] Arbenz, P. and Slapnicar, A. (1995). An Analysis of Parallel
         Implementations of the Block-Jacobi Algorithm for Computing the SVD. In
         Proceedings of the 17th International Conference on Information
         Technology Interfaces ITI (pp. 13-16).
+
     .. [2] Dongarra, J., Gates, M., Haidar, A. et al. (2018). The singular
         value decomposition: Anatomy of optimizing an algorithm for extreme
         scale. In SIAM review, 60(4) (pp. 808-865).
+
     Examples
     --------
     >>> import dislib as ds
@@ -160,6 +174,7 @@ def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-9):
         v = identity(x.shape[1], (x._reg_shape[1], x._reg_shape[1]))
 
     checks = [True]
+    n_cols = x._n_blocks[1]
 
     if dislib.__gpu_available__:
         _compute_rotation_func = _compute_rotation_and_rotate_gpu
@@ -169,11 +184,7 @@ def svd(a, compute_uv=True, sort=True, copy=True, eps=1e-9):
     while not _check_convergence_svd(checks):
         checks = []
 
-        pairings = itertools.combinations(
-            range(x._n_blocks[1]), 2
-        )
-
-        for i, j in pairings:
+        for i, j in svd_col_combs(n_cols):
             coli_x = x._get_col_block(i)
             colj_x = x._get_col_block(j)
 
@@ -327,7 +338,7 @@ def _compute_u_block(a_block, u_block):
 def _compute_u_block_sorted(a_block, index, bsize, sorting, u_block):
     a_col = Array._merge_blocks(a_block)
     norm = np.linalg.norm(a_col, axis=0)
-    
+
     # replace zero norm columns of a with an arbitrary unitary vector
     zero_idx = np.where(norm == 0)
     a_col[0, zero_idx] = 1
@@ -343,26 +354,24 @@ def _compute_u_block_sorted(a_block, index, bsize, sorting, u_block):
         dest_i = np.where(sorting == (index * bsize + i))[0][0]
         block_i = dest_i // bsize
         u_block[block_i].append(u_col[:, i])
-    
+
     for i in range(len(u_block)):
         if u_block[i]:
             u_block[i] = np.vstack(u_block[i])
 
 
-
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "1"},
                 {"processorType": "GPU", "computingUnits": "1"},
-            ]
-)
+            ])
 @task(a_block={Type: COLLECTION_IN, Depth: 2},
       u_block={Type: COLLECTION_OUT, Depth: 1})
 def _compute_u_block_sorted_gpu(a_block, index, bsize, sorting, u_block):
     import cupy as cp
-    
+
     a_col_gpu = cp.asarray(Array._merge_blocks(a_block))
     norm_gpu = cp.linalg.norm(a_col_gpu, axis=0)
-    
+
     zero_idx = cp.where(norm_gpu == 0)
     a_col_gpu[0, zero_idx] = 1
     norm_gpu[zero_idx] = 1
@@ -376,13 +385,13 @@ def _compute_u_block_sorted_gpu(a_block, index, bsize, sorting, u_block):
         dest_i = np.where(sorting == (index * bsize + i))[0][0]
         block_i = dest_i // bsize
         u_block[block_i].append(cp.asnumpy(u_col_gpu[:, i]))
-            
+
 
 @constraint(computing_units="${ComputingUnits}")
 @task(block={Type: COLLECTION_IN, Depth: 1},
       out_blocks={Type: COLLECTION_OUT, Depth: 1})
 def _merge_svd_block(block, index, hbsize, vbsize, sorting, out_blocks):
-    block = list(filter(lambda a: a != [], block))  # remove empty lists
+    block = list(filter(lambda a: np.any(a), block))  # remove empty lists
     col = np.vstack(block).T
     local_sorting = []
 
@@ -439,11 +448,11 @@ def _compute_rotation_and_rotate(coli_blocks, colj_blocks, eps):
         _rotate(coli_blocks, colj_blocks, j)
         return j, True
 
+
 @constraint(processors=[
-                {"processorType": "CPU", "computingUnits": "${ComputingUnits}"},
+                {"processorType": "CPU", "computingUnits": "1"},
                 {"processorType": "GPU", "computingUnits": "1"},
-            ]
-)
+            ])
 @task(coli_blocks={Type: COLLECTION_INOUT, Depth: 2},
       colj_blocks={Type: COLLECTION_INOUT, Depth: 2},
       returns=2)
@@ -469,27 +478,21 @@ def _compute_rotation_and_rotate_gpu(coli_blocks, colj_blocks, eps):
         del bii_gpu, bij_gpu, bjj_gpu, tol_gpu
         return None, False
     else:
-        bii, bij, bjj = cp.asnumpy(bii_gpu), cp.asnumpy(bij_gpu), cp.asnumpy(bjj_gpu)
+        bii, bij = cp.asnumpy(bii_gpu), cp.asnumpy(bij_gpu)
+        bjj = cp.asnumpy(bjj_gpu)
         del bii_gpu, bij_gpu, bjj_gpu, tol_gpu
 
         b = np.block([[bii, bij], [bij.T, bjj]])
 
-        import socket
+        j_gpu, _, _ = cp.linalg.svd(cp.asarray(b))
+        _rotate_gpu(coli_blocks, colj_blocks, j_gpu)
+        return cp.asnumpy(j_gpu), True
 
-        if socket.gethostname().startswith('p9'):
-            j_gpu, _, _ = cp.linalg.svd(cp.asarray(b))
-            _rotate_gpu(coli_blocks, colj_blocks, j_gpu)
-            return cp.asnumpy(j_gpu), True
-        else:
-            j, _, _ = np.linalg.svd(b)
-            _rotate_gpu(coli_blocks, colj_blocks, cp.asarray(j))
-            return j, True
 
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "1"},
                 {"processorType": "GPU", "computingUnits": "1"},
-            ]
-)
+            ])
 @task(coli_blocks={Type: COLLECTION_INOUT, Depth: 2},
       colj_blocks={Type: COLLECTION_INOUT, Depth: 2})
 def _rotate_gpu(coli_blocks, colj_blocks, j_gpu):
@@ -519,7 +522,6 @@ def _rotate_gpu(coli_blocks, colj_blocks, j_gpu):
         colj_blocks[i][0][:] = colj_k[i * block_size:(i + 1) * block_size][:]
 
     cp.get_default_memory_pool().free_all_blocks()
-
 
 
 @constraint(computing_units="${ComputingUnits}")
@@ -555,3 +557,73 @@ def _kron(block1, block2, out_blocks):
     for i in range(block1.shape[0]):
         for j in range(block1.shape[1]):
             out_blocks[i][j] = block1[i, j] * block2
+
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "1"},
+                {"processorType": "GPU", "computingUnits": "1"},
+            ])
+@task(out_blocks={Type: COLLECTION_OUT, Depth: 2})
+def _kron_gpu(block1, block2, out_blocks):
+    """ Computes the kronecker product of two blocks and returns one ndarray
+    per (element-in-block1, block2) pair."""
+
+    import cupy as cp
+
+    block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
+
+    for i in range(block1_gpu.shape[0]):
+        for j in range(block1_gpu.shape[1]):
+            out_blocks[i][j] = cp.asnumpy(block1_gpu[i, j] * block2_gpu)
+
+
+def _combinations(a, b):
+    # First get all combinations between a and b
+    n = len(a)
+    coverages = list()
+
+    for i in range(n):
+        single_cov = list()
+        for a_idx in range(n):
+            b_idx = (a_idx + i) % n
+            single_cov.append((a[a_idx], b[b_idx]))
+        coverages.append(single_cov)
+
+    # Now get coverages of a and b independently
+    if n == 1:
+        return coverages
+    elif n == 2:
+        coverages.append([(a[0], a[1]), (b[0], b[1])])
+    else:
+        m = n // 2
+        a1 = a[:m]
+        a2 = a[m:]
+        b1 = b[:m]
+        b2 = b[m:]
+
+        coverages_a = _combinations(a1, a2)
+        coverages_b = _combinations(b1, b2)
+
+        for cov_a, cov_b in zip(coverages_a, coverages_b):
+            coverages.append(cov_a + cov_b)
+
+    return coverages
+
+
+def svd_col_combs(n_cols: int):
+    if n_cols <= 1:
+        return list()
+
+    cols = list(range(2**math.ceil(math.log(n_cols, 2))))
+
+    n = len(cols) // 2
+
+    a = cols[:n]
+    b = cols[n:]
+
+    coverages = _combinations(a, b)
+
+    coverages = sum(coverages, list())
+    all_combs = list(itertools.combinations(range(n_cols), 2))
+    pairings = list(filter(lambda x: x in all_combs, coverages))
+    return pairings

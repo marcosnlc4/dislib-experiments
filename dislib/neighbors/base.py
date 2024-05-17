@@ -1,4 +1,5 @@
 import numpy as np
+from pycompss.api.api import compss_delete_object
 from pycompss.api.constraint import constraint
 from pycompss.api.parameter import Depth, Type, COLLECTION_IN
 from pycompss.api.task import task
@@ -7,6 +8,7 @@ from sklearn.neighbors import NearestNeighbors as SKNeighbors
 from sklearn.utils import validation
 
 from dislib.data.array import Array
+import dislib
 
 
 class NearestNeighbors(BaseEstimator):
@@ -45,7 +47,16 @@ class NearestNeighbors(BaseEstimator):
         -------
         self : NearestNeighbors
         """
-        self._fit_data = x
+        if dislib.__gpu_available__:
+            self._fit_data = x
+        else:
+            self._fit_data = list()
+
+            for row in x._iterator(axis=0):
+                sknnstruct = _compute_fit(row._blocks)
+                n_samples = row.shape[0]
+                self._fit_data.append([sknnstruct, n_samples])
+
         return self
 
     def kneighbors(self, x, n_neighbors=None, return_distance=True):
@@ -80,12 +91,26 @@ class NearestNeighbors(BaseEstimator):
 
         for q_row in x._iterator(axis=0):
             queries = []
+            offset = 0
 
-            for row in self._fit_data._iterator(axis=0):
-                queries.append(_get_neighbors(row._blocks, q_row._blocks,
-                                              n_neighbors))
+            if dislib.__gpu_available__:
+                for x_row in self._fit_data._iterator(axis=0):
+                    q = _get_kneighbors_gpu(x_row._blocks,
+                                            q_row._blocks,
+                                            n_neighbors,
+                                            offset)
+                    queries.append(q)
+                    offset += len(x_row._blocks)
+            else:
+                for sknnstruct, n_samples in self._fit_data:
+                    queries.append(_get_kneighbors(sknnstruct, q_row._blocks,
+                                                   n_neighbors, offset))
+                    offset += n_samples
 
-            dist, ind = _merge_queries(*queries)
+            dist, ind = _merge_kqueries(n_neighbors, *queries)
+            for q in queries:
+                compss_delete_object(q)
+
             distances.append([dist])
             indices.append([ind])
 
@@ -105,50 +130,109 @@ class NearestNeighbors(BaseEstimator):
 
 
 @constraint(computing_units="${ComputingUnits}")
+@task(blocks={Type: COLLECTION_IN, Depth: 2}, returns=1)
+def _compute_fit(blocks):
+    samples = Array._merge_blocks(blocks)
+    knn = SKNeighbors()
+    return knn.fit(X=samples)
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(q_blocks={Type: COLLECTION_IN, Depth: 2}, returns=tuple)
+def _get_kneighbors(sknnstruct, q_blocks, n_neighbors, offset):
+    q_samples = Array._merge_blocks(q_blocks)
+
+    # Note that the merge requires distances, so we ask for them
+    dist, ind = sknnstruct.kneighbors(X=q_samples, n_neighbors=n_neighbors)
+
+    # This converts the local indexes to global ones
+    ind += offset
+
+    return dist, ind
+
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "1"},
+                {"processorType": "GPU", "computingUnits": "1"},
+            ])
+@task(x_blocks={Type: COLLECTION_IN, Depth: 2},
+      q_blocks={Type: COLLECTION_IN, Depth: 2},
+      returns=tuple)
+def _get_kneighbors_gpu(x_blocks, q_blocks, n_neighbors, offset):
+    import cupy as cp
+
+    x_samples = Array._merge_blocks(x_blocks)
+    q_samples = Array._merge_blocks(q_blocks)
+
+    x_samples_gpu = cp.asarray(x_samples).astype(cp.float64)
+    q_samples_gpu = cp.asarray(q_samples).astype(cp.float64)
+
+    dist_gpu = distance_gpu(q_samples_gpu, x_samples_gpu)
+    ind_gpu = cp.argsort(dist_gpu, axis=1)[:, :n_neighbors]
+    dist_gpu = cp.take_along_axis(dist_gpu, ind_gpu, axis=1)
+
+    return cp.asnumpy(dist_gpu), cp.asnumpy(ind_gpu) + offset
+
+
+@constraint(computing_units="${ComputingUnits}")
 @task(returns=2)
-def _merge_queries(*queries):
-    final_dist, final_ind, offset = queries[0]
+def _merge_kqueries(k, *queries):
+    # Reorganize and flatten
+    dist, ind = zip(*queries)
+    aggr_dist = np.hstack(dist)
+    aggr_ind = np.hstack(ind)
 
-    for dist, ind, n_samples in queries[1:]:
-        ind += offset
-        offset += n_samples
+    # Final indexes of the indexes (sic)
+    final_ii = np.argsort(aggr_dist)[:, :k]
 
-        # keep the indices of the samples that are at minimum distance
-        m_ind = _min_indices(final_dist, dist)
-        comb_ind = np.hstack((final_ind, ind))
-
-        final_ind = np.array([comb_ind[i][m_ind[i]]
-                              for i in range(comb_ind.shape[0])])
-
-        # keep the minimum distances
-        final_dist = _min_distances(final_dist, dist)
+    # Final results
+    final_dist = np.take_along_axis(aggr_dist, final_ii, 1)
+    final_ind = np.take_along_axis(aggr_ind, final_ii, 1)
 
     return final_dist, final_ind
 
 
-@constraint(computing_units="${ComputingUnits}")
-@task(blocks={Type: COLLECTION_IN, Depth: 2},
-      q_blocks={Type: COLLECTION_IN, Depth: 2}, returns=tuple)
-def _get_neighbors(blocks, q_blocks, n_neighbors):
-    samples = Array._merge_blocks(blocks)
-    q_samples = Array._merge_blocks(q_blocks)
+def distance_gpu(a_gpu, b_gpu):
+    import cupy as cp
 
-    n_samples = samples.shape[0]
+    sq_sum_ker = get_sq_sum_kernel()
 
-    knn = SKNeighbors(n_neighbors=n_neighbors)
-    knn.fit(X=samples)
-    dist, ind = knn.kneighbors(X=q_samples)
+    aa_gpu = cp.empty(a_gpu.shape[0], dtype=cp.float64)
+    bb_gpu = cp.empty(b_gpu.shape[0], dtype=cp.float64)
 
-    return dist, ind, n_samples
+    sq_sum_ker(a_gpu, aa_gpu, axis=1)
+    sq_sum_ker(b_gpu, bb_gpu, axis=1)
+
+    dist_shape = (len(aa_gpu), len(bb_gpu))
+    dist_gpu = cp.empty(dist_shape, dtype=cp.float64)
+
+    add_mix_kernel(len(b_gpu))(aa_gpu, bb_gpu, dist_gpu,
+                               size=int(np.prod(dist_shape)))
+    aa_gpu, bb_gpu = None, None
+
+    dist_gpu += -2.0 * cp.dot(a_gpu, b_gpu.T)
+
+    return cp.sqrt(dist_gpu)
 
 
-def _min_distances(d1, d2):
-    size, num = d1.shape
-    d = [np.sort(np.hstack((d1[i], d2[i])))[:num] for i in range(size)]
-    return np.array(d)
+def get_sq_sum_kernel():
+    import cupy as cp
+
+    return cp.ReductionKernel(
+        'T x',  # input params
+        'T y',  # output params
+        'x * x',  # map
+        'a + b',  # reduce
+        'y = a',  # post-reduction map
+        '0',  # identity value
+        'sqsum'  # kernel name
+    )
 
 
-def _min_indices(d1, d2):
-    size, num = d1.shape
-    d = [np.argsort(np.hstack((d1[i], d2[i])))[:num] for i in range(size)]
-    return np.array(d)
+def add_mix_kernel(y_len):
+    import cupy as cp
+
+    return cp.ElementwiseKernel(
+      'raw T x, raw T y', 'raw T z',
+      f'z[i] = x[i / {y_len}] + y[i % {y_len}]',
+      'add_mix')
