@@ -1607,224 +1607,224 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
     return Array(blocks, top_left_shape=out_tlbshape, reg_shape=out_bshape,
                  shape=out_shape, sparse=x._sparse)
 
-##### LEGACY CODE MATMUL FMA (TODO: ADD SUPPORT CPU-GPU-COLD-HOT)
-# @task(returns=1)
-# def generate_block(size, num_blocks, random_state=None, set_to_zero=False, bid=0):
-#     """
-#     Generate a square block of given size.
-#     :param size: <Integer> Block size
-#     :param num_blocks: <Integer> Number of blocks
-#     :param seed: <Integer> Random seed
-#     :param set_to_zero: <Boolean> Set block to zeros
-#     :return: Block
-#     """
-#     r_state = check_random_state(random_state)
-#     seed = r_state.randint(np.iinfo(np.int32).max) + bid
-#     np.random.seed(seed)
-#     if not set_to_zero:
-#         b = np.random.random((size, size)).astype(np.float64)
-#     else:
-#         b = np.zeros((size, size)).astype(np.float64)
-#     return b
 
-# def dot(A, B, C, id_device, id_parameter, nr_algorithm_iteration):
-#     """
-#     A COMPSs blocked matmul algorithm.
-#     :param A: Block A
-#     :param B: Block B
-#     :param C: Result Block
-#     :id_device: int (default=1)
-#         Flag to define the device function implementation according to resource (CPU: 1, GPU: 2, GPU intra: 3)
-#     :id_parameter: int (default=0)
-#         Variable to identify the parameter id
-#     :nr_algorithm_iteration: int (default=0)
-#         Variable to identify the number of the execution of the algorithm
-#     :return: None
-#     """
-
-#     iteration = 0
-
-#     if id_device == 1 or id_device == 5:
-#         fused_multiply_add = fused_multiply_add_cpu
-#     elif id_device == 2 or id_device == 6:
-#         fused_multiply_add = fused_multiply_add_gpu
-#     elif id_device == 3:
-#         fused_multiply_add = fused_multiply_add_cpu_intra_time
-#     elif id_device == 4:
-#         fused_multiply_add = fused_multiply_add_gpu_intra_time
-#     else:
-#         raise ValueError("Invalid id_device")
-
-#     if id_device == 3 or id_device == 4:
-
-#         nr_task = 0
-#         n, m = len(A), len(B[0])
-#         # as many rows as A, as many columns as B
-#         for i in range(n):
-#             for j in range(m):
-#                 for k in range(n):
-#                     fused_multiply_add(A[i][k], B[k][j], C[i][j], id_parameter, nr_algorithm_iteration, iteration, nr_task)
-#                     nr_task += 1
-    
-#     elif id_device == 5 or id_device == 6:
-
-#         n, m = len(A), len(B[0])
-#         # as many rows as A, as many columns as B
-#         for i in range(n):
-#             for j in range(m):
-
-#                 compss_barrier()
-#                 start_inter_time_cpu = time.perf_counter()
-#                 for k in range(n):
-#                     fused_multiply_add(A[i][k], B[k][j], C[i][j])
-
-#                 compss_barrier()
-#                 end_inter_time_cpu = time.perf_counter()
-
-#                 # open the log file in the append mode
-#                 f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
-
-#                 # create a csv writer
-#                 writer = csv.writer(f)
-
-#                 # write the time data 
-#                 data = [id_parameter, nr_algorithm_iteration, iteration, var_null, var_null, var_null, start_inter_time_cpu, end_inter_time_cpu, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
-#                 writer.writerow(data)
-#                 f.close()
+################################
+#### START EXTRA CODE MATMUL FMA
+################################
+def generate_block(size, num_blocks, random_state=None, set_to_zero=False, bid=0, id_device=1, id_cache=1):
+    if id_device == 1 and id_cache == 1:
+        generate_block_func = generate_block_cpu_cold
+    elif id_device == 1 and id_cache == 2:
+        generate_block_func = generate_block_cpu_hot
+    elif id_device == 2 and id_cache == 1:
+        generate_block_func = generate_block_gpu_cold
+    elif id_device == 2 and id_cache == 2:
+        generate_block_func = generate_block_gpu_hot
+    else:
+        raise ValueError("Error. Invalid combination id_device+id_cache")
+    return generate_block_func(size, num_blocks, random_state, set_to_zero, bid)
 
 
-#     else:
-#         compss_barrier()
-#         start_total_execution_time = time.perf_counter()
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(returns=1, cache_returns=False)
+def generate_block_cpu_cold(size, num_blocks, random_state, set_to_zero, bid):
+    """
+    Generate a square block of given size.
+    :param size: <Integer> Block size
+    :param num_blocks: <Integer> Number of blocks
+    :param seed: <Integer> Random seed
+    :param set_to_zero: <Boolean> Set block to zeros
+    :return: Block
+    """
+    r_state = check_random_state(random_state)
+    seed = r_state.randint(np.iinfo(np.int32).max) + bid
+    np.random.seed(seed)
+    if not set_to_zero:
+        b = np.random.random((size, size)).astype(np.float64)
+    else:
+        b = np.zeros((size, size)).astype(np.float64)
+    return b
 
-#         n, m = len(A), len(B[0])
-#         # as many rows as A, as many columns as B
-#         for i in range(n):
-#             for j in range(m):
-#                 for k in range(n):
-#                     fused_multiply_add(A[i][k], B[k][j], C[i][j])
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(returns=1, cache_returns=True)
+def generate_block_cpu_hot(size, num_blocks, random_state, set_to_zero, bid):
+    """
+    Generate a square block of given size.
+    :param size: <Integer> Block size
+    :param num_blocks: <Integer> Number of blocks
+    :param seed: <Integer> Random seed
+    :param set_to_zero: <Boolean> Set block to zeros
+    :return: Block
+    """
+    r_state = check_random_state(random_state)
+    seed = r_state.randint(np.iinfo(np.int32).max) + bid
+    np.random.seed(seed)
+    if not set_to_zero:
+        b = np.random.random((size, size)).astype(np.float64)
+    else:
+        b = np.zeros((size, size)).astype(np.float64)
+    return b
 
-#         compss_barrier()
-#         end_total_execution_time = time.perf_counter()
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(returns=1, cache_returns=False)
+def generate_block_gpu_cold(size, num_blocks, random_state, set_to_zero, bid):
+    """
+    Generate a square block of given size.
+    :param size: <Integer> Block size
+    :param num_blocks: <Integer> Number of blocks
+    :param seed: <Integer> Random seed
+    :param set_to_zero: <Boolean> Set block to zeros
+    :return: Block
+    """
+    # import cupy as cp
 
-#         # open the log file in the append mode
-#         f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+    r_state = check_random_state(random_state)
+    seed = r_state.randint(cp.iinfo(cp.int32).max) + bid
+    cp.random.seed(seed)
+    if not set_to_zero:
+        b = cp.random.random((size, size)).astype(cp.float64)
+    else:
+        b = cp.zeros((size, size)).astype(cp.float64)
+    return b
 
-#         # create a csv writer
-#         writer = csv.writer(f)
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(returns=1, cache_returns=True)
+def generate_block_gpu_hot(size, num_blocks, random_state, set_to_zero, bid):
+    """
+    Generate a square block of given size.
+    :param size: <Integer> Block size
+    :param num_blocks: <Integer> Number of blocks
+    :param seed: <Integer> Random seed
+    :param set_to_zero: <Boolean> Set block to zeros
+    :return: Block
+    """
+    # import cupy as cp
 
-#         # write the time data 
-#         data = [id_parameter, nr_algorithm_iteration, var_null, var_null, start_total_execution_time, end_total_execution_time, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
-#         writer.writerow(data)
-#         f.close()
+    r_state = check_random_state(random_state)
+    seed = r_state.randint(cp.iinfo(cp.int32).max) + bid
+    cp.random.seed(seed)
+    if not set_to_zero:
+        b = cp.random.random((size, size)).astype(cp.float64)
+    else:
+        b = cp.zeros((size, size)).astype(cp.float64)
+    return b
 
-# @constraint(computing_units="${ComputingUnitsCPU}")
-# @task(C=INOUT)
-# def fused_multiply_add_cpu(A, B, C):
-#     """
-#     Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
-#     :param A: Block A
-#     :param B: Block B
-#     :param C: Result Block
-#     :return: None
-#     """
-#     C += np.dot(A, B)
+def dot(A, B, C, id_device, id_cache, id_parameter, nr_algorithm_iteration):
+    """
+    A COMPSs blocked matmul algorithm.
+    :param A: Block A
+    :param B: Block B
+    :param C: Result Block
+    :id_device: int (default=1)
+        Flag to define the device function implementation according to resource (CPU: 1, GPU: 2, GPU intra: 3)
+    :id_parameter: int (default=0)
+        Variable to identify the parameter id
+    :nr_algorithm_iteration: int (default=0)
+        Variable to identify the number of the execution of the algorithm
+    :return: None
+    """
 
-# @constraint(computing_units="${ComputingUnitsCPU}")
-# @task(C=INOUT)
-# def fused_multiply_add_cpu_intra_time(A, B, C, id_parameter, nr_algorithm_iteration, iteration, nr_task):
-#     # open the log file in the append mode
-#     f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+    iteration = 0
 
-#     # create a csv writer
-#     writer = csv.writer(f)
+    if id_device == 1 and id_cache == 1:
+        fused_multiply_add = fused_multiply_add_cpu_cold
+    elif id_device == 1 and id_cache == 2:
+        fused_multiply_add = fused_multiply_add_cpu_hot
+    elif id_device == 2 and id_cache == 1:
+        fused_multiply_add = fused_multiply_add_gpu_cold
+    elif id_device == 2 and id_cache == 2:
+        fused_multiply_add = fused_multiply_add_gpu_hot
+    else:
+        raise ValueError("Error. Invalid combination id_device+id_cache")
 
-#     start_intra_device = time.perf_counter()
+    # compss_barrier()
+    start_total_execution_time = time.perf_counter()
 
-#     C += np.dot(A, B)
+    n, m = len(A), len(B[0])
+    # as many rows as A, as many columns as B
+    for i in range(n):
+        for j in range(m):
+            for k in range(n):
+                fused_multiply_add(A[i][k], B[k][j], C[i][j])
 
-#     end_intra_device = time.perf_counter()
-#     intra_task_execution_device_func = end_intra_device - start_intra_device
+    compss_barrier()
+    end_total_execution_time = time.perf_counter()
 
-#     # write the time data
-#     data = [id_parameter, nr_algorithm_iteration, iteration, nr_task, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
-#     writer.writerow(data)
-#     f.close()
+    print("==== TIME EXECUTION ==== ", end_total_execution_time-start_total_execution_time)
 
+    # # open the log file in the append mode
+    # f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
 
-# @constraint(processors=[
-#                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
-#                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
-#             ]
-# )
-# @task(C=INOUT)
-# def fused_multiply_add_gpu(A, B, C):
-#     """
-#     Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
-#     :param A: Block A
-#     :param B: Block B
-#     :param C: Result Block
-#     :return: None
-#     """
-#     C += cp.asnumpy(cp.dot(cp.asarray(A), cp.asarray(B)))
+    # # create a csv writer
+    # writer = csv.writer(f)
 
+    # # write the time data 
+    # data = [id_parameter, nr_algorithm_iteration, var_null, var_null, start_total_execution_time, end_total_execution_time, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
+    # writer.writerow(data)
+    # f.close()
 
-# @constraint(processors=[
-#                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
-#                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
-#             ]
-# )
-# @task(C=INOUT)
-# def fused_multiply_add_gpu_intra_time(A, B, C, id_parameter, nr_algorithm_iteration, iteration, nr_task):
-#     """
-#     Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
-#     :param A: Block A
-#     :param B: Block B
-#     :param C: Result Block
-#     :return: None
-#     """
-#     # open the log file in the append mode
-#     f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(A={Cache: False}, B={Cache: False}, C={Type: INOUT, Cache: False}, returns=np.array, cache_returns=False)
+def fused_multiply_add_cpu_cold(A, B, C):
+    """
+    Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
+    :param A: Block A
+    :param B: Block B
+    :param C: Result Block
+    :return: None
+    """
+    C += np.dot(A, B)
 
-#     # create a csv writer
-#     writer = csv.writer(f)
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(A={Cache: True}, B={Cache: True}, C={Type: INOUT, Cache: False}, returns=np.array, cache_returns=True)
+def fused_multiply_add_cpu_hot(A, B, C):
+    """
+    Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
+    :param A: Block A
+    :param B: Block B
+    :param C: Result Block
+    :return: None
+    """
+    C += np.dot(A, B)
 
-#     # creating CUDA events for intra device time measurement
-#     start_gpu_intra_device = cp.cuda.Event()
-#     end_gpu_intra_device = cp.cuda.Event()
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ]
+)
+@task(A={Cache: False}, B={Cache: False}, C={Type: INOUT, Cache: False}, returns=np.array, cache_returns=False)
+def fused_multiply_add_gpu_cold(A, B, C):
+    """
+    Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
+    :param A: Block A
+    :param B: Block B
+    :param C: Result Block
+    :return: None
+    """
+    # import cupy as cp
+    C += cp.dot(cp.asarray(A), cp.asarray(B))
 
-#     # Measure communication time 1
-#     start_communication_time_1 = time.perf_counter()
-#     A_gpu, B_gpu, C_gpu = cp.asarray(A), cp.asarray(B), cp.asarray(C)
-#     end_communication_time_1 = time.perf_counter()
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ]
+)
+@task(A={Cache: True}, B={Cache: True}, C={Type: INOUT, Cache: False}, returns=np.array, cache_returns=True)
+def fused_multiply_add_gpu_hot(A, B, C):
+    """
+    Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
+    :param A: Block A
+    :param B: Block B
+    :param C: Result Block
+    :return: None
+    """
+    # import cupy as cp
+    C += cp.dot(cp.asarray(A), cp.asarray(B))
 
-#     # Measure intra task execution time (device function) 
-#     start_gpu_intra_device.record()
+################################
+#### EXTRA CODE MATMUL FMA
+################################
 
-#     C_gpu += cp.dot(A_gpu, B_gpu)
-
-#     end_gpu_intra_device.record()
-#     end_gpu_intra_device.synchronize()
-#     intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
-
-#     # Measure communication time 2
-#     start_communication_time_2 = time.perf_counter()
-#     C_temp = cp.asnumpy(C_gpu)
-#     end_communication_time_2 = time.perf_counter()
-
-#     # print('C_temp')
-#     # print(C_temp)
-
-#     C += np.dot(A, B)
-#     # C = C + cp.asnumpy(C_gpu)
-
-#     # print('C')
-#     # print(C)
-
-#     # write the time data
-#     data = [id_parameter, nr_algorithm_iteration, iteration, nr_task, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, 0, 0, 0, 0, datetime.datetime.now()]
-#     writer.writerow(data)
-#     f.close()
 def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False, id_device=1, id_cache=1, cd_function=1, id_parameter=0, nr_algorithm_iteration=0):
     """ Matrix multiplication with a possible transpose of the input.
 
@@ -1968,7 +1968,7 @@ def _matmul_cpu_hot(a, b, transpose_a, transpose_b):
             ])
 @task(a={Cache: False}, b={Cache: False}, returns=cp.array, cache_returns=True)
 def _matmul_gpu_cold(a, b, transpose_a, transpose_b):
-    import cupy as cp
+    # import cupy as cp
 
     a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
 
@@ -1987,7 +1987,7 @@ def _matmul_gpu_cold(a, b, transpose_a, transpose_b):
             ])
 @task(a={Cache: True}, b={Cache: True}, returns=cp.array, cache_returns=True)
 def _matmul_gpu_hot(a, b, transpose_a, transpose_b):
-    import cupy as cp
+    # import cupy as cp
 
     a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
 
@@ -2030,7 +2030,7 @@ def _add_cpu_hot(block1, block2):
             ])
 @task(block1={Cache: False}, block2={Cache: False}, returns=cp.array, cache_returns=False)
 def _add_gpu_cold(block1, block2):
-    import cupy as cp
+    # import cupy as cp
     # If task inputs are cached in CPU memory, convert them to cupy array first
     if check_array_type(block1)==1 and check_array_type(block2)==1:
         block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
@@ -2047,7 +2047,7 @@ def _add_gpu_cold(block1, block2):
             ])
 @task(block1={Cache: True}, block2={Cache: True}, returns=cp.array, cache_returns=True)
 def _add_gpu_hot(block1, block2):
-    import cupy as cp
+    # import cupy as cp
     # If task inputs are cached in CPU memory, convert them to cupy array first
     if check_array_type(block1)==1 and check_array_type(block2)==1:
         block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
@@ -2217,7 +2217,7 @@ def matsubtract(a: Array, b: Array):
             ])
 @task(returns=np.array)
 def _subtract_gpu(block1, block2):
-    import cupy as cp
+    # import cupy as cp
 
     block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
     res = cp.asnumpy(cp.subtract(block1_gpu, block2_gpu))

@@ -2,7 +2,7 @@ import os
 
 from dislib.data.array import random_array, apply_along_axis, array, zeros, \
     full, identity, eye, matmul, concat_rows, concat_columns, matadd, \
-    matsubtract
+    matsubtract, generate_block, dot
 from dislib.data.tensor import random_tensors, from_array, from_pt_tensor, \
     create_ds_tensor
 from dislib.data.io import load_svmlight_file, load_npy_file, load_txt_file, \
@@ -35,7 +35,7 @@ __all__ = ['array', 'random_array', 'zeros', 'full', 'identity', 'eye',
            'load_mdcrd_file', 'matmul', 'matadd', 'matsubtract',
            'random_tensors', 'from_array', 'from_pt_tensor',
            'create_ds_tensor', 'save_txt', 'concat_rows',
-           'concat_columns', 'apply_along_axis', 'kron', 'svd']
+           'concat_columns', 'apply_along_axis', 'kron', 'svd', 'generate_block', 'dot']
 
 gpu_envar = os.environ.get('DISLIB_GPU_AVAILABLE', 'False')
 __gpu_available__ = gpu_envar.lower() == 'true'
