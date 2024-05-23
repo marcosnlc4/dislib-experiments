@@ -2142,7 +2142,9 @@ def _multiply_block_groups(hblock, vblock, id_device, id_cache, cd_function, id_
     return blocks[0], nr_task_matmul_func, nr_task_add_func
 
 
-def matsubtract(a: Array, b: Array):
+def matsubtract(a: Array, b: Array,
+                id_device=1, id_cache=1,
+                id_parameter=0, nr_algorithm_iteration=0):
     """ Subtraction of two matrices.
 
         Parameters
@@ -2151,6 +2153,14 @@ def matsubtract(a: Array, b: Array):
             First matrix.
         b : ds-array
             Second matrix.
+        id_device: int (default=1)
+            Flag to define the device type (CPU: 1, GPU: 2, GPU intra: 3)
+        id_cache: int (default=1)
+            Flag to define the cache type (COLD: 1, HOT: 2)
+        id_parameter: int (default=0)
+            Variable to identify the parameter id
+        nr_algorithm_iteration: int (default=0)
+            Variable to identify the number of the execution of the algorithm
 
         Returns
         -------
@@ -2197,7 +2207,7 @@ def matsubtract(a: Array, b: Array):
     n_blocks = (len(a._blocks), len(a._blocks[0]))
     blocks = [[] for _ in range(len(a._blocks))]
     for i in range(n_blocks[0]):
-        blocks[i] = _subtract_block_groups(a._blocks[i], b._blocks[i])
+        blocks[i] = _subtract_block_groups(a._blocks[i], b._blocks[i], id_device, id_cache, id_parameter, nr_algorithm_iteration)
 
     new_block_size = (
         a._reg_shape[0],
@@ -2230,21 +2240,101 @@ def _subtract_gpu(block1, block2):
 def _subtract(block1, block2):
     return block1 - block2
 
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(block1={Cache: False}, block2={Cache: False}, returns=np.array, cache_returns=False)
+def _subtract_cpu_cold(block1, block2):
+    # If task inputs are cached in CPU memory, proceed with the usual execution
+    if check_array_type(block1)==1 and check_array_type(block2)==1:
+        return block1 - block2
+    # If task inputs are cached in GPU memory, convert them to numpy arrays first
+    elif check_array_type(block1)==2 and check_array_type(block2)==2:
+        return cp.asnumpy(block1) - cp.asnumpy(block2)
+    else:
+        raise ValueError("Error. Invalid array type")
 
-def _subtract_block_groups(hblock, vblock):
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(block1={Cache: True}, block2={Cache: True}, returns=np.array, cache_returns=True)
+def _subtract_cpu_hot(block1, block2):
+    # If task inputs are cached in CPU memory, proceed with the usual execution
+    if check_array_type(block1)==1 and check_array_type(block2)==1:
+        return block1 - block2
+    # If task inputs are cached in GPU memory, convert them to numpy arrays first
+    elif check_array_type(block1)==2 and check_array_type(block2)==2:
+        return cp.asnumpy(block1) - cp.asnumpy(block2)
+    else:
+        raise ValueError("Error. Invalid array type")
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ])
+@task(block1={Cache: False}, block2={Cache: False}, returns=np.array, cache_returns=False)
+def _subtract_gpu_cold(block1, block2):
+    # import cupy as cp
+    # If task inputs are cached in CPU memory, convert them to cupy array first
+    if check_array_type(block1)==1 and check_array_type(block2)==1:
+        block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
+        res = cp.asnumpy(cp.subtract(block1_gpu, block2_gpu))
+        del block1_gpu, block2_gpu
+    # If task inputs are cached in GPU memory, proceed with the usual execution
+    elif check_array_type(block1)==2 and check_array_type(block2)==2:
+        res = cp.asnumpy(cp.subtract(block1, block2))
+    return res
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ])
+@task(block1={Cache: True}, block2={Cache: True}, returns=np.array, cache_returns=True)
+def _subtract_gpu_hot(block1, block2):
+    # import cupy as cp
+    # If task inputs are cached in CPU memory, convert them to cupy array first
+    if check_array_type(block1)==1 and check_array_type(block2)==1:
+        block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
+        res = cp.asnumpy(cp.subtract(block1_gpu, block2_gpu))
+        del block1_gpu, block2_gpu
+    # If task inputs are cached in GPU memory, proceed with the usual execution
+    elif check_array_type(block1)==2 and check_array_type(block2)==2:
+        res = cp.asnumpy(cp.subtract(block1, block2))
+    return res
+
+# Check array type (1 numpy; 2 cupy)
+def check_array_type(arr):
+    if isinstance(arr, np.ndarray):
+        return 1
+    elif isinstance(arr, cp.ndarray):
+        return 2
+    else:
+        raise ValueError("Error. Invalid array type")
+
+
+def _subtract_block_groups(hblock, vblock, id_device, id_cache, id_parameter, nr_algorithm_iteration):
     blocks = []
 
-    if dislib.__gpu_available__:
-        subtract_func = _subtract_gpu
+    if id_device == 1 and id_cache == 1:
+        subtract_func = _subtract_cpu_cold
+    elif id_device == 1 and id_cache == 2:
+        subtract_func = _subtract_cpu_hot
+    elif id_device == 2 and id_cache == 1:
+        subtract_func = _subtract_gpu_cold
+    elif id_device == 2 and id_cache == 2:
+        subtract_func = _subtract_gpu_hot
+    # elif id_device == 4:
+    #     subtract_func = _subtract_gpu_cold_intra_time
+    # elif id_device == 44:
+    #     subtract_func = _subtract_gpu_cold_intra_time
     else:
-        subtract_func = _subtract
+        raise ValueError("Error. Invalid combination id_device+id_cache")
+
 
     for blocki, blockj in zip(hblock, vblock):
         blocks.append(subtract_func(blocki, blockj))
     return blocks
 
 
-def matadd(a: Array, b: Array):
+def matadd(a: Array, b: Array,
+           id_device=1, id_cache=1,
+           id_parameter=0, nr_algorithm_iteration=0):
     """ Addition of two matrices.
 
         Parameters
@@ -2253,6 +2343,14 @@ def matadd(a: Array, b: Array):
             First matrix.
         b : ds-array
             Second matrix.
+        id_device: int (default=1)
+            Flag to define the device type (CPU: 1, GPU: 2, GPU intra: 3)
+        id_cache: int (default=1)
+            Flag to define the cache type (COLD: 1, HOT: 2)
+        id_parameter: int (default=0)
+            Variable to identify the parameter id
+        nr_algorithm_iteration: int (default=0)
+            Variable to identify the number of the execution of the algorithm
 
         Returns
         -------
@@ -2298,8 +2396,9 @@ def matadd(a: Array, b: Array):
 
     n_blocks = (len(a._blocks), len(a._blocks[0]))
     blocks = [[] for _ in range(len(a._blocks))]
+    
     for i in range(n_blocks[0]):
-        blocks[i] = _add_block_groups(a._blocks[i], b._blocks[i])
+        blocks[i] = _add_block_groups(a._blocks[i], b._blocks[i], id_device, id_cache, id_parameter, nr_algorithm_iteration)
 
     new_block_size = (
         a._reg_shape[0],
@@ -2488,13 +2587,23 @@ def concat_rows(a, b):
                  sparse=a._sparse)
 
 
-def _add_block_groups(hblock, vblock):
+def _add_block_groups(hblock, vblock, id_device, id_cache, id_parameter, nr_algorithm_iteration):
     blocks = []
 
-    if dislib.__gpu_available__ == 'gpu':
-        add_func = _add_gpu
+    if id_device == 1 and id_cache == 1:
+        add_func = _add_cpu_cold
+    elif id_device == 1 and id_cache == 2:
+        add_func = _add_cpu_hot
+    elif id_device == 2 and id_cache == 1:
+        add_func = _add_gpu_cold
+    elif id_device == 2 and id_cache == 2:
+        add_func = _add_gpu_hot
+    # elif id_device == 4:
+    #     add_func = _add_cpu_cold_intra_time
+    # elif id_device == 44:
+    #     add_func = _add_cpu_hot_intra_time
     else:
-        add_func = _add_cpu
+        raise ValueError("Error. Invalid combination id_device+id_cache")
 
     for blocki, blockj in zip(hblock, vblock):
         blocks.append(add_func(blocki, blockj))
