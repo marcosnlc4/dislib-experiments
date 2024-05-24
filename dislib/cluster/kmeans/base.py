@@ -136,9 +136,9 @@ class KMeans(BaseEstimator):
             partial_sum_func = _partial_sum_gpu_cold
         elif self.id_device == 2 and self.id_cache == 2:
             partial_sum_func = _partial_sum_gpu_hot
-        elif self.id_device == 4:
+        elif self.id_device == 4 and self.id_cache == 1:
             partial_sum_func = _partial_sum_gpu_cold_intra_time
-        elif self.id_device == 44:
+        elif self.id_device == 4 and self.id_cache == 2:
             partial_sum_func = _partial_sum_gpu_hot_intra_time
         else:
             raise ValueError("Error. Invalid combination id_device+id_cache")
@@ -456,7 +456,7 @@ def _partial_sum_gpu_hot(blocks, centers):
         arr = blocks[0][0]
     else:
         arr = Array._merge_blocks(blocks)
-    arr_gpu = cp.asarray(arr).astype(cp.float32)
+    arr_gpu = arr.astype(cp.float32)
     centers_gpu = cp.asarray(centers).astype(cp.float32)
     arr = None
 

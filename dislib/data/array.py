@@ -2,7 +2,6 @@ import operator
 from collections import defaultdict, deque
 from math import ceil
 import dislib
-import cupy as cp
 import numpy as np
 from pycompss.api.api import compss_barrier, compss_wait_on, compss_delete_object
 from pycompss.api.constraint import constraint
@@ -451,6 +450,7 @@ class Array(object):
             ret = sp.bmat(blocks, format=b0.getformat(), dtype=b0.dtype)
         else:
             #GPU CACHE
+            import cupy as cp
             if type(b0) == cp.ndarray:
                 try:
                     blocks = cp.asarray(np.block(blocks))
@@ -1620,6 +1620,10 @@ def generate_block(size, num_blocks, random_state=None, set_to_zero=False, bid=0
         generate_block_func = generate_block_gpu_cold
     elif id_device == 2 and id_cache == 2:
         generate_block_func = generate_block_gpu_hot
+    # elif id_device == 4 and id_cache == 2:
+    #     generate_block_func = generate_block_gpu_cold_intra_time
+    # elif id_device == 4 and id_cache == 2:
+    #     generate_block_func = generate_block_gpu_hot_intra_time
     else:
         raise ValueError("Error. Invalid combination id_device+id_cache")
     return generate_block_func(size, num_blocks, random_state, set_to_zero, bid)
@@ -1676,7 +1680,7 @@ def generate_block_gpu_cold(size, num_blocks, random_state, set_to_zero, bid):
     :param set_to_zero: <Boolean> Set block to zeros
     :return: Block
     """
-    # import cupy as cp
+    import cupy as cp
 
     r_state = check_random_state(random_state)
     seed = r_state.randint(cp.iinfo(cp.int32).max) + bid
@@ -1698,7 +1702,7 @@ def generate_block_gpu_hot(size, num_blocks, random_state, set_to_zero, bid):
     :param set_to_zero: <Boolean> Set block to zeros
     :return: Block
     """
-    # import cupy as cp
+    import cupy as cp
 
     r_state = check_random_state(random_state)
     seed = r_state.randint(cp.iinfo(cp.int32).max) + bid
@@ -1764,7 +1768,7 @@ def dot(A, B, C, id_device, id_cache, id_parameter, nr_algorithm_iteration):
     # f.close()
 
 @constraint(computing_units="${ComputingUnitsCPU}")
-@task(A={Cache: False}, B={Cache: False}, C={Type: INOUT, Cache: False}, returns=np.array, cache_returns=False)
+@task(A={Cache: False}, B={Cache: False}, C={Type: INOUT, Cache: False}, returns=1, cache_returns=False)
 def fused_multiply_add_cpu_cold(A, B, C):
     """
     Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
@@ -1776,7 +1780,7 @@ def fused_multiply_add_cpu_cold(A, B, C):
     C += np.dot(A, B)
 
 @constraint(computing_units="${ComputingUnitsCPU}")
-@task(A={Cache: True}, B={Cache: True}, C={Type: INOUT, Cache: False}, returns=np.array, cache_returns=True)
+@task(A={Cache: True}, B={Cache: True}, C={Type: INOUT, Cache: False}, returns=1, cache_returns=True)
 def fused_multiply_add_cpu_hot(A, B, C):
     """
     Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
@@ -1792,7 +1796,7 @@ def fused_multiply_add_cpu_hot(A, B, C):
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ]
 )
-@task(A={Cache: False}, B={Cache: False}, C={Type: INOUT, Cache: False}, returns=np.array, cache_returns=False)
+@task(A={Cache: False}, B={Cache: False}, C={Type: INOUT, Cache: False}, returns=1, cache_returns=False)
 def fused_multiply_add_gpu_cold(A, B, C):
     """
     Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
@@ -1801,7 +1805,7 @@ def fused_multiply_add_gpu_cold(A, B, C):
     :param C: Result Block
     :return: None
     """
-    # import cupy as cp
+    import cupy as cp
     C += cp.dot(cp.asarray(A), cp.asarray(B))
 
 @constraint(processors=[
@@ -1809,7 +1813,7 @@ def fused_multiply_add_gpu_cold(A, B, C):
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ]
 )
-@task(A={Cache: True}, B={Cache: True}, C={Type: INOUT, Cache: False}, returns=np.array, cache_returns=True)
+@task(A={Cache: True}, B={Cache: True}, C={Type: INOUT, Cache: False}, returns=1, cache_returns=True)
 def fused_multiply_add_gpu_hot(A, B, C):
     """
     Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
@@ -1818,7 +1822,7 @@ def fused_multiply_add_gpu_hot(A, B, C):
     :param C: Result Block
     :return: None
     """
-    # import cupy as cp
+    import cupy as cp
     C += cp.dot(cp.asarray(A), cp.asarray(B))
 
 ################################
@@ -1900,8 +1904,8 @@ def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False, id_device=1
         nr_task_matmul_func = 0
         nr_task_add_func = 0
 
-        compss_barrier()
-        start_total_execution_time = time.perf_counter()
+        # compss_barrier()
+        # start_total_execution_time = time.perf_counter()
         for i in range(n_blocks[0]):
             for j in range(n_blocks[1]):
                 hblock = a_blocks[i]
@@ -1912,19 +1916,19 @@ def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False, id_device=1
                                                     nr_task_matmul_func, nr_task_add_func,
                                                     transpose_a, transpose_b)
 
-        compss_barrier()
-        end_total_execution_time = time.perf_counter()
+        # compss_barrier()
+        # end_total_execution_time = time.perf_counter()
 
-        # open the log file in the append mode
-        f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+        # # open the log file in the append mode
+        # f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
 
-        # create a csv writer
-        writer = csv.writer(f)
+        # # create a csv writer
+        # writer = csv.writer(f)
 
-        # write the time data 
-        data = [id_parameter, nr_algorithm_iteration, var_null, var_null, start_total_execution_time, end_total_execution_time, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
-        writer.writerow(data)
-        f.close()
+        # # write the time data 
+        # data = [id_parameter, nr_algorithm_iteration, var_null, var_null, start_total_execution_time, end_total_execution_time, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
+        # writer.writerow(data)
+        # f.close()
 
     else:
         nr_task_matmul_func = 0
@@ -1958,7 +1962,7 @@ def _matmul_cpu_cold(a, b, transpose_a, transpose_b):
     return (a.T if transpose_a else a) @ (b.T if transpose_b else b)
 
 @constraint(computing_units="${ComputingUnitsCPU}")
-@task(a={Cache: True}, b={Cache: True}, returns=np.array, cache_returns=True)
+@task(a={Cache: True}, b={Cache: True}, returns=1, cache_returns=True)
 def _matmul_cpu_hot(a, b, transpose_a, transpose_b):
     return (a.T if transpose_a else a) @ (b.T if transpose_b else b)
 
@@ -1966,9 +1970,9 @@ def _matmul_cpu_hot(a, b, transpose_a, transpose_b):
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ])
-@task(a={Cache: False}, b={Cache: False}, returns=cp.array, cache_returns=True)
+@task(a={Cache: False}, b={Cache: False}, returns=1, cache_returns=True)
 def _matmul_gpu_cold(a, b, transpose_a, transpose_b):
-    # import cupy as cp
+    import cupy as cp
 
     a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
 
@@ -1985,9 +1989,9 @@ def _matmul_gpu_cold(a, b, transpose_a, transpose_b):
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ])
-@task(a={Cache: True}, b={Cache: True}, returns=cp.array, cache_returns=True)
+@task(a={Cache: True}, b={Cache: True}, returns=1, cache_returns=True)
 def _matmul_gpu_hot(a, b, transpose_a, transpose_b):
-    # import cupy as cp
+    import cupy as cp
 
     a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
 
@@ -2001,25 +2005,27 @@ def _matmul_gpu_hot(a, b, transpose_a, transpose_b):
     return res
 
 @constraint(computing_units="${ComputingUnitsCPU}")
-@task(block1={Cache: False}, block2={Cache: False}, returns=np.array, cache_returns=False)
+@task(block1={Cache: False}, block2={Cache: False}, returns=1, cache_returns=False)
 def _add_cpu_cold(block1, block2):
     # If task inputs are cached in CPU memory, proceed with the usual execution
     if check_array_type(block1)==1 and check_array_type(block2)==1:
         return block1 + block2
     # If task inputs are cached in GPU memory, convert them to numpy arrays first
     elif check_array_type(block1)==2 and check_array_type(block2)==2:
+        import cupy as cp
         return cp.asnumpy(block1) + cp.asnumpy(block2)
     else:
         raise ValueError("Error. Invalid array type")
 
 @constraint(computing_units="${ComputingUnitsCPU}")
-@task(block1={Cache: True}, block2={Cache: True}, returns=np.array, cache_returns=True)
+@task(block1={Cache: True}, block2={Cache: True}, returns=1, cache_returns=True)
 def _add_cpu_hot(block1, block2):
     # If task inputs are cached in CPU memory, proceed with the usual execution
     if check_array_type(block1)==1 and check_array_type(block2)==1:
         return block1 + block2
     # If task inputs are cached in GPU memory, convert them to numpy arrays first
     elif check_array_type(block1)==2 and check_array_type(block2)==2:
+        import cupy as cp
         return cp.asnumpy(block1) + cp.asnumpy(block2)
     else:
         raise ValueError("Error. Invalid array type")
@@ -2028,9 +2034,9 @@ def _add_cpu_hot(block1, block2):
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ])
-@task(block1={Cache: False}, block2={Cache: False}, returns=cp.array, cache_returns=False)
+@task(block1={Cache: False}, block2={Cache: False}, returns=1, cache_returns=False)
 def _add_gpu_cold(block1, block2):
-    # import cupy as cp
+    import cupy as cp
     # If task inputs are cached in CPU memory, convert them to cupy array first
     if check_array_type(block1)==1 and check_array_type(block2)==1:
         block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
@@ -2045,9 +2051,9 @@ def _add_gpu_cold(block1, block2):
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ])
-@task(block1={Cache: True}, block2={Cache: True}, returns=cp.array, cache_returns=True)
+@task(block1={Cache: True}, block2={Cache: True}, returns=1, cache_returns=True)
 def _add_gpu_hot(block1, block2):
-    # import cupy as cp
+    import cupy as cp
     # If task inputs are cached in CPU memory, convert them to cupy array first
     if check_array_type(block1)==1 and check_array_type(block2)==1:
         block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
@@ -2057,15 +2063,6 @@ def _add_gpu_hot(block1, block2):
     elif check_array_type(block1)==2 and check_array_type(block2)==2:
         res = cp.add(block1, block2)
     return res
-
-# Check array type (1 numpy; 2 cupy)
-def check_array_type(arr):
-    if isinstance(arr, np.ndarray):
-        return 1
-    elif isinstance(arr, cp.ndarray):
-        return 2
-    else:
-        raise ValueError("Error. Invalid array type")
 
 def _multiply_block_groups(hblock, vblock, id_device, id_cache, cd_function, id_parameter, nr_algorithm_iteration,
                            nr_task_matmul_func, nr_task_add_func,
@@ -2241,7 +2238,7 @@ def _subtract(block1, block2):
     return block1 - block2
 
 @constraint(computing_units="${ComputingUnitsCPU}")
-@task(block1={Cache: False}, block2={Cache: False}, returns=np.array, cache_returns=False)
+@task(block1={Cache: False}, block2={Cache: False}, returns=1, cache_returns=False)
 def _subtract_cpu_cold(block1, block2):
     # If task inputs are cached in CPU memory, proceed with the usual execution
     if check_array_type(block1)==1 and check_array_type(block2)==1:
@@ -2253,13 +2250,14 @@ def _subtract_cpu_cold(block1, block2):
         raise ValueError("Error. Invalid array type")
 
 @constraint(computing_units="${ComputingUnitsCPU}")
-@task(block1={Cache: True}, block2={Cache: True}, returns=np.array, cache_returns=True)
+@task(block1={Cache: True}, block2={Cache: True}, returns=1, cache_returns=True)
 def _subtract_cpu_hot(block1, block2):
     # If task inputs are cached in CPU memory, proceed with the usual execution
     if check_array_type(block1)==1 and check_array_type(block2)==1:
         return block1 - block2
     # If task inputs are cached in GPU memory, convert them to numpy arrays first
     elif check_array_type(block1)==2 and check_array_type(block2)==2:
+        import cupy as cp
         return cp.asnumpy(block1) - cp.asnumpy(block2)
     else:
         raise ValueError("Error. Invalid array type")
@@ -2268,9 +2266,9 @@ def _subtract_cpu_hot(block1, block2):
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ])
-@task(block1={Cache: False}, block2={Cache: False}, returns=np.array, cache_returns=False)
+@task(block1={Cache: False}, block2={Cache: False}, returns=1, cache_returns=False)
 def _subtract_gpu_cold(block1, block2):
-    # import cupy as cp
+    import cupy as cp
     # If task inputs are cached in CPU memory, convert them to cupy array first
     if check_array_type(block1)==1 and check_array_type(block2)==1:
         block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
@@ -2285,9 +2283,9 @@ def _subtract_gpu_cold(block1, block2):
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ])
-@task(block1={Cache: True}, block2={Cache: True}, returns=np.array, cache_returns=True)
+@task(block1={Cache: True}, block2={Cache: True}, returns=1, cache_returns=True)
 def _subtract_gpu_hot(block1, block2):
-    # import cupy as cp
+    import cupy as cp
     # If task inputs are cached in CPU memory, convert them to cupy array first
     if check_array_type(block1)==1 and check_array_type(block2)==1:
         block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
@@ -2300,6 +2298,8 @@ def _subtract_gpu_hot(block1, block2):
 
 # Check array type (1 numpy; 2 cupy)
 def check_array_type(arr):
+    import cupy as cp
+
     if isinstance(arr, np.ndarray):
         return 1
     elif isinstance(arr, cp.ndarray):
@@ -3048,13 +3048,13 @@ def _transpose(blocks, out_blocks):
 
 
 @constraint(computing_units="${ComputingUnitsCPU}")
-@task(returns=np.array, cache_returns=False)
+@task(returns=1, cache_returns=False)
 def _random_block_cpu_cold(shape, seed):
     np.random.seed(seed)
     return np.random.random(shape).astype(np.float64)
 
 @constraint(computing_units="${ComputingUnitsCPU}")
-@task(returns=np.array, cache_returns=True)
+@task(returns=1, cache_returns=True)
 def _random_block_cpu_hot(shape, seed):
     np.random.seed(seed)
     return np.random.random(shape).astype(np.float64)
@@ -3063,8 +3063,9 @@ def _random_block_cpu_hot(shape, seed):
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ])
-@task(returns=cp.array, cache_returns=False)
+@task(returns=1, cache_returns=False)
 def _random_block_gpu_cold(shape, seed):
+    import cupy as cp
     cp.random.seed(seed)
     return cp.random.rand(*shape, dtype=cp.float64)
 
@@ -3072,8 +3073,9 @@ def _random_block_gpu_cold(shape, seed):
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ])
-@task(returns=cp.array, cache_returns=True)
+@task(returns=1, cache_returns=True)
 def _random_block_gpu_hot(shape, seed):
+    import cupy as cp
     cp.random.seed(seed)
     return cp.random.rand(*shape, dtype=cp.float64)
 
