@@ -1738,34 +1738,32 @@ def dot(A, B, C, id_device, id_cache, id_parameter, nr_algorithm_iteration):
         fused_multiply_add = fused_multiply_add_gpu_cold
     elif id_device == 2 and id_cache == 2:
         fused_multiply_add = fused_multiply_add_gpu_hot
+    elif id_device == 4 and id_cache == 1:
+        fused_multiply_add = fused_multiply_add_gpu_cold_intra_time
+    elif id_device == 4 and id_cache == 2:
+        fused_multiply_add = fused_multiply_add_gpu_hot_intra_time
     else:
         raise ValueError("Error. Invalid combination id_device+id_cache")
 
-    # compss_barrier()
-    start_total_execution_time = time.perf_counter()
-
-    n, m = len(A), len(B[0])
-    # as many rows as A, as many columns as B
-    for i in range(n):
-        for j in range(m):
-            for k in range(n):
-                fused_multiply_add(A[i][k], B[k][j], C[i][j])
-
-    compss_barrier()
-    end_total_execution_time = time.perf_counter()
-
-    print("==== TIME EXECUTION ==== ", end_total_execution_time-start_total_execution_time)
-
-    # # open the log file in the append mode
-    # f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
-
-    # # create a csv writer
-    # writer = csv.writer(f)
-
-    # # write the time data 
-    # data = [id_parameter, nr_algorithm_iteration, var_null, var_null, start_total_execution_time, end_total_execution_time, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
-    # writer.writerow(data)
-    # f.close()
+    if id_device == 3 or id_device == 4:
+        
+        nr_task = 0
+        n, m = len(A), len(B[0])
+        # as many rows as A, as many columns as B
+        for i in range(n):
+            for j in range(m):
+                for k in range(n):
+                    fused_multiply_add(A[i][k], B[k][j], C[i][j], id_parameter, nr_algorithm_iteration, iteration, nr_task)
+                    nr_task += 1
+    
+    else:
+        n, m = len(A), len(B[0])
+        # as many rows as A, as many columns as B
+        for i in range(n):
+            for j in range(m):
+                for k in range(n):
+                    fused_multiply_add(A[i][k], B[k][j], C[i][j])
+                    nr_task += 1
 
 @constraint(computing_units="${ComputingUnitsCPU}")
 @task(A={Cache: False}, B={Cache: False}, C={Type: INOUT, Cache: False}, returns=1, cache_returns=False)
@@ -1813,6 +1811,58 @@ def fused_multiply_add_gpu_cold(A, B, C):
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ]
 )
+@task(A={Cache: False}, B={Cache: False}, C={Type: INOUT, Cache: False}, returns=1, cache_returns=False)
+def fused_multiply_add_gpu_cold_intra_time(A, B, C, id_parameter, nr_algorithm_iteration, iteration, nr_task):
+    """
+    Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
+    :param A: Block A
+    :param B: Block B
+    :param C: Result Block
+    :return: None
+    """
+    import cupy as cp
+
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    # creating CUDA events for intra device time measurement
+    start_gpu_intra_device = cp.cuda.Event()
+    end_gpu_intra_device = cp.cuda.Event()
+
+    # Measure communication time 1
+    start_communication_time_1 = time.perf_counter()
+    A_gpu, B_gpu, C_gpu = cp.asarray(A), cp.asarray(B), cp.asarray(C)
+    end_communication_time_1 = time.perf_counter()
+
+    # Measure intra task execution time (device function) 
+    start_gpu_intra_device.record()
+
+    C_gpu += cp.dot(A_gpu, B_gpu)
+
+    end_gpu_intra_device.record()
+    end_gpu_intra_device.synchronize()
+    intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+
+    # Measure communication time 2
+    start_communication_time_2 = time.perf_counter()
+    C_temp = cp.asnumpy(C_gpu)
+    end_communication_time_2 = time.perf_counter()
+
+    C += np.dot(A, B)
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ]
+)
 @task(A={Cache: True}, B={Cache: True}, C={Type: INOUT, Cache: False}, returns=1, cache_returns=True)
 def fused_multiply_add_gpu_hot(A, B, C):
     """
@@ -1823,10 +1873,52 @@ def fused_multiply_add_gpu_hot(A, B, C):
     :return: None
     """
     import cupy as cp
-    C += cp.dot(cp.asarray(A), cp.asarray(B))
+    C += cp.dot(A, B)
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ]
+)
+@task(A={Cache: True}, B={Cache: True}, C={Type: INOUT, Cache: False}, returns=1, cache_returns=True)
+def fused_multiply_add_gpu_hot_intra_time(A, B, C, id_parameter, nr_algorithm_iteration, iteration, nr_task):
+    """
+    Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
+    :param A: Block A
+    :param B: Block B
+    :param C: Result Block
+    :return: None
+    """
+    import cupy as cp
+
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    # creating CUDA events for intra device time measurement
+    start_gpu_intra_device = cp.cuda.Event()
+    end_gpu_intra_device = cp.cuda.Event()
+
+    start_communication_time_1 = end_communication_time_1 = start_communication_time_2 = end_communication_time_2 = 0
+
+    # Measure intra task execution time (device function) 
+    start_gpu_intra_device.record()
+
+    C += cp.dot(A, B)
+
+    end_gpu_intra_device.record()
+    end_gpu_intra_device.synchronize()
+    intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
 
 ################################
-#### EXTRA CODE MATMUL FMA
+#### END EXTRA CODE MATMUL FMA
 ################################
 
 def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False, id_device=1, id_cache=1, cd_function=1, id_parameter=0, nr_algorithm_iteration=0):
@@ -1900,49 +1992,18 @@ def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False, id_device=1
     n_blocks = (len(a_blocks), len(b_blocks[0]))
     blocks = Array._get_out_blocks(n_blocks)
 
-    if id_device == 1 or id_device == 2:
-        nr_task_matmul_func = 0
-        nr_task_add_func = 0
+    nr_task_matmul_func = 0
+    nr_task_add_func = 0
 
-        # compss_barrier()
-        # start_total_execution_time = time.perf_counter()
-        for i in range(n_blocks[0]):
-            for j in range(n_blocks[1]):
-                hblock = a_blocks[i]
-                vblock = [b_blocks[k][j] for k in range(len(b_blocks))]
+    for i in range(n_blocks[0]):
+        for j in range(n_blocks[1]):
+            hblock = a_blocks[i]
+            vblock = [b_blocks[k][j] for k in range(len(b_blocks))]
 
-                blocks[i][j], nr_task_matmul_func, nr_task_add_func = _multiply_block_groups(hblock, vblock,
-                                                    id_device, id_cache, cd_function, id_parameter, nr_algorithm_iteration,
-                                                    nr_task_matmul_func, nr_task_add_func,
-                                                    transpose_a, transpose_b)
-
-        # compss_barrier()
-        # end_total_execution_time = time.perf_counter()
-
-        # # open the log file in the append mode
-        # f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
-
-        # # create a csv writer
-        # writer = csv.writer(f)
-
-        # # write the time data 
-        # data = [id_parameter, nr_algorithm_iteration, var_null, var_null, start_total_execution_time, end_total_execution_time, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, var_null, datetime.datetime.now()]
-        # writer.writerow(data)
-        # f.close()
-
-    else:
-        nr_task_matmul_func = 0
-        nr_task_add_func = 0
-
-        for i in range(n_blocks[0]):
-            for j in range(n_blocks[1]):
-                hblock = a_blocks[i]
-                vblock = [b_blocks[k][j] for k in range(len(b_blocks))]
-
-                blocks[i][j], nr_task_matmul_func, nr_task_add_func = _multiply_block_groups(hblock, vblock,
-                                                    id_device, id_cache, cd_function, id_parameter, nr_algorithm_iteration,
-                                                    nr_task_matmul_func, nr_task_add_func,
-                                                    transpose_a, transpose_b)
+            blocks[i][j], nr_task_matmul_func, nr_task_add_func = _multiply_block_groups(hblock, vblock,
+                                                id_device, id_cache, cd_function, id_parameter, nr_algorithm_iteration,
+                                                nr_task_matmul_func, nr_task_add_func,
+                                                transpose_a, transpose_b)
 
     new_block_size = (
         a._reg_shape[1] if transpose_a else a._reg_shape[0],
@@ -1989,11 +2050,51 @@ def _matmul_gpu_cold(a, b, transpose_a, transpose_b):
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ])
-@task(a={Cache: True}, b={Cache: True}, returns=1, cache_returns=True)
-def _matmul_gpu_hot(a, b, transpose_a, transpose_b):
+@task(a={Cache: False}, b={Cache: False}, returns=1, cache_returns=True)
+def _matmul_gpu_cold_intra_time(a, b, id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, transpose_a, transpose_b):
     import cupy as cp
 
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    # creating CUDA events for intra device time measurement
+    start_gpu_intra_device = cp.cuda.Event()
+    end_gpu_intra_device = cp.cuda.Event()
+
+    # Measure communication time 1
+    start_communication_time_1 = time.perf_counter()
     a_gpu, b_gpu = cp.asarray(a), cp.asarray(b)
+    end_communication_time_1 = time.perf_counter()
+
+    # Measure intra task execution time (device function) 
+    start_gpu_intra_device.record()
+    if transpose_a:
+        a_gpu = cp.transpose(a_gpu)
+    if transpose_b:
+        b_gpu = cp.transpose(b_gpu)
+
+    res = cp.matmul(a_gpu, b_gpu)
+    end_gpu_intra_device.record()
+    end_gpu_intra_device.synchronize()
+    intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+
+    del a_gpu, b_gpu
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
+
+    return res
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ])
+@task(a={Cache: True}, b={Cache: True}, returns=1, cache_returns=True)
+def _matmul_gpu_hot(a_gpu, b_gpu, transpose_a, transpose_b):
+    import cupy as cp
 
     if transpose_a:
         a_gpu = cp.transpose(a_gpu)
@@ -2001,7 +2102,43 @@ def _matmul_gpu_hot(a, b, transpose_a, transpose_b):
         b_gpu = cp.transpose(b_gpu)
 
     res = cp.matmul(a_gpu, b_gpu)
+    return res
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ])
+@task(a={Cache: True}, b={Cache: True}, returns=1, cache_returns=True)
+def _matmul_gpu_hot_intra_time(a_gpu, b_gpu, id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, transpose_a, transpose_b):
+    import cupy as cp
+
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    # creating CUDA events for intra device time measurement
+    start_gpu_intra_device = cp.cuda.Event()
+    end_gpu_intra_device = cp.cuda.Event()
+
+    # Measure intra task execution time (device function) 
+    start_gpu_intra_device.record()
+    if transpose_a:
+        a_gpu = cp.transpose(a_gpu)
+    if transpose_b:
+        b_gpu = cp.transpose(b_gpu)
+
+    res = cp.matmul(a_gpu, b_gpu)
+    end_gpu_intra_device.record()
+    end_gpu_intra_device.synchronize()
+    intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+
     del a_gpu, b_gpu
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
+
     return res
 
 @constraint(computing_units="${ComputingUnitsCPU}")
@@ -2051,6 +2188,61 @@ def _add_gpu_cold(block1, block2):
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ])
+@task(block1={Cache: False}, block2={Cache: False}, returns=1, cache_returns=False)
+def _add_gpu_cold_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func):
+    import cupy as cp
+
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    # creating CUDA events for intra device time measurement
+    start_gpu_intra_device = cp.cuda.Event()
+    end_gpu_intra_device = cp.cuda.Event()
+
+    # If task inputs are cached in CPU memory, convert them to cupy array first
+    if check_array_type(block1)==1 and check_array_type(block2)==1:
+        # Measure communication time 1
+        start_communication_time_1 = time.perf_counter()
+        block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
+        end_communication_time_1 = time.perf_counter()
+
+        # Measure intra task execution time (device function) 
+        start_gpu_intra_device.record()
+        res = cp.add(block1_gpu, block2_gpu)
+        end_gpu_intra_device.record()
+        end_gpu_intra_device.synchronize()
+        intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+        
+        start_communication_time_2 = end_communication_time_2 = 0
+
+        del block1_gpu, block2_gpu
+
+    # If task inputs are cached in GPU memory, proceed with the usual execution
+    elif check_array_type(block1)==2 and check_array_type(block2)==2:
+
+        start_communication_time_1 = end_communication_time_1 = start_communication_time_2 = end_communication_time_2 = 0
+
+        # Measure intra task execution time (device function) 
+        start_gpu_intra_device.record()
+        res = cp.add(block1, block2)
+        end_gpu_intra_device.record()
+        end_gpu_intra_device.synchronize()
+        intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+
+    return res
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ])
 @task(block1={Cache: True}, block2={Cache: True}, returns=1, cache_returns=True)
 def _add_gpu_hot(block1, block2):
     import cupy as cp
@@ -2064,6 +2256,61 @@ def _add_gpu_hot(block1, block2):
         res = cp.add(block1, block2)
     return res
 
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ])
+@task(block1={Cache: True}, block2={Cache: True}, returns=1, cache_returns=True)
+def _add_gpu_hot_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func):
+    import cupy as cp
+
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    # creating CUDA events for intra device time measurement
+    start_gpu_intra_device = cp.cuda.Event()
+    end_gpu_intra_device = cp.cuda.Event()
+
+    # If task inputs are cached in CPU memory, convert them to cupy array first
+    if check_array_type(block1)==1 and check_array_type(block2)==1:
+        # Measure communication time 1
+        start_communication_time_1 = time.perf_counter()
+        block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
+        end_communication_time_1 = time.perf_counter()
+
+        # Measure intra task execution time (device function) 
+        start_gpu_intra_device.record()
+        res = cp.add(block1_gpu, block2_gpu)
+        end_gpu_intra_device.record()
+        end_gpu_intra_device.synchronize()
+        intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+        
+        start_communication_time_2 = end_communication_time_2 = 0
+
+        del block1_gpu, block2_gpu
+
+    # If task inputs are cached in GPU memory, proceed with the usual execution
+    elif check_array_type(block1)==2 and check_array_type(block2)==2:
+        start_communication_time_1 = end_communication_time_1 = start_communication_time_2 = end_communication_time_2 = 0
+
+        # Measure intra task execution time (device function) 
+        start_gpu_intra_device.record()
+        res = cp.add(block1, block2)
+        end_gpu_intra_device.record()
+        end_gpu_intra_device.synchronize()
+        intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+    
+    return res
+
 def _multiply_block_groups(hblock, vblock, id_device, id_cache, cd_function, id_parameter, nr_algorithm_iteration,
                            nr_task_matmul_func, nr_task_add_func,
                            transpose_a=False, transpose_b=False):
@@ -2072,8 +2319,8 @@ def _multiply_block_groups(hblock, vblock, id_device, id_cache, cd_function, id_
 
     #START TEST
     cd_function=1
-    id_device=1
-    id_cache=1
+    id_device=2
+    id_cache=2
     #END TEST
 
     # Execution modes for matmul_func
@@ -2086,16 +2333,16 @@ def _multiply_block_groups(hblock, vblock, id_device, id_cache, cd_function, id_
             matmul_func = _matmul_gpu_cold
         elif id_device == 2 and id_cache == 2:
             matmul_func = _matmul_gpu_hot
-        # elif id_device == 4:
-        #     matmul_func = _matmul_gpu_cold_intra_time
-        # elif id_device == 44:
-        #     matmul_func = _matmul_gpu_hot_intra_time
+        elif id_device == 4 and id_cache == 1:
+            matmul_func = _matmul_gpu_cold_intra_time
+        elif id_device == 4 and id_cache == 2:
+            matmul_func = _matmul_gpu_hot_intra_time
         else:
             raise ValueError("Error. Invalid combination id_device+id_cache")
         
     #START TEST
     cd_function=2
-    id_device=2
+    id_device=1
     id_cache=2
     #END TEST
         
@@ -2109,33 +2356,47 @@ def _multiply_block_groups(hblock, vblock, id_device, id_cache, cd_function, id_
             add_func = _add_gpu_cold
         elif id_device == 2 and id_cache == 2:
             add_func = _add_gpu_hot
-        # elif id_device == 4:
-        #     add_func = _add_cpu_cold_intra_time
-        # elif id_device == 44:
-        #     add_func = _add_cpu_hot_intra_time
+        elif id_device == 4 and id_cache == 1:
+            add_func = _add_gpu_cold_intra_time
+        elif id_device == 4 and id_cache == 2:
+            add_func = _add_gpu_hot_intra_time
         else:
             raise ValueError("Error. Invalid combination id_device+id_cache")
 
-    # if dislib.__gpu_available__ == 'gpu':#id_device == 1 and id_cache == 1 and cd_function
-    #     matmul_func = _matmul_gpu
-    #     add_func = _add_gpu
-    # else:
-    #     matmul_func = _matmul_cpu
-    #     add_func = _add_cpu
+    if id_device == 3 or id_device == 4:
+        for blocki, blockj in zip(hblock, vblock):
+            blocks.append(
+                matmul_func(blocki, blockj, id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, transpose_a, transpose_b)
+            )
+            nr_task_matmul_func += 1
 
-    for blocki, blockj in zip(hblock, vblock):
-        blocks.append(
-            matmul_func(blocki, blockj, transpose_a, transpose_b)
-        )
+        # Use the next id_parameter with the same cd_configuration
+        id_parameter += 1
+        
+        while len(blocks) > 1:
+            block1 = blocks.popleft()
+            block2 = blocks.popleft()
+            blocks.append(add_func(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func))
 
-    while len(blocks) > 1:
-        block1 = blocks.popleft()
-        block2 = blocks.popleft()
-        blocks.append(add_func(block1, block2))
+            compss_delete_object(block1)
+            compss_delete_object(block2)
 
-        compss_delete_object(block1)
-        compss_delete_object(block2)
+            nr_task_add_func += 1
+    else:
+        for blocki, blockj in zip(hblock, vblock):
+            blocks.append(
+                matmul_func(blocki, blockj, transpose_a, transpose_b)
+            )
 
+        while len(blocks) > 1:
+            block1 = blocks.popleft()
+            block2 = blocks.popleft()
+            blocks.append(add_func(block1, block2))
+
+            compss_delete_object(block1)
+            compss_delete_object(block2)
+
+    iteration += 1
     return blocks[0], nr_task_matmul_func, nr_task_add_func
 
 
@@ -2217,26 +2478,6 @@ def matsubtract(a: Array, b: Array,
     return Array(blocks=blocks, top_left_shape=new_block_size,
                  reg_shape=new_block_size, shape=new_shape, sparse=a._sparse)
 
-
-@constraint(processors=[
-                {"processorType": "CPU", "computingUnits": "1"},
-                {"processorType": "GPU", "computingUnits": "1"},
-            ])
-@task(returns=np.array)
-def _subtract_gpu(block1, block2):
-    # import cupy as cp
-
-    block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
-    res = cp.asnumpy(cp.subtract(block1_gpu, block2_gpu))
-    del block1_gpu, block2_gpu
-    return res
-
-
-@constraint(computing_units="${ComputingUnits}")
-@task(returns=np.array)
-def _subtract(block1, block2):
-    return block1 - block2
-
 @constraint(computing_units="${ComputingUnitsCPU}")
 @task(block1={Cache: False}, block2={Cache: False}, returns=1, cache_returns=False)
 def _subtract_cpu_cold(block1, block2):
@@ -2283,18 +2524,130 @@ def _subtract_gpu_cold(block1, block2):
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ])
+@task(block1={Cache: False}, block2={Cache: False}, returns=1, cache_returns=False)
+def _subtract_gpu_cold_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func):
+    import cupy as cp
+
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    # creating CUDA events for intra device time measurement
+    start_gpu_intra_device = cp.cuda.Event()
+    end_gpu_intra_device = cp.cuda.Event()
+
+    
+    # If task inputs are cached in CPU memory, convert them to cupy array first
+    if check_array_type(block1)==1 and check_array_type(block2)==1:
+        # Measure communication time 1
+        start_communication_time_1 = time.perf_counter()
+        block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
+        end_communication_time_1 = time.perf_counter()
+
+        # Measure intra task execution time (device function) 
+        start_gpu_intra_device.record()
+        res = cp.asnumpy(cp.subtract(block1_gpu, block2_gpu))
+        end_gpu_intra_device.record()
+        end_gpu_intra_device.synchronize()
+        intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+        
+        start_communication_time_2 = end_communication_time_2 = 0
+
+        del block1_gpu, block2_gpu
+
+    # If task inputs are cached in GPU memory, proceed with the usual execution
+    elif check_array_type(block1)==2 and check_array_type(block2)==2:
+
+        start_communication_time_1 = end_communication_time_1 = start_communication_time_2 = end_communication_time_2 = 0
+
+        # Measure intra task execution time (device function) 
+        start_gpu_intra_device.record()
+        res = cp.asnumpy(cp.subtract(block1, block2))
+        end_gpu_intra_device.record()
+        end_gpu_intra_device.synchronize()
+        intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+        
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+
+    return res
+
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ])
 @task(block1={Cache: True}, block2={Cache: True}, returns=1, cache_returns=True)
 def _subtract_gpu_hot(block1, block2):
     import cupy as cp
     # If task inputs are cached in CPU memory, convert them to cupy array first
     if check_array_type(block1)==1 and check_array_type(block2)==1:
         block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
-        res = cp.asnumpy(cp.subtract(block1_gpu, block2_gpu))
+        res = cp.subtract(block1_gpu, block2_gpu)
         del block1_gpu, block2_gpu
     # If task inputs are cached in GPU memory, proceed with the usual execution
     elif check_array_type(block1)==2 and check_array_type(block2)==2:
-        res = cp.asnumpy(cp.subtract(block1, block2))
+        res = cp.subtract(block1, block2)
     return res
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ])
+@task(block1={Cache: True}, block2={Cache: True}, returns=1, cache_returns=True)
+def _subtract_gpu_hot_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func):
+    import cupy as cp
+
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    # creating CUDA events for intra device time measurement
+    start_gpu_intra_device = cp.cuda.Event()
+    end_gpu_intra_device = cp.cuda.Event()
+
+    # If task inputs are cached in CPU memory, convert them to cupy array first
+    if check_array_type(block1)==1 and check_array_type(block2)==1:
+        # Measure communication time 1
+        start_communication_time_1 = time.perf_counter()
+        block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
+        end_communication_time_1 = time.perf_counter()
+
+        # Measure intra task execution time (device function) 
+        start_gpu_intra_device.record()
+        res = cp.asnumpy(cp.subtract(block1_gpu, block2_gpu))
+        end_gpu_intra_device.record()
+        end_gpu_intra_device.synchronize()
+        intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+
+        start_communication_time_2 = end_communication_time_2 = 0
+
+        del block1_gpu, block2_gpu
+
+    # If task inputs are cached in GPU memory, proceed with the usual execution
+    elif check_array_type(block1)==2 and check_array_type(block2)==2:
+        start_communication_time_1 = end_communication_time_1 = start_communication_time_2 = end_communication_time_2 = 0
+
+        # Measure intra task execution time (device function) 
+        start_gpu_intra_device.record()
+        res = cp.subtract(block1, block2)
+        end_gpu_intra_device.record()
+        end_gpu_intra_device.synchronize()
+        intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+
+    return res
+
 
 # Check array type (1 numpy; 2 cupy)
 def check_array_type(arr):
@@ -2311,6 +2664,8 @@ def check_array_type(arr):
 def _subtract_block_groups(hblock, vblock, id_device, id_cache, id_parameter, nr_algorithm_iteration):
     blocks = []
 
+    iteration = 0
+
     if id_device == 1 and id_cache == 1:
         subtract_func = _subtract_cpu_cold
     elif id_device == 1 and id_cache == 2:
@@ -2319,16 +2674,22 @@ def _subtract_block_groups(hblock, vblock, id_device, id_cache, id_parameter, nr
         subtract_func = _subtract_gpu_cold
     elif id_device == 2 and id_cache == 2:
         subtract_func = _subtract_gpu_hot
-    # elif id_device == 4:
-    #     subtract_func = _subtract_gpu_cold_intra_time
-    # elif id_device == 44:
-    #     subtract_func = _subtract_gpu_cold_intra_time
+    elif id_device == 4 and id_cache == 1:
+        subtract_func = _subtract_gpu_cold_intra_time
+    elif id_device == 4 and id_cache == 2:
+        subtract_func = _subtract_gpu_hot_intra_time
     else:
         raise ValueError("Error. Invalid combination id_device+id_cache")
 
+    if id_device == 3 or id_device == 4:
+        nr_task = 0
+        for blocki, blockj in zip(hblock, vblock):
+            blocks.append(subtract_func(blocki, blockj, id_parameter, nr_algorithm_iteration, iteration, nr_task))
+            nr_task += 1
+    else:
+        for blocki, blockj in zip(hblock, vblock):
+            blocks.append(subtract_func(blocki, blockj))
 
-    for blocki, blockj in zip(hblock, vblock):
-        blocks.append(subtract_func(blocki, blockj))
     return blocks
 
 
@@ -2590,6 +2951,8 @@ def concat_rows(a, b):
 def _add_block_groups(hblock, vblock, id_device, id_cache, id_parameter, nr_algorithm_iteration):
     blocks = []
 
+    iteration = 0
+
     if id_device == 1 and id_cache == 1:
         add_func = _add_cpu_cold
     elif id_device == 1 and id_cache == 2:
@@ -2598,17 +2961,24 @@ def _add_block_groups(hblock, vblock, id_device, id_cache, id_parameter, nr_algo
         add_func = _add_gpu_cold
     elif id_device == 2 and id_cache == 2:
         add_func = _add_gpu_hot
-    # elif id_device == 4:
-    #     add_func = _add_cpu_cold_intra_time
-    # elif id_device == 44:
-    #     add_func = _add_cpu_hot_intra_time
+    elif id_device == 4:
+        add_func = _add_gpu_cold_intra_time
+    elif id_device == 44:
+        add_func = _add_gpu_hot_intra_time
     else:
         raise ValueError("Error. Invalid combination id_device+id_cache")
 
-    for blocki, blockj in zip(hblock, vblock):
-        blocks.append(add_func(blocki, blockj))
-    return blocks
+    if id_device == 3 or id_device == 4:
+        nr_task = 0
+        for blocki, blockj in zip(hblock, vblock):
+            blocks.append(add_func(blocki, blockj, id_parameter, nr_algorithm_iteration, iteration, nr_task))
+            nr_task += 1
 
+    else:
+        for blocki, blockj in zip(hblock, vblock):
+            blocks.append(add_func(blocki, blockj))
+    
+    return blocks
 
 def _transpose_blocks(blocks):
     new_blocks = []
