@@ -22,15 +22,15 @@ if __name__ == '__main__':
     num_blocks = int(input_matrix_rows/block_row_size) #grid_row_size
     elems_per_block = block_row_size
 
-    # CPU COLD
-    id_device=1
-    id_cache=1
+    # # CPU COLD
+    # id_device=1
+    # id_cache=1
     # # CPU HOT
     # id_device=1
     # id_cache=2
-    # # GPU COLD
-    # id_device=2
-    # id_cache=1
+    # GPU COLD
+    id_device=2
+    id_cache=1
     # # GPU HOT
     # id_device=2
     # id_cache=2
@@ -73,13 +73,13 @@ if __name__ == '__main__':
     nr_iterations = 0
     for i in range(nr_iterations + 1):
 
-        # Run Matmul using dislib - CPU
+        # Run Matmul using dislib
         print("\nSTART\n")
-        compss_barrier()
+        # compss_barrier()
         # start = time.perf_counter()
         ds.dot(A, B, C, id_device=id_device, id_cache=id_cache, id_parameter=0, nr_algorithm_iteration=0)
         # compss_barrier()
-        # print("==== TIME CPU ==== ", time.perf_counter()-start)
+        print("==== TIME ==== ", time.perf_counter()-start)
         print("\END\n")
         
         # #TEST OUTPUTS

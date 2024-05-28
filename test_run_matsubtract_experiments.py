@@ -20,16 +20,22 @@ if __name__ == '__main__':
     shape = (input_matrix_rows, input_matrix_columns)
     block_size = (block_row_size, block_column_size)
 
+    # CPU COLD
+    id_device=1
+    id_cache=1
+    # # CPU HOT
+    # id_device=1
+    # id_cache=2
+    # # GPU COLD
+    # id_device=2
+    # id_cache=1
+    # # GPU HOT
+    # id_device=2
+    # id_cache=2
+
     # DATASET GENERATION
     start = time.perf_counter()
-    # CPU COLD
-    x = ds.random_array(shape, block_size, random_state=start_random_state, id_device=1, id_cache=1)
-    # # CPU HOT
-    # # x = ds.random_array(shape, block_size, random_state=start_random_state, id_device=1, id_cache=2)
-    # # GPU COLD
-    # x = ds.random_array(shape, block_size, random_state=start_random_state, id_device=2, id_cache=1)
-    # # GPU HOT
-    # x = ds.random_array(shape, block_size, random_state=start_random_state, id_device=2, id_cache=2)
+    x = ds.random_array(shape, block_size, random_state=start_random_state, id_device=id_device, id_cache=id_cache)
     # print("==== TIME DATA GENERATION ==== ", time.perf_counter()-start)
 
     # x_np = np.random.random(shape)
@@ -44,6 +50,6 @@ if __name__ == '__main__':
         print("\nSTART\n")
         # compss_barrier()
         start = time.perf_counter()
-        result = ds.matsubtract(x, x, id_device=1, id_cache=1, id_parameter=0, nr_algorithm_iteration=0)
+        result = ds.matsubtract(x, x, id_device=id_device, id_cache=id_cache, id_parameter=0, nr_algorithm_iteration=0)
         # compss_barrier()
         print("==== TIME ==== ", time.perf_counter()-start)
