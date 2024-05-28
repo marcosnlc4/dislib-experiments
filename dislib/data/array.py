@@ -1612,18 +1612,14 @@ def apply_along_axis(func, axis, x, *args, **kwargs):
 #### START EXTRA CODE MATMUL FMA
 ################################
 def generate_block(size, num_blocks, random_state=None, set_to_zero=False, bid=0, id_device=1, id_cache=1):
-    if id_device == 1 and id_cache == 1:
+    if (id_device == 1 and id_cache == 1) or (id_device == 3 and id_cache == 1):
         generate_block_func = generate_block_cpu_cold
-    elif id_device == 1 and id_cache == 2:
+    elif (id_device == 1 and id_cache == 2) or (id_device == 3 and id_cache == 2):
         generate_block_func = generate_block_cpu_hot
-    elif id_device == 2 and id_cache == 1:
+    elif (id_device == 2 and id_cache == 1) or (id_device == 4 and id_cache == 1):
         generate_block_func = generate_block_gpu_cold
-    elif id_device == 2 and id_cache == 2:
+    elif (id_device == 2 and id_cache == 2) or (id_device == 4 and id_cache == 2):
         generate_block_func = generate_block_gpu_hot
-    # elif id_device == 4 and id_cache == 2:
-    #     generate_block_func = generate_block_gpu_cold_intra_time
-    # elif id_device == 4 and id_cache == 2:
-    #     generate_block_func = generate_block_gpu_hot_intra_time
     else:
         raise ValueError("Error. Invalid combination id_device+id_cache")
     return generate_block_func(size, num_blocks, random_state, set_to_zero, bid)
@@ -1738,6 +1734,10 @@ def dot(A, B, C, id_device, id_cache, id_parameter, nr_algorithm_iteration):
         fused_multiply_add = fused_multiply_add_gpu_cold
     elif id_device == 2 and id_cache == 2:
         fused_multiply_add = fused_multiply_add_gpu_hot
+    elif id_device == 3 and id_cache == 1:
+        fused_multiply_add = fused_multiply_add_cpu_cold_intra_time
+    elif id_device == 3 and id_cache == 2:
+        fused_multiply_add = fused_multiply_add_cpu_hot_intra_time
     elif id_device == 4 and id_cache == 1:
         fused_multiply_add = fused_multiply_add_gpu_cold_intra_time
     elif id_device == 4 and id_cache == 2:
@@ -1778,6 +1778,34 @@ def fused_multiply_add_cpu_cold(A, B, C):
     C += np.dot(A, B)
 
 @constraint(computing_units="${ComputingUnitsCPU}")
+@task(A={Cache: False}, B={Cache: False}, C={Type: INOUT, Cache: False}, returns=1, cache_returns=False)
+def fused_multiply_add_cpu_cold_intra_time(A, B, C, id_parameter, nr_algorithm_iteration, iteration, nr_task):
+    """
+    Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
+    :param A: Block A
+    :param B: Block B
+    :param C: Result Block
+    :return: None
+    """
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    start_intra_device = time.perf_counter()
+
+    C += np.dot(A, B)
+
+    end_intra_device = time.perf_counter()
+    intra_task_execution_device_func = end_intra_device - start_intra_device
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+
+@constraint(computing_units="${ComputingUnitsCPU}")
 @task(A={Cache: True}, B={Cache: True}, C={Type: INOUT, Cache: False}, returns=1, cache_returns=True)
 def fused_multiply_add_cpu_hot(A, B, C):
     """
@@ -1788,6 +1816,34 @@ def fused_multiply_add_cpu_hot(A, B, C):
     :return: None
     """
     C += np.dot(A, B)
+
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(A={Cache: True}, B={Cache: True}, C={Type: INOUT, Cache: False}, returns=1, cache_returns=True)
+def fused_multiply_add_cpu_hot_intra_time(A, B, C, id_parameter, nr_algorithm_iteration, iteration, nr_task):
+    """
+    Multiplies two Blocks and accumulates the result in an INOUT Block (FMA).
+    :param A: Block A
+    :param B: Block B
+    :param C: Result Block
+    :return: None
+    """
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    start_intra_device = time.perf_counter()
+
+    C += np.dot(A, B)
+
+    end_intra_device = time.perf_counter()
+    intra_task_execution_device_func = end_intra_device - start_intra_device
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
 
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
@@ -2017,15 +2073,61 @@ def matmul(a: Array, b: Array, transpose_a=False, transpose_b=False, id_device=1
     return Array(blocks=blocks, top_left_shape=new_block_size,
                  reg_shape=new_block_size, shape=new_shape, sparse=a._sparse)
 
+
 @constraint(computing_units="${ComputingUnitsCPU}")
 @task(a={Cache: False}, b={Cache: False}, returns=np.array, cache_returns=True)
 def _matmul_cpu_cold(a, b, transpose_a, transpose_b):
     return (a.T if transpose_a else a) @ (b.T if transpose_b else b)
 
+
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(a={Cache: False}, b={Cache: False}, returns=np.array, cache_returns=True)
+def _matmul_cpu_cold_intra_time(a, b, id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, transpose_a, transpose_b):
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    start_intra_device = time.perf_counter()
+    res = (a.T if transpose_a else a) @ (b.T if transpose_b else b)
+    end_intra_device = time.perf_counter()
+    intra_task_execution_device_func = end_intra_device - start_intra_device
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+
+    return res
+
+
 @constraint(computing_units="${ComputingUnitsCPU}")
 @task(a={Cache: True}, b={Cache: True}, returns=1, cache_returns=True)
 def _matmul_cpu_hot(a, b, transpose_a, transpose_b):
     return (a.T if transpose_a else a) @ (b.T if transpose_b else b)
+
+
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(a={Cache: True}, b={Cache: True}, returns=1, cache_returns=True)
+def _matmul_cpu_hot_intra_time(a, b, id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, transpose_a, transpose_b):
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    start_intra_device = time.perf_counter()
+    res = (a.T if transpose_a else a) @ (b.T if transpose_b else b)
+    end_intra_device = time.perf_counter()
+    intra_task_execution_device_func = end_intra_device - start_intra_device
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+
+    return res
 
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
@@ -2085,6 +2187,8 @@ def _matmul_gpu_cold_intra_time(a, b, id_parameter, nr_algorithm_iteration, iter
 
     # write the time data
     data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
 
     return res
 
@@ -2138,6 +2242,8 @@ def _matmul_gpu_hot_intra_time(a_gpu, b_gpu, id_parameter, nr_algorithm_iteratio
 
     # write the time data
     data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_matmul_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
 
     return res
 
@@ -2155,6 +2261,37 @@ def _add_cpu_cold(block1, block2):
         raise ValueError("Error. Invalid array type")
 
 @constraint(computing_units="${ComputingUnitsCPU}")
+@task(block1={Cache: False}, block2={Cache: False}, returns=1, cache_returns=False)
+def _add_cpu_cold_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func):
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    start_intra_device = time.perf_counter()
+
+    # If task inputs are cached in CPU memory, proceed with the usual execution
+    if check_array_type(block1)==1 and check_array_type(block2)==1:
+        res = block1 + block2
+    # If task inputs are cached in GPU memory, convert them to numpy arrays first
+    elif check_array_type(block1)==2 and check_array_type(block2)==2:
+        import cupy as cp
+        res = cp.asnumpy(block1) + cp.asnumpy(block2)
+    else:
+        raise ValueError("Error. Invalid array type")
+
+    end_intra_device = time.perf_counter()
+    intra_task_execution_device_func = end_intra_device - start_intra_device
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+    
+    return res    
+
+@constraint(computing_units="${ComputingUnitsCPU}")
 @task(block1={Cache: True}, block2={Cache: True}, returns=1, cache_returns=True)
 def _add_cpu_hot(block1, block2):
     # If task inputs are cached in CPU memory, proceed with the usual execution
@@ -2166,6 +2303,37 @@ def _add_cpu_hot(block1, block2):
         return cp.asnumpy(block1) + cp.asnumpy(block2)
     else:
         raise ValueError("Error. Invalid array type")
+
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(block1={Cache: True}, block2={Cache: True}, returns=1, cache_returns=True)
+def _add_cpu_hot_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func):
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    start_intra_device = time.perf_counter()
+
+    # If task inputs are cached in CPU memory, proceed with the usual execution
+    if check_array_type(block1)==1 and check_array_type(block2)==1:
+        res =  block1 + block2
+    # If task inputs are cached in GPU memory, convert them to numpy arrays first
+    elif check_array_type(block1)==2 and check_array_type(block2)==2:
+        import cupy as cp
+        res = cp.asnumpy(block1) + cp.asnumpy(block2)
+    else:
+        raise ValueError("Error. Invalid array type")
+    
+    end_intra_device = time.perf_counter()
+    intra_task_execution_device_func = end_intra_device - start_intra_device
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+
+    return res
 
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
@@ -2315,6 +2483,7 @@ def _multiply_block_groups(hblock, vblock, id_device, id_cache, cd_function, id_
                            nr_task_matmul_func, nr_task_add_func,
                            transpose_a=False, transpose_b=False):
     iteration = 0
+
     blocks = deque()
 
     #START TEST
@@ -2333,6 +2502,10 @@ def _multiply_block_groups(hblock, vblock, id_device, id_cache, cd_function, id_
             matmul_func = _matmul_gpu_cold
         elif id_device == 2 and id_cache == 2:
             matmul_func = _matmul_gpu_hot
+        elif id_device == 3 and id_cache == 1:
+            matmul_func = _matmul_cpu_cold_intra_time
+        elif id_device == 3 and id_cache == 2:
+            matmul_func = _matmul_cpu_hot_intra_time
         elif id_device == 4 and id_cache == 1:
             matmul_func = _matmul_gpu_cold_intra_time
         elif id_device == 4 and id_cache == 2:
@@ -2356,6 +2529,10 @@ def _multiply_block_groups(hblock, vblock, id_device, id_cache, cd_function, id_
             add_func = _add_gpu_cold
         elif id_device == 2 and id_cache == 2:
             add_func = _add_gpu_hot
+        elif id_device == 3 and id_cache == 1:
+            add_func = _add_cpu_cold_intra_time
+        elif id_device == 3 and id_cache == 2:
+            add_func = _add_cpu_hot_intra_time
         elif id_device == 4 and id_cache == 1:
             add_func = _add_gpu_cold_intra_time
         elif id_device == 4 and id_cache == 2:
@@ -2486,9 +2663,41 @@ def _subtract_cpu_cold(block1, block2):
         return block1 - block2
     # If task inputs are cached in GPU memory, convert them to numpy arrays first
     elif check_array_type(block1)==2 and check_array_type(block2)==2:
+        import cupy as cp
         return cp.asnumpy(block1) - cp.asnumpy(block2)
     else:
         raise ValueError("Error. Invalid array type")
+
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(block1={Cache: False}, block2={Cache: False}, returns=1, cache_returns=False)
+def _subtract_cpu_cold_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func):
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    start_intra_device = time.perf_counter()
+    
+    # If task inputs are cached in CPU memory, proceed with the usual execution
+    if check_array_type(block1)==1 and check_array_type(block2)==1:
+        res = block1 - block2
+    # If task inputs are cached in GPU memory, convert them to numpy arrays first
+    elif check_array_type(block1)==2 and check_array_type(block2)==2:
+        import cupy as cp
+        res = cp.asnumpy(block1) - cp.asnumpy(block2)
+    else:
+        raise ValueError("Error. Invalid array type")
+    
+    end_intra_device = time.perf_counter()
+    intra_task_execution_device_func = end_intra_device - start_intra_device
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+    
+    return res
 
 @constraint(computing_units="${ComputingUnitsCPU}")
 @task(block1={Cache: True}, block2={Cache: True}, returns=1, cache_returns=True)
@@ -2502,6 +2711,37 @@ def _subtract_cpu_hot(block1, block2):
         return cp.asnumpy(block1) - cp.asnumpy(block2)
     else:
         raise ValueError("Error. Invalid array type")
+
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(block1={Cache: True}, block2={Cache: True}, returns=1, cache_returns=True)
+def _subtract_cpu_hot_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func):
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    start_intra_device = time.perf_counter()
+    
+    # If task inputs are cached in CPU memory, proceed with the usual execution
+    if check_array_type(block1)==1 and check_array_type(block2)==1:
+        res = block1 - block2
+    # If task inputs are cached in GPU memory, convert them to numpy arrays first
+    elif check_array_type(block1)==2 and check_array_type(block2)==2:
+        import cupy as cp
+        res = cp.asnumpy(block1) - cp.asnumpy(block2)
+    else:
+        raise ValueError("Error. Invalid array type")
+    
+    end_intra_device = time.perf_counter()
+    intra_task_execution_device_func = end_intra_device - start_intra_device
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+    
+    return res
 
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
@@ -2674,6 +2914,10 @@ def _subtract_block_groups(hblock, vblock, id_device, id_cache, id_parameter, nr
         subtract_func = _subtract_gpu_cold
     elif id_device == 2 and id_cache == 2:
         subtract_func = _subtract_gpu_hot
+    elif id_device == 3 and id_cache == 1:
+        subtract_func = _subtract_cpu_cold_intra_time
+    elif id_device == 3 and id_cache == 2:
+        subtract_func = _subtract_cpu_hot_intra_time
     elif id_device == 4 and id_cache == 1:
         subtract_func = _subtract_gpu_cold_intra_time
     elif id_device == 4 and id_cache == 2:
@@ -2961,9 +3205,13 @@ def _add_block_groups(hblock, vblock, id_device, id_cache, id_parameter, nr_algo
         add_func = _add_gpu_cold
     elif id_device == 2 and id_cache == 2:
         add_func = _add_gpu_hot
-    elif id_device == 4:
+    elif id_device == 3 and id_cache == 1:
+        add_func = _add_cpu_cold_intra_time
+    elif id_device == 3 and id_cache == 2:
+        add_func = _add_cpu_hot_intra_time
+    elif id_device == 4 and id_cache == 1:
         add_func = _add_gpu_cold_intra_time
-    elif id_device == 44:
+    elif id_device == 4 and id_cache == 2:
         add_func = _add_gpu_hot_intra_time
     else:
         raise ValueError("Error. Invalid combination id_device+id_cache")

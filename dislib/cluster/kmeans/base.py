@@ -136,6 +136,10 @@ class KMeans(BaseEstimator):
             partial_sum_func = _partial_sum_gpu_cold
         elif self.id_device == 2 and self.id_cache == 2:
             partial_sum_func = _partial_sum_gpu_hot
+        elif self.id_device == 3 and self.id_cache == 1:
+            partial_sum_func = _partial_sum_cpu_cold_intra_time
+        elif self.id_device == 3 and self.id_cache == 2:
+            partial_sum_func = _partial_sum_cpu_hot_intra_time
         elif self.id_device == 4 and self.id_cache == 1:
             partial_sum_func = _partial_sum_gpu_cold_intra_time
         elif self.id_device == 4 and self.id_cache == 2:
@@ -396,6 +400,43 @@ def _partial_sum_cpu_cold(blocks, centers):
     return partials
 
 @constraint(computing_units="${ComputingUnitsCPU}")
+@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: False}, centers={Cache: False},
+      returns=np.array, cache_returns=False)
+def _partial_sum_cpu_cold_intra_time(blocks, centers, id_parameter, nr_algorithm_iteration, iteration, row):
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    # Measure additional time 1
+    start_additional_time_1 = time.perf_counter()
+    partials = np.zeros((centers.shape[0], 2), dtype=object)
+    arr = Array._merge_blocks(blocks)
+    end_additional_time_1 = time.perf_counter()
+
+    # Measure intra task execution time (device function) 
+    start_intra_device = time.perf_counter()
+    close_centers = pairwise_distances(arr, centers).argmin(axis=1)
+    end_intra_device = time.perf_counter()
+    intra_task_execution_device_func = end_intra_device - start_intra_device
+
+    # Measure additional time 2
+    start_additional_time_2 = time.perf_counter()
+    for center_idx, _ in enumerate(centers):
+        indices = np.argwhere(close_centers == center_idx).flatten()
+        partials[center_idx][0] = np.sum(arr[indices], axis=0)
+        partials[center_idx][1] = indices.shape[0]
+    end_additional_time_2 = time.perf_counter()
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, row, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, start_additional_time_1, end_additional_time_1, start_additional_time_2, end_additional_time_2, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+
+    return partials
+
+@constraint(computing_units="${ComputingUnitsCPU}")
 @task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True}, centers={Cache: False},
       returns=np.array, cache_returns=False)
 def _partial_sum_cpu_hot(blocks, centers):
@@ -408,6 +449,43 @@ def _partial_sum_cpu_hot(blocks, centers):
         indices = np.argwhere(close_centers == center_idx).flatten()
         partials[center_idx][0] = np.sum(arr[indices], axis=0)
         partials[center_idx][1] = indices.shape[0]
+
+    return partials
+
+@constraint(computing_units="${ComputingUnitsCPU}")
+@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: True}, centers={Cache: False},
+      returns=np.array, cache_returns=False)
+def _partial_sum_cpu_hot_intra_time(blocks, centers, id_parameter, nr_algorithm_iteration, iteration, row):
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    # Measure additional time 1
+    start_additional_time_1 = time.perf_counter()
+    partials = np.zeros((centers.shape[0], 2), dtype=object)
+    arr = Array._merge_blocks(blocks)
+    end_additional_time_1 = time.perf_counter()
+
+    # Measure intra task execution time (device function) 
+    start_intra_device = time.perf_counter()
+    close_centers = pairwise_distances(arr, centers).argmin(axis=1)
+    end_intra_device = time.perf_counter()
+    intra_task_execution_device_func = end_intra_device - start_intra_device
+
+    # Measure additional time 2
+    start_additional_time_2 = time.perf_counter()
+    for center_idx, _ in enumerate(centers):
+        indices = np.argwhere(close_centers == center_idx).flatten()
+        partials[center_idx][0] = np.sum(arr[indices], axis=0)
+        partials[center_idx][1] = indices.shape[0]
+    end_additional_time_2 = time.perf_counter()
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, row, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, start_additional_time_1, end_additional_time_1, start_additional_time_2, end_additional_time_2, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
 
     return partials
 
