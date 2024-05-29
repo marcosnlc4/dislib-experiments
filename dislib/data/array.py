@@ -2670,7 +2670,7 @@ def _subtract_cpu_cold(block1, block2):
 
 @constraint(computing_units="${ComputingUnitsCPU}")
 @task(block1={Cache: False}, block2={Cache: False}, returns=1, cache_returns=False)
-def _subtract_cpu_cold_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func):
+def _subtract_cpu_cold_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task):
     # open the log file in the append mode
     f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
 
@@ -2693,7 +2693,7 @@ def _subtract_cpu_cold_intra_time(block1, block2, id_parameter, nr_algorithm_ite
     intra_task_execution_device_func = end_intra_device - start_intra_device
 
     # write the time data
-    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
     writer.writerow(data)
     f.close()
     
@@ -2714,7 +2714,7 @@ def _subtract_cpu_hot(block1, block2):
 
 @constraint(computing_units="${ComputingUnitsCPU}")
 @task(block1={Cache: True}, block2={Cache: True}, returns=1, cache_returns=True)
-def _subtract_cpu_hot_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func):
+def _subtract_cpu_hot_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task):
     # open the log file in the append mode
     f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
 
@@ -2737,7 +2737,7 @@ def _subtract_cpu_hot_intra_time(block1, block2, id_parameter, nr_algorithm_iter
     intra_task_execution_device_func = end_intra_device - start_intra_device
 
     # write the time data
-    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
     writer.writerow(data)
     f.close()
     
@@ -2765,7 +2765,7 @@ def _subtract_gpu_cold(block1, block2):
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ])
 @task(block1={Cache: False}, block2={Cache: False}, returns=1, cache_returns=False)
-def _subtract_gpu_cold_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func):
+def _subtract_gpu_cold_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task):
     import cupy as cp
 
     # open the log file in the append mode
@@ -2810,7 +2810,7 @@ def _subtract_gpu_cold_intra_time(block1, block2, id_parameter, nr_algorithm_ite
         intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
         
     # write the time data
-    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, 0, 0, 0, 0, datetime.datetime.now()]
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, 0, 0, 0, 0, datetime.datetime.now()]
     writer.writerow(data)
     f.close()
 
@@ -2839,7 +2839,7 @@ def _subtract_gpu_hot(block1, block2):
                 {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
             ])
 @task(block1={Cache: True}, block2={Cache: True}, returns=1, cache_returns=True)
-def _subtract_gpu_hot_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func):
+def _subtract_gpu_hot_intra_time(block1, block2, id_parameter, nr_algorithm_iteration, iteration, nr_task):
     import cupy as cp
 
     # open the log file in the append mode
@@ -2882,7 +2882,7 @@ def _subtract_gpu_hot_intra_time(block1, block2, id_parameter, nr_algorithm_iter
         intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
 
     # write the time data
-    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task_add_func, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, 0, 0, 0, 0, datetime.datetime.now()]
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, 0, 0, 0, 0, datetime.datetime.now()]
     writer.writerow(data)
     f.close()
 
