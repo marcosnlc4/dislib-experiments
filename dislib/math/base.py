@@ -6,13 +6,23 @@ import dislib
 from pycompss.api.api import compss_delete_object, compss_wait_on
 from pycompss.api.constraint import constraint
 from pycompss.api.parameter import COLLECTION_OUT, Type, Depth, \
-    COLLECTION_INOUT, COLLECTION_IN
+    COLLECTION_INOUT, COLLECTION_IN, Cache
 from pycompss.api.task import task
 
 from dislib.data.array import Array, identity
+import time
+import csv
+import os
+import datetime
 
+# location of the csv log file
+dst_path_experiments = os.path.dirname(os.path.abspath(__file__))
+dst_path_experiments = dst_path_experiments.replace("/dislib/math", "/experiments/results/tb_experiments_raw.csv")
+var_null = "NULL"
 
-def kron(a, b, block_size=None):
+def kron(a, b, block_size=None,
+        id_device=1, id_cache=1,
+        id_parameter=0, nr_algorithm_iteration=0):
     """ Kronecker product of two ds-arrays.
 
     Parameters
@@ -43,30 +53,73 @@ def kron(a, b, block_size=None):
     # times. This is why we need to rechunk it at the end.
     offseti = 0
 
-    if dislib.__gpu_available__:
-        kron_func = _kron_gpu
+    # if id_device == 2:
+    #     kron_func = _kron_gpu
+    # else:
+    #     kron_func = _kron
+
+    iteration = 0
+
+    if id_device == 1 and id_cache == 1:
+        kron_func = _kron_cpu_cold
+    elif id_device == 1 and id_cache == 2:
+        kron_func = _kron_cpu_hot
+    elif id_device == 2 and id_cache == 1:
+        kron_func = _kron_gpu_cold
+    elif id_device == 2 and id_cache == 2:
+        kron_func = _kron_gpu_hot
+    elif id_device == 3 and id_cache == 1:
+        kron_func = _kron_cpu_cold_intra_time
+    elif id_device == 3 and id_cache == 2:
+        kron_func = _kron_cpu_hot_intra_time
+    elif id_device == 4 and id_cache == 1:
+        kron_func = _kron_gpu_cold_intra_time
+    elif id_device == 4 and id_cache == 2:
+        kron_func = _kron_gpu_hot_intra_time
+
+    if id_device == 3 or id_device == 4:
+        nr_task = 0
+        for i in range(a._n_blocks[0]):
+            offsetj = 0
+
+            for j in range(a._n_blocks[1]):
+                bshape_a = a._get_block_shape(i, j)
+
+                for k in range(b._n_blocks[0]):
+                    for q in range(b._n_blocks[1]):
+                        out_blocks = Array._get_out_blocks(bshape_a)
+                        kron_func(a._blocks[i][j], b._blocks[k][q], out_blocks, id_parameter, nr_algorithm_iteration, iteration, nr_task)
+                        nr_task += 1
+
+                        for m in range(bshape_a[0]):
+                            for n in range(bshape_a[1]):
+                                bi = (offseti + m) * b._n_blocks[0] + k
+                                bj = (offsetj + n) * b._n_blocks[1] + q
+                                k_blocks[bi][bj] = out_blocks[m][n]
+
+                offsetj += bshape_a[1]
+            offseti += bshape_a[0]
+    
     else:
-        kron_func = _kron
+        for i in range(a._n_blocks[0]):
+            offsetj = 0
 
-    for i in range(a._n_blocks[0]):
-        offsetj = 0
+            for j in range(a._n_blocks[1]):
+                bshape_a = a._get_block_shape(i, j)
 
-        for j in range(a._n_blocks[1]):
-            bshape_a = a._get_block_shape(i, j)
+                for k in range(b._n_blocks[0]):
+                    for q in range(b._n_blocks[1]):
+                        out_blocks = Array._get_out_blocks(bshape_a)
+                        kron_func(a._blocks[i][j], b._blocks[k][q], out_blocks)
 
-            for k in range(b._n_blocks[0]):
-                for q in range(b._n_blocks[1]):
-                    out_blocks = Array._get_out_blocks(bshape_a)
-                    kron_func(a._blocks[i][j], b._blocks[k][q], out_blocks)
+                        for m in range(bshape_a[0]):
+                            for n in range(bshape_a[1]):
+                                bi = (offseti + m) * b._n_blocks[0] + k
+                                bj = (offsetj + n) * b._n_blocks[1] + q
+                                k_blocks[bi][bj] = out_blocks[m][n]
 
-                    for m in range(bshape_a[0]):
-                        for n in range(bshape_a[1]):
-                            bi = (offseti + m) * b._n_blocks[0] + k
-                            bj = (offsetj + n) * b._n_blocks[1] + q
-                            k_blocks[bi][bj] = out_blocks[m][n]
-
-            offsetj += bshape_a[1]
-        offseti += bshape_a[0]
+                offsetj += bshape_a[1]
+            offseti += bshape_a[0]
 
     shape = (a.shape[0] * b.shape[0], a.shape[1] * b.shape[1])
 
@@ -549,9 +602,35 @@ def _kron_shape_f(i, j, b):
     return b._get_block_shape(i % b._n_blocks[0], j % b._n_blocks[1])
 
 
+# @constraint(computing_units="${ComputingUnits}")
+# @task(out_blocks={Type: COLLECTION_OUT, Depth: 2})
+# def _kron(block1, block2, out_blocks):
+#     """ Computes the kronecker product of two blocks and returns one ndarray
+#     per (element-in-block1, block2) pair."""
+#     for i in range(block1.shape[0]):
+#         for j in range(block1.shape[1]):
+#             out_blocks[i][j] = block1[i, j] * block2
+
+# @constraint(processors=[
+#                 {"processorType": "CPU", "computingUnits": "1"},
+#                 {"processorType": "GPU", "computingUnits": "1"},
+#             ])
+# @task(out_blocks={Type: COLLECTION_OUT, Depth: 2})
+# def _kron_gpu(block1, block2, out_blocks):
+#     """ Computes the kronecker product of two blocks and returns one ndarray
+#     per (element-in-block1, block2) pair."""
+
+#     import cupy as cp
+
+#     block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
+
+#     for i in range(block1_gpu.shape[0]):
+#         for j in range(block1_gpu.shape[1]):
+#             out_blocks[i][j] = cp.asnumpy(block1_gpu[i, j] * block2_gpu)
+
 @constraint(computing_units="${ComputingUnits}")
-@task(out_blocks={Type: COLLECTION_OUT, Depth: 2})
-def _kron(block1, block2, out_blocks):
+@task(block1={Cache: False}, block2={Cache: False}, out_blocks={Type: COLLECTION_OUT, Depth: 2})
+def _kron_cpu_cold(block1, block2, out_blocks):
     """ Computes the kronecker product of two blocks and returns one ndarray
     per (element-in-block1, block2) pair."""
     for i in range(block1.shape[0]):
@@ -559,12 +638,72 @@ def _kron(block1, block2, out_blocks):
             out_blocks[i][j] = block1[i, j] * block2
 
 
+@constraint(computing_units="${ComputingUnits}")
+@task(block1={Cache: False}, block2={Cache: False}, out_blocks={Type: COLLECTION_OUT, Depth: 2})
+def _kron_cpu_cold_intra_time(block1, block2, out_blocks, id_parameter, nr_algorithm_iteration, iteration, nr_task):
+    """ Computes the kronecker product of two blocks and returns one ndarray
+    per (element-in-block1, block2) pair."""
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    start_intra_device = time.perf_counter()
+    
+    for i in range(block1.shape[0]):
+        for j in range(block1.shape[1]):
+            out_blocks[i][j] = block1[i, j] * block2
+
+    end_intra_device = time.perf_counter()
+    intra_task_execution_device_func = end_intra_device - start_intra_device
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+
+
+@constraint(computing_units="${ComputingUnits}")
+@task(block1={Cache: True}, block2={Cache: True}, out_blocks={Type: COLLECTION_OUT, Depth: 2})
+def _kron_cpu_hot(block1, block2, out_blocks):
+    """ Computes the kronecker product of two blocks and returns one ndarray
+    per (element-in-block1, block2) pair."""
+    for i in range(block1.shape[0]):
+        for j in range(block1.shape[1]):
+            out_blocks[i][j] = block1[i, j] * block2
+
+@constraint(computing_units="${ComputingUnits}")
+@task(block1={Cache: True}, block2={Cache: True}, out_blocks={Type: COLLECTION_OUT, Depth: 2})
+def _kron_cpu_hot_intra_time(block1, block2, out_blocks, id_parameter, nr_algorithm_iteration, iteration, nr_task):
+    """ Computes the kronecker product of two blocks and returns one ndarray
+    per (element-in-block1, block2) pair."""
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    start_intra_device = time.perf_counter()
+    
+    for i in range(block1.shape[0]):
+        for j in range(block1.shape[1]):
+            out_blocks[i][j] = block1[i, j] * block2
+
+    end_intra_device = time.perf_counter()
+    intra_task_execution_device_func = end_intra_device - start_intra_device
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, 0, 0, 0, 0, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "1"},
                 {"processorType": "GPU", "computingUnits": "1"},
             ])
-@task(out_blocks={Type: COLLECTION_OUT, Depth: 2})
-def _kron_gpu(block1, block2, out_blocks):
+@task(block1={Cache: False}, block2={Cache: False}, out_blocks={Type: COLLECTION_OUT, Depth: 2})
+def _kron_gpu_cold(block1, block2, out_blocks):
     """ Computes the kronecker product of two blocks and returns one ndarray
     per (element-in-block1, block2) pair."""
 
@@ -575,6 +714,123 @@ def _kron_gpu(block1, block2, out_blocks):
     for i in range(block1_gpu.shape[0]):
         for j in range(block1_gpu.shape[1]):
             out_blocks[i][j] = cp.asnumpy(block1_gpu[i, j] * block2_gpu)
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "1"},
+                {"processorType": "GPU", "computingUnits": "1"},
+            ])
+@task(block1={Cache: False}, block2={Cache: False}, out_blocks={Type: COLLECTION_OUT, Depth: 2})
+def _kron_gpu_cold_intra_time(block1, block2, out_blocks, id_parameter, nr_algorithm_iteration, iteration, nr_task):
+    """ Computes the kronecker product of two blocks and returns one ndarray
+    per (element-in-block1, block2) pair."""
+
+    import cupy as cp
+
+    out_blocks_aux = out_blocks
+
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    # creating CUDA events for intra device time measurement
+    start_gpu_intra_device = cp.cuda.Event()
+    end_gpu_intra_device = cp.cuda.Event()
+
+    # Measure communication time 1
+    start_communication_time_1 = time.perf_counter()
+    block1_gpu, block2_gpu = cp.asarray(block1), cp.asarray(block2)
+    end_communication_time_1 = time.perf_counter()
+
+    # Measure intra task execution time (device function) 
+    start_gpu_intra_device.record()
+    for i in range(block1_gpu.shape[0]):
+        for j in range(block1_gpu.shape[1]):
+            out_blocks_aux[i][j] = block1_gpu[i, j] * block2_gpu
+    end_gpu_intra_device.record()
+    end_gpu_intra_device.synchronize()
+    intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+
+    # Measure communication time 2
+    start_communication_time_2 = time.perf_counter()
+    for i in range(block1_gpu.shape[0]):
+        for j in range(block1_gpu.shape[1]):
+            out_blocks[i][j] = cp.asnumpy(out_blocks_aux[i][j])
+    end_communication_time_2 = time.perf_counter()
+
+    out_blocks_aux = None
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+    
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "1"},
+                {"processorType": "GPU", "computingUnits": "1"},
+            ])
+@task(block1_gpu={Cache: True}, block2_gpu={Cache: True}, out_blocks={Type: COLLECTION_OUT, Depth: 2})
+def _kron_gpu_hot(block1_gpu, block2_gpu, out_blocks):
+    """ Computes the kronecker product of two blocks and returns one ndarray
+    per (element-in-block1, block2) pair."""
+
+    import cupy as cp
+
+    for i in range(block1_gpu.shape[0]):
+        for j in range(block1_gpu.shape[1]):
+            out_blocks[i][j] = cp.asnumpy(block1_gpu[i, j] * block2_gpu)
+
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "1"},
+                {"processorType": "GPU", "computingUnits": "1"},
+            ])
+@task(block1_gpu={Cache: True}, block2_gpu={Cache: True}, out_blocks={Type: COLLECTION_OUT, Depth: 2})
+def _kron_gpu_hot_intra_time(block1_gpu, block2_gpu, out_blocks, id_parameter, nr_algorithm_iteration, iteration, nr_task):
+    """ Computes the kronecker product of two blocks and returns one ndarray
+    per (element-in-block1, block2) pair."""
+
+    import cupy as cp
+
+    out_blocks_aux = out_blocks
+
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    # creating CUDA events for intra device time measurement
+    start_gpu_intra_device = cp.cuda.Event()
+    end_gpu_intra_device = cp.cuda.Event()
+
+    # No communication time 1 (block1 and block2 are already in GPU memory, no need to convert to cupy array)
+    start_communication_time_1 = end_communication_time_1 = 0
+
+    # Measure intra task execution time (device function) 
+    start_gpu_intra_device.record()
+    for i in range(block1_gpu.shape[0]):
+        for j in range(block1_gpu.shape[1]):
+            out_blocks_aux[i][j] = block1_gpu[i, j] * block2_gpu
+    end_gpu_intra_device.record()
+    end_gpu_intra_device.synchronize()
+    intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+
+    # Measure communication time 2
+    start_communication_time_2 = time.perf_counter()
+    for i in range(block1_gpu.shape[0]):
+        for j in range(block1_gpu.shape[1]):
+            out_blocks[i][j] = cp.asnumpy(out_blocks_aux[i][j])
+    end_communication_time_2 = time.perf_counter()
+
+    out_blocks_aux = None
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, nr_task, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, 0, 0, 0, 0, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
 
 
 def _combinations(a, b):
