@@ -14,28 +14,30 @@ import networkx as nx
 # TODO: arrays as input/output
 # TODO: implement algorithms with different computational complexity for each task
 # TODO: add support to CPU/GPU cold/hot
+# TODO: support the user to specify the expected parallel fraction on each task
+# TODO: before saving the DAG, compute the ideal grid dimension for full CPU execution, full GPU execution, and hybrid CPU-GPU execution (assuming horizontal partitioning)
 @task(returns=int)
-def task_a(arg0, arg1=None, arg2=None, arg3=None, arg4=None, arg5=None, arg6=None, arg7=None, arg8=None, arg9=None, arg10=None, arg11=None, arg12=None):
+def task_a(arg0, arg1=None, arg2=None, arg3=None, arg4=None, arg5=None, arg6=None):
     print("Executing Task A")
     return 1
 
 @task(returns=int)
-def task_b(arg0, arg1=None, arg2=None, arg3=None, arg4=None, arg5=None, arg6=None, arg7=None, arg8=None, arg9=None, arg10=None, arg11=None, arg12=None):
+def task_b(arg0, arg1=None, arg2=None, arg3=None, arg4=None, arg5=None, arg6=None):
     print("Executing Task B")
     return 2
 
 @task(returns=int)
-def task_c(arg0, arg1=None, arg2=None, arg3=None, arg4=None, arg5=None, arg6=None, arg7=None, arg8=None, arg9=None, arg10=None, arg11=None, arg12=None):
+def task_c(arg0, arg1=None, arg2=None, arg3=None, arg4=None, arg5=None, arg6=None):
     print("Executing Task C")
     return 3
 
 @task(returns=int)
-def task_d(arg0, arg1=None, arg2=None, arg3=None, arg4=None, arg5=None, arg6=None, arg7=None, arg8=None, arg9=None, arg10=None, arg11=None, arg12=None):
+def task_d(arg0, arg1=None, arg2=None, arg3=None, arg4=None, arg5=None, arg6=None):
     print("Executing Task D")
     return 4
 
 # Maximum number of task inputs
-NR_TASK_INPUT = 13
+NR_TASK_INPUT = 7
 
 # List of available tasks
 TASKS = {
@@ -191,7 +193,7 @@ def run_workflow(dag, input_dataset):
 
 if __name__ == "__main__":
     # Generate a workflow
-    dag = generate_dag_workflow(dag_pattern=3, num_tasks=13, dependency_probability=0.5)
+    dag = generate_dag_workflow(dag_pattern=3, num_tasks=7, dependency_probability=0.5)
     
     # #debug
     print("Generated DAG with tasks and dependencies:")
