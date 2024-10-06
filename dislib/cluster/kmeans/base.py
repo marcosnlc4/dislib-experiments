@@ -23,9 +23,18 @@ from dislib.data.array import Array
 from dislib.data.util import encoder_helper, decoder_helper, sync_obj
 import dislib.data.util.model as utilmodel
 
+import subprocess as sp
+import threading
+from threading import Thread , Timer
+import sched
+
 # location of the csv log file
 dst_path_experiments = os.path.dirname(os.path.abspath(__file__))
 dst_path_experiments = dst_path_experiments.replace("/dislib/cluster/kmeans", "/experiments/results/tb_experiments_raw.csv")
+dst_path_memory_monitor = os.path.dirname(os.path.abspath(__file__))
+dst_path_memory_monitor = dst_path_memory_monitor.replace("/dislib/cluster/kmeans", "/experiments/results/tb_memory_monitor.csv")
+dst_path_gpu_monitor = os.path.dirname(os.path.abspath(__file__))
+dst_path_gpu_monitor = dst_path_gpu_monitor.replace("/dislib/cluster/kmeans", "/experiments/results/tb_gpu_monitor.csv")
 var_null = "NULL"
 
 class KMeans(BaseEstimator):
@@ -144,6 +153,14 @@ class KMeans(BaseEstimator):
             partial_sum_func = _partial_sum_gpu_cold_intra_time
         elif self.id_device == 4 and self.id_cache == 2:
             partial_sum_func = _partial_sum_gpu_hot_intra_time
+        elif self.id_device == 5 and self.id_cache == 1:
+            partial_sum_func = _partial_sum_gpu_cold_single_task
+        elif self.id_device == 6 and self.id_cache == 1:
+            partial_sum_func = _partial_sum_gpu_cold_multi_task
+        elif self.id_device == 7 and self.id_cache == 1:
+            partial_sum_func = _partial_sum_gpu_cold_multi_task_memory
+        elif self.id_device == 8 and self.id_cache == 1:
+            partial_sum_func = _partial_sum_gpu_cold_multi_task_profile
         else:
             raise ValueError("Error. Invalid combination id_device+id_cache")
 
@@ -151,12 +168,15 @@ class KMeans(BaseEstimator):
             old_centers = self.centers.copy()
             partials = []
 
-            if self.id_device == 3 or self.id_device == 4:
+            if self.id_device == 3 or self.id_device == 4 or self.id_device == 7:
                 nr_task = 0
                 for row in x._iterator(axis=0):
                     partial = partial_sum_func(row._blocks, old_centers, self.id_parameter, self.nr_algorithm_iteration, iteration, nr_task)
                     partials.append(partial)
                     nr_task += 1
+            # elif self.id_device == 6:
+            #     import cupy as cp
+            #     cp.cuda.Stream.null.synchronize() # Synchronize to ensure operations are complete
             else:
                 for row in x._iterator(axis=0):
                     partial = partial_sum_func(row._blocks, old_centers)
@@ -488,6 +508,402 @@ def _partial_sum_cpu_hot_intra_time(blocks, centers, id_parameter, nr_algorithm_
     f.close()
 
     return partials
+
+#####################################
+# START CODE TEST SINGLE/MULTI GPU
+#####################################
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
+                {"processorType": "GPU", "computingUnits": "${ComputingUnitsGPU}"},
+            ])
+@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: False}, centers={Cache: False},
+      returns=np.array, cache_returns=False)
+def _partial_sum_gpu_cold_single_task(blocks, centers):
+    import cupy as cp
+
+    partials = np.zeros((centers.shape[0], 2), dtype=object)
+    if len(blocks[0]) == 1:
+        arr = blocks[0][0]
+    else:
+        arr = Array._merge_blocks(blocks)
+    arr_gpu = cp.asarray(arr).astype(cp.float32)
+    centers_gpu = cp.asarray(centers).astype(cp.float32)
+    arr = None
+
+    close_centers_gpu = cp.argmin(distance_gpu(arr_gpu, centers_gpu), axis=1)
+    arr = cp.asnumpy(arr_gpu)
+    arr_gpu, centers_gpu = None, None
+
+    close_centers = cp.asnumpy(close_centers_gpu)
+
+    for center_idx, _ in enumerate(centers):
+        indices = np.argwhere(close_centers == center_idx).flatten()
+        partials[center_idx][0] = np.sum(arr[indices], axis=0)
+        partials[center_idx][1] = indices.shape[0]
+
+    return partials
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"}
+            ])
+@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: False}, centers={Cache: False},
+      returns=np.array, cache_returns=False)
+def _partial_sum_gpu_cold_multi_task(blocks, centers):
+    import cupy as cp
+    # Automatically select the least saturated GPU
+    # select_gpu()
+
+    partials = np.zeros((centers.shape[0], 2), dtype=object)
+    if len(blocks[0]) == 1:
+        arr = blocks[0][0]
+    else:
+        arr = Array._merge_blocks(blocks)
+    arr_gpu = cp.asarray(arr).astype(cp.float32)
+    centers_gpu = cp.asarray(centers).astype(cp.float32)
+    arr = None
+
+    close_centers_gpu = cp.argmin(distance_gpu(arr_gpu, centers_gpu), axis=1)
+    arr = cp.asnumpy(arr_gpu)
+    arr_gpu, centers_gpu = None, None
+
+    close_centers = cp.asnumpy(close_centers_gpu)
+
+    for center_idx, _ in enumerate(centers):
+        indices = np.argwhere(close_centers == center_idx).flatten()
+        partials[center_idx][0] = np.sum(arr[indices], axis=0)
+        partials[center_idx][1] = indices.shape[0]
+
+    return partials
+
+####################################################
+# MEASURE GPU STATISTICS WITH NVIDIA-SMI
+####################################################
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"}
+            ])
+@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: False}, centers={Cache: False},
+      returns=np.array, cache_returns=False)
+def _partial_sum_gpu_cold_multi_task_memory(blocks, centers, id_parameter, nr_algorithm_iteration, iteration, row):
+    
+    #start the thread to log GPU statistics every 1ns 
+    thread = RepeatEvery(0.000000000001, monitor_gpu)
+    thread.start()
+    
+    import cupy as cp
+
+    # open the log file in the append mode
+    f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+
+    # create a csv writer
+    writer = csv.writer(f)
+
+    # creating CUDA events for intra device time measurement
+    start_gpu_intra_device = cp.cuda.Event()
+    end_gpu_intra_device = cp.cuda.Event()
+
+    # Measure additional time 1
+    start_additional_time_1 = time.perf_counter()
+    partials = np.zeros((centers.shape[0], 2), dtype=object)
+    if len(blocks[0]) == 1:
+        arr = blocks[0][0]
+    else:
+        arr = Array._merge_blocks(blocks)
+    end_additional_time_1 = time.perf_counter()
+
+    # Measure communication time 1
+    start_communication_time_1 = time.perf_counter()
+    arr_gpu = cp.asarray(arr).astype(cp.float32)
+    centers_gpu = cp.asarray(centers).astype(cp.float32)
+    end_communication_time_1 = time.perf_counter()
+    arr = None
+
+    # Measure intra task execution time (device function) 
+    start_gpu_intra_device.record()
+    close_centers_gpu = cp.argmin(distance_gpu(arr_gpu, centers_gpu), axis=1)
+    end_gpu_intra_device.record()
+    end_gpu_intra_device.synchronize()
+    intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+
+    # Measure communication time 2
+    start_communication_time_2 = time.perf_counter()
+    arr = cp.asnumpy(arr_gpu)
+    close_centers = cp.asnumpy(close_centers_gpu)
+    end_communication_time_2 = time.perf_counter()
+
+    # Measure additional time 2
+    start_additional_time_2 = time.perf_counter()
+    arr_gpu, centers_gpu = None, None
+
+    for center_idx, _ in enumerate(centers):
+        indices = np.argwhere(close_centers == center_idx).flatten()
+        partials[center_idx][0] = np.sum(arr[indices], axis=0)
+        partials[center_idx][1] = indices.shape[0]
+    end_additional_time_2 = time.perf_counter()
+
+    # write the time data
+    data = [id_parameter, nr_algorithm_iteration, iteration, row, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, start_additional_time_1, end_additional_time_1, start_additional_time_2, end_additional_time_2, datetime.datetime.now()]
+    writer.writerow(data)
+    f.close()
+    
+    # last sync to ensure that all operations in the default stream are finished and stop the thread
+    cp.cuda.stream.Stream.null.synchronize()
+    thread.stop()
+
+    return partials
+
+####################################################
+# MEASURE CUPY MEMORY POOL USAGE
+####################################################
+# @constraint(processors=[
+#                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"}
+#             ])
+# @task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: False}, centers={Cache: False},
+#       returns=np.array, cache_returns=False)
+# def _partial_sum_gpu_cold_multi_task_memory(blocks, centers, id_parameter, nr_algorithm_iteration, iteration, row):
+#     import cupy as cp
+
+#     # open the log file in the append mode
+#     f = open(dst_path_experiments, "a", encoding='UTF8', newline='')
+#     f2 = open(dst_path_memory_monitor, "a", encoding='UTF8', newline='')
+
+#     # create a csv writer
+#     writer = csv.writer(f)
+#     writer2 = csv.writer(f2)
+
+#     # creating CUDA events for intra device time measurement
+#     start_gpu_intra_device = cp.cuda.Event()
+#     end_gpu_intra_device = cp.cuda.Event()
+
+#     # Measure additional time 1
+#     start_additional_time_1 = time.perf_counter()
+#     partials = np.zeros((centers.shape[0], 2), dtype=object)
+#     if len(blocks[0]) == 1:
+#         arr = blocks[0][0]
+#     else:
+#         arr = Array._merge_blocks(blocks)
+#     end_additional_time_1 = time.perf_counter()
+
+#     # Measure communication time 1
+#     start_communication_time_1 = time.perf_counter()
+#     arr_gpu = cp.asarray(arr).astype(cp.float32)
+#     centers_gpu = cp.asarray(centers).astype(cp.float32)
+#     end_communication_time_1 = time.perf_counter()
+#     arr = None
+
+#     # Measure intra task execution time (device function) 
+#     start_gpu_intra_device.record()
+#     close_centers_gpu = cp.argmin(distance_gpu(arr_gpu, centers_gpu), axis=1)
+#     end_gpu_intra_device.record()
+#     end_gpu_intra_device.synchronize()
+#     intra_task_execution_device_func = cp.cuda.get_elapsed_time(start_gpu_intra_device, end_gpu_intra_device)*1e-3
+
+#     # Measure communication time 2
+#     start_communication_time_2 = time.perf_counter()
+#     arr = cp.asnumpy(arr_gpu)
+#     close_centers = cp.asnumpy(close_centers_gpu)
+#     end_communication_time_2 = time.perf_counter()
+
+#     # Measure additional time 2
+#     start_additional_time_2 = time.perf_counter()
+#     arr_gpu, centers_gpu = None, None
+
+#     memory_pool = cp.get_default_memory_pool()
+#     # Calculate the peak memory usage
+#     peak_memory = memory_pool.total_bytes()  # Total allocated memory
+#     used_memory = memory_pool.used_bytes()   # Currently used memory
+#     # Convert bytes to MB
+#     peak_memory_mb = peak_memory / (1024 ** 2)
+#     used_memory_mb = used_memory / (1024 ** 2)
+
+#     for center_idx, _ in enumerate(centers):
+#         indices = np.argwhere(close_centers == center_idx).flatten()
+#         partials[center_idx][0] = np.sum(arr[indices], axis=0)
+#         partials[center_idx][1] = indices.shape[0]
+#     end_additional_time_2 = time.perf_counter()
+
+#     # write the time data
+#     data = [id_parameter, nr_algorithm_iteration, iteration, row, var_null, var_null, var_null, var_null, var_null, intra_task_execution_device_func, start_communication_time_1, end_communication_time_1, start_communication_time_2, end_communication_time_2, start_additional_time_1, end_additional_time_1, start_additional_time_2, end_additional_time_2, datetime.datetime.now()]
+#     writer.writerow(data)
+#     f.close()
+
+#     # write the memory data
+#     data2 = [used_memory_mb, peak_memory_mb, datetime.datetime.now()]
+#     writer2.writerow(data2)
+#     f2.close()
+
+#     return partials
+
+####################################################
+# MEASURE CUPY MEMORY POOL USAGE PER LINE (LINE PROFILER HOOK)
+####################################################
+# @constraint(processors=[
+#                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"}
+#             ])
+# @task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: False}, centers={Cache: False},
+#       returns=np.array, cache_returns=False)
+# def _partial_sum_gpu_cold_multi_task_hook(blocks, centers):
+#     import cupy as cp
+#     from cupy.cuda import memory_hooks
+#     import io
+#     from contextlib import redirect_stdout
+#     dst_path_results = os.path.dirname(os.path.abspath(__file__))
+#     dst_path_results = dst_path_results.replace("/dislib/cluster/kmeans", "results/hook_output.txt")
+
+#     # Automatically select the least saturated GPU
+#     # select_gpu()
+
+#     partials = np.zeros((centers.shape[0], 2), dtype=object)
+#     if len(blocks[0]) == 1:
+#         arr = blocks[0][0]
+#     else:
+#         arr = Array._merge_blocks(blocks)
+
+#     hook = memory_hooks.LineProfileHook()
+#     with hook:
+#         arr_gpu = cp.asarray(arr).astype(cp.float32)
+#         centers_gpu = cp.asarray(centers).astype(cp.float32)
+#         arr = None
+
+#         close_centers_gpu = cp.argmin(distance_gpu(arr_gpu, centers_gpu), axis=1)
+#         arr = cp.asnumpy(arr_gpu)
+#         arr_gpu, centers_gpu = None, None
+
+#         close_centers = cp.asnumpy(close_centers_gpu)
+
+#     f = io.StringIO()
+#     with redirect_stdout(f):
+#         hook.print_report()
+
+#     report_output = f.getvalue()
+#     file = open(dst_path_results, 'w')
+#     file.write(report_output)
+#     file.close()
+
+#     for center_idx, _ in enumerate(centers):
+#         indices = np.argwhere(close_centers == center_idx).flatten()
+#         partials[center_idx][0] = np.sum(arr[indices], axis=0)
+#         partials[center_idx][1] = indices.shape[0]
+
+#     return partials
+
+@constraint(processors=[
+                {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"}
+            ])
+@task(blocks={Type: COLLECTION_IN, Depth: 2, Cache: False}, centers={Cache: False},
+      returns=np.array, cache_returns=False)
+def _partial_sum_gpu_cold_multi_task_profile(blocks, centers):
+    import cupy as cp
+    import cupyx as cpx
+
+    partials = np.zeros((centers.shape[0], 2), dtype=object)
+    if len(blocks[0]) == 1:
+        arr = blocks[0][0]
+    else:
+        arr = Array._merge_blocks(blocks)
+    
+    with cpx.profiler.profile():
+
+        arr_gpu = cp.asarray(arr).astype(cp.float32)
+        centers_gpu = cp.asarray(centers).astype(cp.float32)
+        arr = None
+
+        close_centers_gpu = cp.argmin(distance_gpu(arr_gpu, centers_gpu), axis=1)
+        arr = cp.asnumpy(arr_gpu)
+        arr_gpu, centers_gpu = None, None
+
+        close_centers = cp.asnumpy(close_centers_gpu)
+
+    for center_idx, _ in enumerate(centers):
+        indices = np.argwhere(close_centers == center_idx).flatten()
+        partials[center_idx][0] = np.sum(arr[indices], axis=0)
+        partials[center_idx][1] = indices.shape[0]
+        
+    return partials
+
+def monitor_gpu():
+    output_to_list = lambda x: x.decode('ascii').split('\n')[:-1]
+    ACCEPTABLE_AVAILABLE_MEMORY = 1024
+    COMMAND = "nvidia-smi --query-gpu=index,memory.used,utilization.gpu,timestamp --format=csv"
+    try:
+        memory_use_info = output_to_list(sp.check_output(COMMAND.split(),stderr=sp.STDOUT))[1:]
+    except sp.CalledProcessError as e:
+        raise RuntimeError("command '{}' return with error (code {}): {}".format(e.cmd, e.returncode, e.output))
+    gpu_index_values = [x.split()[0].replace(',', '') for i, x in enumerate(memory_use_info)]
+    memory_use_values = [int(x.split()[1]) for i, x in enumerate(memory_use_info)]
+    gpu_use_values = [int(x.split()[3]) for i, x in enumerate(memory_use_info)]
+    date_values = [x.split()[5] for i, x in enumerate(memory_use_info)]
+    time_values = [x.split()[6] for i, x in enumerate(memory_use_info)]
+    dt_processing = date_values[0] + ' ' +  time_values[0]
+    dt_processing_f = datetime.datetime.strptime(dt_processing, "%Y/%m/%d %H:%M:%S.%f")
+
+    f = open(dst_path_gpu_monitor, "a", encoding='UTF8', newline='')
+
+    writer = csv.writer(f)
+    print(gpu_index_values[0], memory_use_values[0], gpu_use_values[0], dt_processing_f)
+    data = [gpu_index_values[0], memory_use_values[0], gpu_use_values[0], dt_processing_f]
+    writer.writerow(data)
+    f.close()
+
+class RepeatEvery(threading.Thread):
+    def __init__(self, interval, func, *args, **kwargs):
+        threading.Thread.__init__(self)
+        self.interval = interval  # seconds between calls
+        self.func = func          # function to call
+        self.args = args          # optional positional argument(s) for call
+        self.kwargs = kwargs      # optional keyword argument(s) for call
+        self.runable = True
+    def run(self):
+        while self.runable:
+            try:
+                self.func(*self.args, **self.kwargs)  # Call the function with arguments
+                time.sleep(self.interval)             # Wait for the interval
+            except Exception as e:
+                print(f"Exception in thread: {e}")
+                self.runable = False  # Stop the loop if there is an exception
+    def stop(self):
+        self.runable = False
+
+
+# Function to get available memory on a given GPU device
+def get_gpu_memory_info(gpu_id):
+    import cupy as cp
+    with cp.cuda.Device(gpu_id):
+        mem_info = cp.cuda.Device(gpu_id).mem_info
+        free_mem = mem_info[0]  # Free memory
+        total_mem = mem_info[1]  # Total memory
+        return free_mem, total_mem
+
+# Function to select the GPU with enough available memory
+def select_gpu(threshold_ratio=0.9):
+    import cupy as cp
+    # Check current GPU memory
+    free_mem_current, total_mem_current = get_gpu_memory_info(cp.cuda.Device().id)
+    utilization_current = 1 - free_mem_current / total_mem_current
+
+    time_out_threshold=0
+
+    for i in range(cp.cuda.runtime.getDeviceCount()):
+        if i != cp.cuda.Device().id:
+            # If current GPU ID is saturated, check if the next GPU ID in the list of GPUs is free
+            if utilization_current > threshold_ratio:
+                print(f"Switching to GPU {i} as GPU {cp.cuda.Device().id} is saturated")
+                cp.cuda.Device(i).use()
+                select_gpu()
+            else:
+                break
+
+        # If all GPUs are fully used check again all available GPUs until one gets free or the threshold criteria is reached
+        if i == cp.cuda.runtime.getDeviceCount():
+            # Verification to avoid infinity loop (check all GPUs for 10 times and if none gets free, abort the execution)
+            if time_out_threshold < 10:
+                i = 0
+                time_out_threshold += 1
+            else:
+                raise MemoryError("The memory of all GPUs are fully used. Abort to avoid out of memory")
+
+#####################################
+# END CODE TEST SINGLE/MULTI GPU
+#####################################
 
 @constraint(processors=[
                 {"processorType": "CPU", "computingUnits": "${ComputingUnitsCPU}"},
